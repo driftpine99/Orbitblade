@@ -400,77 +400,57 @@ const PASSIVE_IDS=['kettenblitz','konterstoss','splitter','phaser','lebensregen'
    Keine Kartenlotterie mehr: Jeder Knoten ist sichtbar, hat klare Voraussetzungen
    und kostet genau einen Punkt. Aktive Mächte sind die vorher gewählte Ausrüstung;
    passive Mächte und Entwicklungen werden hier bewusst aufgebaut. */
-const TREE_BRANCHEN={
-  klinge:{ name:'Klinge', icon:'⚔' },
-  kern:{ name:'Kern', icon:'✦' },
-  maechte:{ name:'Mächte', icon:'⚡' },
-};
 function steigereMacht(id, stufe){ runAbilities[id]=Math.max(runAbilities[id]||1, stufe); }
+function treeRang(id){ return Number(runTree[id])||0; }
 function treeNodes(){
   const n=[
-    {id:'blade_dmg',branch:'klinge',tier:1,lane:1,name:'Scharfe Kante',desc:'+10 % Klingenschaden',icon:'✦',apply:()=>bonuses.dmg+=0.10},
-    {id:'blade_range',branch:'klinge',tier:1,lane:2,name:'Langer Arm',desc:'+10 % Klingenreichweite',icon:'↗',apply:()=>bonuses.range+=0.10},
-    {id:'blade_spin',branch:'klinge',tier:1,lane:3,name:'Schneller Orbit',desc:'+10 % Rotationstempo',icon:'↻',apply:()=>bonuses.fireRate+=0.10},
-    {id:'blade_focus',branch:'klinge',tier:2,lane:1,name:'Präzisionsdrall',desc:'Fokus braucht 2 Treffer weniger',icon:'◎',reqAll:['blade_dmg','blade_spin'],apply:()=>treeFlags.fokusRabatt=(treeFlags.fokusRabatt||0)+2},
-    {id:'blade_multi',branch:'klinge',tier:2,lane:2,name:'Mehrfachorbit',desc:'Zwei gegenüberliegende Klingen',icon:'Ⅱ',reqAll:['blade_range'],exclusiveGroup:'orbit',apply:()=>{bonuses.blades=Math.max(2,bonuses.blades);earnBadge('doppel');}},
-    {id:'blade_single',branch:'klinge',tier:2,lane:3,name:'Singularorbit',desc:'Eine schmale, sehr starke Präzisionsklinge',icon:'┃',reqAll:['blade_dmg'],exclusiveGroup:'orbit',apply:()=>{treeFlags.singularorbit=true;treeFlags.sweetBonus=(treeFlags.sweetBonus||0)+0.38;}},
-    {id:'blade_pierce',branch:'klinge',tier:3,lane:1,name:'Panzerbrecher',desc:'Sweet Spot ignoriert Panzerung',icon:'◆',reqAny:['blade_multi','blade_single'],apply:()=>treeFlags.panzerbrecher=true},
-    {id:'blade_sync',branch:'klinge',tier:3,lane:2,name:'Synchronlauf',desc:'Mehrfachorbit bleibt präzise und wird schneller',icon:'⇌',reqAll:['blade_multi'],apply:()=>{treeFlags.sweetWeite=0.12;bonuses.fireRate+=0.08;}},
-    {id:'blade_takt',branch:'klinge',tier:3,lane:3,name:'Klingentakt',desc:'Jeder 3. Sweet Hit wird verstärkt',icon:'✹',reqAll:['blade_single'],apply:()=>treeFlags.klingentakt=true},
-    {id:'blade_chase',branch:'klinge',tier:3,lane:4,name:'Nachsetzen',desc:'Aktive Macht gibt kurz Tempo',icon:'➤',reqAll:['blade_focus'],apply:()=>treeFlags.nachsetzen=true},
-    {id:'blade_tri',branch:'klinge',tier:4,lane:2,name:'Dreifachklinge',desc:'Drei Klingen ohne blinden Winkel',icon:'Ⅲ',reqAll:['blade_multi','blade_sync','blade_pierce'],exclusiveGroup:'orbit_end',available:()=>isAvailable('ability','dreifachklinge'),apply:()=>bonuses.blades=Math.max(3,bonuses.blades)},
-    {id:'blade_perfect',branch:'klinge',tier:4,lane:3,name:'Perfekter Orbit',desc:'Verstärkte Treffer laden Fokus doppelt',icon:'★',reqAll:['blade_single','blade_takt','blade_pierce'],exclusiveGroup:'orbit_end',apply:()=>treeFlags.perfekterOrbit=true},
-
-    {id:'core_hull',branch:'kern',tier:1,lane:1,name:'Resonanzpanzer',desc:'+24 Max-Leben',icon:'♥',apply:()=>{player.maxHp+=24;player.hp+=24;}},
-    {id:'core_drive',branch:'kern',tier:1,lane:2,name:'Impulsantrieb',desc:'+10 % Lauftempo',icon:'➜',apply:()=>bonuses.speed+=0.10},
-    {id:'core_barrier',branch:'kern',tier:1,lane:3,name:'Barrierefeld',desc:'+20 % maximale Barriere',icon:'◈',apply:()=>treeFlags.barriereMult=(treeFlags.barriereMult||1)*1.20},
-    {id:'core_repair',branch:'kern',tier:2,lane:1,name:'Regeneration',desc:'+0,5 Leben pro Sekunde',icon:'+',reqAll:['core_hull'],apply:()=>bonuses.regen=(bonuses.regen||0)+0.5},
-    {id:'core_focus',branch:'kern',tier:2,lane:2,name:'Klare Linie',desc:'Fokus braucht 2 Treffer weniger',icon:'◎',reqAll:['core_drive'],apply:()=>treeFlags.fokusRabatt=(treeFlags.fokusRabatt||0)+2},
-    {id:'core_signature',branch:'kern',tier:2,lane:3,name:'Signaturfluss',desc:'Signatur lädt 15 % schneller',icon:'☄',reqAll:['core_barrier'],apply:()=>treeFlags.signaturCdMult=0.85},
+    {id:'orbit_root',stage:0,col:4,kind:'root',name:'Orbitkern',desc:'Deine Klinge und deine Mächte entspringen demselben Kern.',icon:'◉',free:true},
+    {id:'blade_multi',stage:1,col:3,kind:'major',name:'Mehrfachorbit',desc:'Zwei gegenüberliegende Klingen.',icon:'Ⅱ',reqAll:['orbit_root'],exclusiveGroup:'orbit',apply:()=>{bonuses.blades=Math.max(2,bonuses.blades);earnBadge('doppel');}},
+    {id:'blade_single',stage:1,col:5,kind:'major',name:'Singularorbit',desc:'Eine schmale Klinge mit +38 % Sweet-Spot-Schaden.',icon:'┃',reqAll:['orbit_root'],exclusiveGroup:'orbit',apply:()=>{treeFlags.singularorbit=true;treeFlags.sweetBonus=(treeFlags.sweetBonus||0)+0.38;}},
+    {id:'blade_edge',stage:2,col:4,kind:'buff',name:'Klingenschliff',desc:'+8 % Klingenschaden je Rang.',icon:'✦',maxRank:3,reqAny:['blade_multi','blade_single'],apply:()=>bonuses.dmg+=0.08},
+    {id:'orbit_flow',stage:3,col:4,kind:'buff',name:'Orbitfluss',desc:'+7 % Rotation und Bewegung je Rang.',icon:'↻',maxRank:3,reqAll:['blade_edge'],apply:()=>{bonuses.fireRate+=0.07;bonuses.speed+=0.07;}},
+    {id:'focus_core',stage:5,col:4,kind:'buff',name:'Fokuskern',desc:'Fokus lädt schneller und verstärkt Mächte.',icon:'◎',maxRank:3,reqAny:['char_follow_a','char_follow_b'],apply:()=>{treeFlags.fokusRabatt=(treeFlags.fokusRabatt||0)+1;treeFlags.fokusMachtBonus=(treeFlags.fokusMachtBonus||0)+0.08;}},
+    {id:'armor_core',stage:6,col:4,kind:'buff',name:'Resonanzpanzer',desc:'+12 Max-Leben und +8 % Barriere je Rang.',icon:'◈',maxRank:2,reqAll:['focus_core'],apply:()=>{player.maxHp+=12;player.hp+=12;treeFlags.barriereMult=(treeFlags.barriereMult||1)*1.08;}},
+    {id:'orbit_crown',stage:7,col:4,kind:'capstone',name:'Orbitkrone',desc:'Mehrfachorbit erhält eine dritte Klinge; Singularorbit lädt Fokus doppelt.',icon:'★',reqAll:['armor_core'],reqAny:['blade_multi','blade_single'],apply:()=>{if(treeRang('blade_multi')) bonuses.blades=Math.max(3,bonuses.blades);else treeFlags.perfekterOrbit=true;}},
   ];
   if(figur().id==='held') n.push(
-    {id:'held_guard',branch:'kern',tier:3,lane:1,name:'Wächter',desc:'Fokus-Barriere bremst nahe Gegner',icon:'◈',reqAll:['core_barrier'],exclusiveGroup:'held_route',apply:()=>treeFlags.waechter=true},
-    {id:'held_guard2',branch:'kern',tier:3,lane:2,name:'Lichtreserve',desc:'Bossheilung bewahrt übrige Barriere',icon:'✦',reqAll:['held_guard'],apply:()=>treeFlags.lichtreserve=true},
-    {id:'held_beacon',branch:'kern',tier:4,lane:1,name:'Leuchtfeuer',desc:'Voller Fokus erzeugt eine starke Barriere',icon:'★',reqAll:['held_guard2'],apply:()=>treeFlags.leuchtfeuer=true},
-    {id:'held_rider',branch:'kern',tier:3,lane:3,name:'Strahlenreiter',desc:'Sweet Hits laden Lichtbahn',icon:'➤',reqAll:['core_focus'],exclusiveGroup:'held_route',apply:()=>treeFlags.strahlenreiter=true},
-    {id:'held_trail',branch:'kern',tier:3,lane:4,name:'Lichtspur',desc:'Lichtbahn wird breiter und hinterlässt Energie',icon:'━',reqAll:['held_rider'],apply:()=>treeFlags.lichtspur=true},
-    {id:'held_sun',branch:'kern',tier:4,lane:3,name:'Sonnenpfad',desc:'Zwei schwächere Lichtbahn-Ladungen',icon:'☀',reqAll:['held_trail'],apply:()=>treeFlags.sonnenpfad=true}
+    {id:'char_route_a',stage:3,col:3,kind:'major',name:'Wächter',desc:'Fokus-Barriere bremst Gegner in deiner Nähe.',icon:'◈',reqAll:['blade_edge'],exclusiveGroup:'char_route',apply:()=>treeFlags.waechter=true},
+    {id:'char_route_b',stage:3,col:5,kind:'major',name:'Strahlenreiter',desc:'Sweet Hits laden Lichtbahn schneller.',icon:'➤',reqAll:['blade_edge'],exclusiveGroup:'char_route',apply:()=>treeFlags.strahlenreiter=true},
+    {id:'char_follow_a',stage:4,col:3,kind:'major',name:'Lichtreserve',desc:'Voller Fokus erzeugt eine deutlich stärkere Barriere.',icon:'✦',reqAll:['char_route_a'],apply:()=>treeFlags.leuchtfeuer=true},
+    {id:'char_follow_b',stage:4,col:5,kind:'major',name:'Lichtspur',desc:'Lichtbahn wird breiter und hinterlässt Energie.',icon:'━',reqAll:['char_route_b'],apply:()=>treeFlags.lichtspur=true},
+    {id:'char_cap_a',stage:7,col:3,kind:'capstone',name:'Leuchtfeuer',desc:'Fokus macht dich zum standhaften Zentrum des Orbits.',icon:'★',reqAll:['char_follow_a','armor_core'],apply:()=>treeFlags.lichtreserve=true},
+    {id:'char_cap_b',stage:7,col:5,kind:'capstone',name:'Sonnenpfad',desc:'Zwei schwächere Lichtbahn-Ladungen.',icon:'☀',reqAll:['char_follow_b','armor_core'],apply:()=>treeFlags.sonnenpfad=true}
   ); else n.push(
-    {id:'void_devour',branch:'kern',tier:3,lane:1,name:'Verschlinger',desc:'Günstigere Überladung, mehr Heilung',icon:'◆',reqAll:['core_repair'],exclusiveGroup:'void_route',apply:()=>{treeFlags.leerenOpfer=0.10;treeFlags.leerenHeilung=0.018;}},
-    {id:'void_extend',branch:'kern',tier:3,lane:2,name:'Unstillbar',desc:'Kills verlängern Überladung begrenzt',icon:'+',reqAll:['void_devour'],apply:()=>treeFlags.leerenKillDauer=true},
-    {id:'void_sated',branch:'kern',tier:4,lane:1,name:'Satter Abgrund',desc:'Sicherer Lebensraub, weniger Risikobonus',icon:'★',reqAll:['void_extend'],apply:()=>{treeFlags.satterAbgrund=true;treeFlags.leerenHeilung=0.026;}},
-    {id:'void_abyss',branch:'kern',tier:3,lane:3,name:'Abgrund',desc:'Mehr Schaden bei wenig Leben',icon:'▼',reqAll:['core_focus'],exclusiveGroup:'void_route',apply:()=>treeFlags.leerenRisikoBonus=0.22},
-    {id:'void_blades',branch:'kern',tier:3,lane:4,name:'Dunkler Orbit',desc:'Unter 35 %: drei scharfe Klingen',icon:'Ⅲ',reqAll:['void_abyss'],apply:()=>treeFlags.leerenKlingen=3},
-    {id:'void_horizon',branch:'kern',tier:4,lane:3,name:'Ereignishorizont',desc:'Maximaler Schaden, kaum Heilung',icon:'◉',reqAll:['void_blades'],apply:()=>{treeFlags.ereignishorizont=true;treeFlags.leerenHeilung=0.004;}}
+    {id:'char_route_a',stage:3,col:3,kind:'major',name:'Verschlinger',desc:'Günstigere Überladung und stärkere Heilung.',icon:'◆',reqAll:['blade_edge'],exclusiveGroup:'char_route',apply:()=>{treeFlags.leerenOpfer=.10;treeFlags.leerenHeilung=.018;}},
+    {id:'char_route_b',stage:3,col:5,kind:'major',name:'Abgrund',desc:'Wenig Leben verstärkt deinen Sweet Spot stark.',icon:'▼',reqAll:['blade_edge'],exclusiveGroup:'char_route',apply:()=>treeFlags.leerenRisikoBonus=.22},
+    {id:'char_follow_a',stage:4,col:3,kind:'major',name:'Unstillbar',desc:'Kills verlängern die Überladung begrenzt.',icon:'+',reqAll:['char_route_a'],apply:()=>treeFlags.leerenKillDauer=true},
+    {id:'char_follow_b',stage:4,col:5,kind:'major',name:'Dunkler Orbit',desc:'Unter 35 % Leben kreisen drei scharfe Klingen.',icon:'Ⅲ',reqAll:['char_route_b'],apply:()=>treeFlags.leerenKlingen=3},
+    {id:'char_cap_a',stage:7,col:3,kind:'capstone',name:'Satter Abgrund',desc:'Sicherer Lebensraub, geringerer Risikobonus.',icon:'★',reqAll:['char_follow_a','armor_core'],apply:()=>{treeFlags.satterAbgrund=true;treeFlags.leerenHeilung=.026;}},
+    {id:'char_cap_b',stage:7,col:5,kind:'capstone',name:'Ereignishorizont',desc:'Maximaler Schaden, aber kaum Heilung.',icon:'◉',reqAll:['char_follow_b','armor_core'],apply:()=>{treeFlags.ereignishorizont=true;treeFlags.leerenHeilung=.004;}}
   );
   const aktive=[...new Set([activeSlot1,activeSlot2].filter(Boolean))];
-  for(const id of aktive){
-    const a=ABILITIES[id];
-    n.push({id:'active_'+id+'_2',branch:'maechte',kind:'active',power:id,tier:1,name:a.name+' verstärken',desc:STUFEN[id].pro,icon:'↑',reqAll:['power_flow'],apply:()=>steigereMacht(id,2)});
-    n.push({id:'active_'+id+'_a',branch:'maechte',kind:'active',power:id,tier:2,name:'Modifikation A',desc:ACTIVE_MODS[id][0],icon:'A',reqAll:['active_'+id+'_2'],exclusiveGroup:'mod_'+id,apply:()=>{steigereMacht(id,3);treeFlags['mod_'+id]='a';}});
-    n.push({id:'active_'+id+'_b',branch:'maechte',kind:'active',power:id,tier:2,name:'Modifikation B',desc:ACTIVE_MODS[id][1],icon:'B',reqAll:['active_'+id+'_2'],exclusiveGroup:'mod_'+id,apply:()=>{steigereMacht(id,3);treeFlags['mod_'+id]='b';}});
-    n.push({id:'active_'+id+'_4',branch:'maechte',kind:'active',power:id,tier:3,name:'Meisterschaft',desc:STUFEN[id].sprung,icon:'★',reqAny:['active_'+id+'_a','active_'+id+'_b'],apply:()=>steigereMacht(id,4)});
-    n.push({id:'active_'+id+'_5',branch:'maechte',kind:'active',power:id,tier:4,name:'Vollendung',desc:STUFEN[id].pro,icon:'↑',reqAll:['active_'+id+'_4'],apply:()=>steigereMacht(id,5)});
-  }
-  n.unshift(
-    {id:'power_flow',branch:'maechte',kind:'root',tier:0,name:'Machtfluss',desc:'Aktive laden 8 % schneller',icon:'⚡',apply:()=>treeFlags.aktiveCdMult=0.92},
-    {id:'power_focus',branch:'maechte',kind:'root',tier:0,name:'Fokusentladung',desc:'Fokus verstärkt Aktive stärker',icon:'◉',reqAll:['power_flow'],apply:()=>treeFlags.fokusMachtBonus=0.25}
+  const evoVon=id=>Object.entries(EVOLUTIONS).find(([,e])=>e.base===id);
+  aktive.forEach((id,index)=>{
+    const side=index===0?1:7, inner=index===0?2:6, pair=evoVon(id), evoId=pair&&pair[0], evo=pair&&pair[1];
+    const prefix='power_'+id;
+    n.push(
+      {id:prefix+'_a',stage:1,col:side,kind:'major',power:id,name:ABILITIES[id].name+' A',desc:ACTIVE_MODS[id][0],icon:'A',reqAll:['orbit_root'],exclusiveGroup:'mod_'+id,apply:()=>{steigereMacht(id,2);treeFlags['mod_'+id]='a';}},
+      {id:prefix+'_b',stage:1,col:inner,kind:'major',power:id,name:ABILITIES[id].name+' B',desc:ACTIVE_MODS[id][1],icon:'B',reqAll:['orbit_root'],exclusiveGroup:'mod_'+id,apply:()=>{steigereMacht(id,2);treeFlags['mod_'+id]='b';}},
+      {id:prefix+'_tune',stage:2,col:side,kind:'buff',power:id,name:'Machtfluss',desc:'-6 % Abklingzeit je Rang.',icon:'⚡',maxRank:2,reqAny:[prefix+'_a',prefix+'_b'],apply:()=>{steigereMacht(id,3);treeFlags['powerCd_'+id]=(treeFlags['powerCd_'+id]||1)*.94;}},
+      {id:prefix+'_passive',stage:3,col:side,kind:'major',power:id,passive:evo.req,name:ABILITIES[evo.req].name,desc:ABILITIES[evo.req].desc,icon:'✦',maxRank:3,reqAll:[prefix+'_tune'],apply:rank=>{runAbilities[evo.req]=rank===1?1:rank===2?3:5;}},
+      {id:prefix+'_master',stage:4,col:side,kind:'major',power:id,name:'Meisterschaft',desc:STUFEN[id].sprung,icon:'★',reqAll:[prefix+'_passive'],apply:()=>steigereMacht(id,4)},
+      {id:prefix+'_amp',stage:5,col:side,kind:'buff',power:id,name:'Resonanz',desc:'+10 % Schaden dieser Macht je Rang.',icon:'◆',maxRank:2,reqAll:[prefix+'_master'],apply:()=>treeFlags['powerDmg_'+id]=(treeFlags['powerDmg_'+id]||1)*1.10},
+      {id:prefix+'_complete',stage:6,col:side,kind:'major',power:id,name:'Vollendung',desc:'Erreicht Stufe 5 und öffnet die Entwicklung.',icon:'↑',reqAll:[prefix+'_amp'],apply:()=>steigereMacht(id,5)},
+      {id:'evo_'+evoId,stage:7,col:side,kind:'evo',power:id,name:evo.name,desc:evo.desc,icon:'✦',reqAll:[prefix+'_complete'],evo:evoId,apply:()=>{runEvolutions[id]=evoId;zielZaehl('entwicklung');announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}}
+    );
+  });
+  // Der zweite Aktiv-Slot kann fehlen. Dann füllt ein kurzer gemeinsamer Seitenast
+  // die Punktökonomie, ohne eine unechte zweite Macht vorzutäuschen.
+  if(aktive.length===1) n.push(
+    {id:'orbit_reach',stage:2,col:7,kind:'buff',name:'Weiter Orbit',desc:'+8 % Reichweite je Rang.',icon:'↗',maxRank:3,reqAny:['blade_multi','blade_single'],apply:()=>bonuses.range+=.08},
+    {id:'orbit_chase',stage:4,col:7,kind:'major',name:'Nachsetzen',desc:'Aktive Macht gibt kurz Bewegungstempo.',icon:'➤',reqAll:['orbit_reach'],apply:()=>treeFlags.nachsetzen=true},
+    {id:'orbit_pierce',stage:6,col:7,kind:'major',name:'Panzerbrecher',desc:'Sweet Spot ignoriert Panzerung.',icon:'◆',reqAll:['orbit_chase'],apply:()=>treeFlags.panzerbrecher=true}
   );
-  const bridges={kettenblitz:'blade_spin',konterstoss:'core_barrier',splitter:'blade_range',phaser:'core_drive',lebensregen:'core_repair',schneide:'blade_dmg',nachhall:'blade_focus'};
-  for(const id of PASSIVE_IDS){
-    const a=ABILITIES[id];
-    n.push({id:'passive_'+id+'_1',branch:'maechte',kind:'passive',passiveStep:1,name:a.name,desc:a.desc,icon:'+',reqAll:[bridges[id]],passive:id,bridge:bridges[id],
-      available:()=>abilUnlocked(id),apply:()=>{runAbilities[id]=1;}});
-    n.push({id:'passive_'+id+'_3',branch:'maechte',kind:'passive',passiveStep:2,name:'Verstärken',desc:STUFEN[id].pro,icon:'↑',reqAll:['passive_'+id+'_1'],passive:id,available:()=>abilUnlocked(id),apply:()=>steigereMacht(id,3)});
-    n.push({id:'passive_'+id+'_5',branch:'maechte',kind:'passive',passiveStep:3,name:'Meistern',desc:STUFEN[id].sprung,icon:'★',reqAll:['passive_'+id+'_3'],passive:id,available:()=>abilUnlocked(id),apply:()=>steigereMacht(id,5)});
-  }
-  for(const evoId in EVOLUTIONS){
-    const e=EVOLUTIONS[evoId];
-    if(!aktive.includes(e.base)) continue;
-    n.push({id:'evo_'+evoId,branch:'maechte',name:e.name,desc:e.desc,icon:'✦',
-      kind:'evo',power:e.base,reqAll:['active_'+e.base+'_5','passive_'+e.req+'_1'],available:()=>abilUnlocked(e.req),evo:evoId,
-      apply:()=>{runEvolutions[e.base]=evoId; zielZaehl('entwicklung'); announce('Entwicklung!',e.name,'#ffd257'); unlockFx=1;}});
-  }
   return n;
 }
 
@@ -1023,11 +1003,12 @@ function abilityLevel(id){
   return runAbilities[id] || 1;
 }
 function abilScale(level){ return 1 + CONFIG.abilLevelScale*(level-1); }
+function machtFaktor(id){ return treeFlags['powerDmg_'+id]||1; }
 function abilUnlocked(id){ return isAvailable('ability', id); }
 function activeCdMax(id){
   if(!id) return 0;
   const basis=id==='bombe'? CONFIG.bombeCooldown : id==='nova'? CONFIG.novaCooldown : id==='sog'? CONFIG.sog.cooldown : id==='stoss'? CONFIG.stossCooldown : CONFIG.wirbelCooldown;
-  return basis*(treeFlags.aktiveCdMult||1);
+  return basis*(treeFlags.aktiveCdMult||1)*(treeFlags['powerCd_'+id]||1);
 }
 function signaturCdMax(){ return figur().signatur.cooldown*(treeFlags.signaturCdMult||1); }
 function updateSignaturButton(){
@@ -1065,88 +1046,69 @@ function updateActiveButtons(){
 }
 
 function passiveTreeAnzahl(){ return PASSIVE_IDS.filter(id=>!!runAbilities[id]).length; }
-let treeBranchAktiv='klinge';
+let treeSelected=null;
 function treeStatus(node, nodes){
-  if(runTree[node.id]) return {art:'bought', text:'Freigeschaltet'};
+  const rang=treeRang(node.id), max=node.maxRank||1;
+  if(node.free) return {art:'bought',text:'Ausgangspunkt',rang:1,max:1};
+  if(rang>=max) return {art:'bought', text:max>1?'Rang '+rang+' / '+max:'Freigeschaltet',rang,max};
   if(node.available && !node.available()) return {art:'locked', text:'Noch nicht dauerhaft freigeschaltet'};
   if(node.exclusiveGroup){
-    const gegner=nodes.find(n=>n.exclusiveGroup===node.exclusiveGroup && n.id!==node.id && runTree[n.id]);
+    const gegner=nodes.find(n=>n.exclusiveGroup===node.exclusiveGroup && n.id!==node.id && treeRang(n.id));
     if(gegner) return {art:'blocked',text:'Ausgeschlossen durch '+gegner.name};
   }
-  const fehlt=(node.reqAll||node.req||[]).filter(id=>!runTree[id]);
+  const fehlt=(node.reqAll||node.req||[]).filter(id=>id!=='orbit_root'&&!treeRang(id));
   if(fehlt.length){
     const namen=fehlt.map(id=>(nodes.find(n=>n.id===id)||{name:'Verbindung'}).name).join(', ');
     return {art:'locked', text:'Benötigt: '+namen};
   }
-  if(node.reqAny && !node.reqAny.some(id=>runTree[id])){
+  if(node.reqAny && !node.reqAny.some(id=>treeRang(id))){
     const namen=node.reqAny.map(id=>(nodes.find(n=>n.id===id)||{name:'Verbindung'}).name).join(' oder ');
     return {art:'locked',text:'Benötigt: '+namen};
   }
-  if(node.passive && !runAbilities[node.passive] && passiveTreeAnzahl()>=MAX_PASSIVE_SLOTS)
+  if(node.passive && !rang && !runAbilities[node.passive] && passiveTreeAnzahl()>=MAX_PASSIVE_SLOTS)
     return {art:'locked', text:'Alle 3 Passivplätze sind belegt'};
   if(skillPoints<1) return {art:'locked', text:'Kein Punkt verfügbar'};
-  return {art:'ready', text:'1 Punkt investieren'};
+  return {art:'ready', text:'1 Punkt · Rang '+(rang+1)+' / '+max,rang,max};
 }
 function renderSkillTree(){
   if(!treeBranches) return;
   const nodes=treeNodes();
   treePunkte.textContent=skillPoints+' '+(skillPoints===1?'Punkt':'Punkte')+' verfügbar';
-  const tabs=document.getElementById('tree-tabs');
-  if(tabs){
-    tabs.innerHTML='';
-    for(const branchId of Object.keys(TREE_BRANCHEN)){
-      const branch=TREE_BRANCHEN[branchId], branchNodes=nodes.filter(n=>n.branch===branchId);
-      const gekauft=branchNodes.filter(n=>runTree[n.id]).length;
-      const t=document.createElement('button'); t.className='compact-tab'+(treeBranchAktiv===branchId?' active':'');
-      t.textContent=branch.name+' '+gekauft; t.onclick=()=>{treeBranchAktiv=branchId;renderSkillTree();}; tabs.appendChild(t);
-    }
-  }
   treeBranches.innerHTML='';
-  const branchId=treeBranchAktiv, branch=TREE_BRANCHEN[branchId];
-  const box=document.createElement('section'); box.className='tree-branch branch-'+branchId;
-  const branchNodes=nodes.filter(n=>n.branch===branchId);
-  if(branchId==='maechte'){
-    const roots=document.createElement('div'); roots.className='tree-tier tree-roots';
-    branchNodes.filter(n=>n.kind==='root').forEach(n=>roots.appendChild(treeNodeButton(n,nodes)));
-    box.appendChild(roots);
-    const powers=[...new Set(branchNodes.filter(n=>n.power&&n.kind!=='evo').map(n=>n.power))];
-    powers.forEach(id=>{
-      const group=document.createElement('section'); group.className='power-path';
-      group.innerHTML='<h3>'+ABILITIES[id].name+'</h3>';
-      const row=document.createElement('div'); row.className='power-path-row';
-      branchNodes.filter(n=>n.power===id).forEach(n=>row.appendChild(treeNodeButton(n,nodes)));
-      group.appendChild(row); box.appendChild(group);
-    });
-    const modules=document.createElement('div'); modules.className='passive-modules';
-    for(const id of PASSIVE_IDS){
-      const steps=branchNodes.filter(n=>n.passive===id);
-      if(!steps.length) continue;
-      const card=document.createElement('section'); card.className='passive-module'+(runAbilities[id]?' active':'');
-      card.innerHTML='<div class="passive-title"><b>'+ABILITIES[id].name+'</b><span>'+((runAbilities[id]||0)?'Stufe '+runAbilities[id]:'0/3')+'</span></div>';
-      const row=document.createElement('div'); row.className='passive-steps';
-      steps.filter(n=>n.passiveStep===1 || runAbilities[id]).forEach(n=>row.appendChild(treeNodeButton(n,nodes,true)));
-      card.appendChild(row); modules.appendChild(card);
-    }
-    box.appendChild(modules);
-  } else {
-    for(let tier=1;tier<=4;tier++){
-      const row=document.createElement('div'); row.className='tree-tier'; row.dataset.tier=tier;
-      branchNodes.filter(n=>n.tier===tier).forEach(n=>row.appendChild(treeNodeButton(n,nodes)));
-      box.appendChild(row);
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.classList.add('orbit-lines'); treeBranches.appendChild(svg);
+  for(const node of nodes){
+    const status=treeStatus(node,nodes), b=document.createElement('button');
+    b.className='orbit-node '+(node.kind||'buff')+' '+status.art+(treeSelected===node.id?' selected':'');
+    b.dataset.node=node.id; b.style.gridColumn=node.col; b.style.gridRow=node.stage+1;
+    b.setAttribute('aria-label',node.name+', '+status.text);
+    b.innerHTML='<span class="orbit-icon">'+(status.art==='bought'&&node.kind!=='root'?'✓':node.icon||'✦')+'</span>'+
+      '<span class="orbit-label">'+node.name+'</span>'+((node.maxRank||1)>1?'<span class="rank-badge">'+treeRang(node.id)+'/'+node.maxRank+'</span>':'');
+    b.onclick=()=>{treeSelected=node.id;renderSkillTree();};
+    treeBranches.appendChild(b);
+  }
+  renderTreeDetail(nodes.find(n=>n.id===treeSelected)||nodes[0],nodes);
+  requestAnimationFrame(()=>drawOrbitLines(nodes));
+}
+function renderTreeDetail(node,nodes){
+  const box=document.getElementById('tree-detail'); if(!box||!node) return;
+  const status=treeStatus(node,nodes), max=node.maxRank||1, rang=treeRang(node.id);
+  const rangText=max>1?'Rang '+rang+' / '+max:'Mechanik';
+  box.innerHTML='<span class="detail-icon '+(node.kind||'buff')+'">'+(node.icon||'✦')+'</span><span><b>'+node.name+'</b><small>'+node.desc+'</small><em>'+status.text+'</em></span>'+
+    (status.art==='ready'?'<button id="tree-buy">'+(rang?'Verbessern':'Freischalten')+'</button>':'<span class="detail-state">'+rangText+'</span>');
+  const buy=document.getElementById('tree-buy'); if(buy) buy.onclick=()=>kaufenTreeKnoten(node.id);
+}
+function drawOrbitLines(nodes){
+  const svg=treeBranches.querySelector('.orbit-lines'); if(!svg) return;
+  const area=treeBranches.getBoundingClientRect(); svg.setAttribute('viewBox','0 0 '+area.width+' '+area.height); svg.innerHTML='';
+  for(const node of nodes){
+    for(const req of [...(node.reqAll||[]),...(node.reqAny||[])]){
+      const from=treeBranches.querySelector('[data-node="'+req+'"]'), to=treeBranches.querySelector('[data-node="'+node.id+'"]'); if(!from||!to) continue;
+      const a=from.getBoundingClientRect(),b=to.getBoundingClientRect(), line=document.createElementNS('http://www.w3.org/2000/svg','path');
+      const x1=a.left+a.width/2-area.left,y1=a.top+a.height/2-area.top,x2=b.left+b.width/2-area.left,y2=b.top+b.height/2-area.top,mid=(y1+y2)/2;
+      line.setAttribute('d','M '+x1+' '+y1+' C '+x1+' '+mid+', '+x2+' '+mid+', '+x2+' '+y2);
+      line.classList.add(treeRang(node.id)?'lit':treeStatus(node,nodes).art==='ready'?'open':'dim'); svg.appendChild(line);
     }
   }
-  treeBranches.appendChild(box);
-}
-function treeNodeButton(node,nodes,mini){
-      const status=treeStatus(node,nodes);
-      const b=document.createElement('button');
-      b.className='tree-node '+status.art+(mini?' mini':'');
-      b.title=status.text;
-      b.innerHTML='<span class="tree-dot">'+(status.art==='bought'?'✓':node.icon||'✦')+'</span>'+
-        '<span class="tree-copy"><h4>'+node.name+'</h4><p>'+node.desc+'</p></span>';
-      if(status.art==='ready') b.onclick=()=>kaufenTreeKnoten(node.id);
-      else if(status.art!=='bought') b.onclick=()=>treeMeldung(status.text);
-      return b;
 }
 function treeMeldung(text){
   const el=document.getElementById('tree-message'); if(!el) return;
@@ -1156,7 +1118,7 @@ function treeMeldung(text){
 function kaufenTreeKnoten(id){
   const nodes=treeNodes(), node=nodes.find(n=>n.id===id);
   if(!node || treeStatus(node,nodes).art!=='ready') return;
-  skillPoints--; runTree[id]=true; node.apply();
+  skillPoints--; const next=treeRang(id)+1; runTree[id]=next; node.apply(next);
   if(node.evo && sfx) sfx('unlockBig'); else if(sfx) sfx('pick');
   updateActiveButtons(); updateHUD(true); updateTreeButton(); renderSkillTree();
 }
@@ -2154,7 +2116,7 @@ function doSignatur(){
 function executeWirbel(){
   const lv=abilityLevel('wirbel');
   const evo=evolvedOf('wirbel')==='sturmwirbel';
-  let dmg=Math.round(CONFIG.baseDamage*(1+bonuses.dmg)*CONFIG.wirbelDamageMult*abilScale(lv) * (dmgBoostUntil>Date.now()?2:1) * fokusFaktor());
+  let dmg=Math.round(CONFIG.baseDamage*(1+bonuses.dmg)*CONFIG.wirbelDamageMult*abilScale(lv)*machtFaktor('wirbel') * (dmgBoostUntil>Date.now()?2:1) * fokusFaktor());
   let r=CONFIG.wirbelRadius*(1+bonuses.range*0.5);
   if(evo){ r*=1.55; dmg=Math.round(dmg*1.5); }     // Sturmwirbel: größer und härter
   for(const en of enemies){
@@ -2192,7 +2154,7 @@ function executeWirbel(){
 }
 function executeStoss(){
   const lv=abilityLevel('stoss');
-  const dmg=Math.round(CONFIG.stossDamage*(1+bonuses.dmg)*abilScale(lv)*(dmgBoostUntil>Date.now()?2:1)*fokusFaktor());
+  const dmg=Math.round(CONFIG.stossDamage*(1+bonuses.dmg)*abilScale(lv)*machtFaktor('stoss')*(dmgBoostUntil>Date.now()?2:1)*fokusFaktor());
   const range=CONFIG.stossRange*(1+bonuses.range*0.3);
   const getroffen=[];
   // 360°-Schubwelle: stößt alle Gegner im Umkreis radial nach außen
@@ -2235,7 +2197,7 @@ function executeBombe(){
   const lv=abilityLevel('bombe');
   const bombe=(dx,dy,verzug)=>({ x:player.x+dx, y:player.y+dy,
     t:CONFIG.bombe.fuse*(1-0.03*(lv-1))+verzug, max:CONFIG.bombe.fuse,
-    r:CONFIG.bombe.radius*(1+0.05*(lv-1)), dmg:Math.round(CONFIG.bombe.dmg*abilScale(lv)*(1+bonuses.dmg)*fokusFaktor()),
+    r:CONFIG.bombe.radius*(1+0.05*(lv-1)), dmg:Math.round(CONFIG.bombe.dmg*abilScale(lv)*machtFaktor('bombe')*(1+bonuses.dmg)*fokusFaktor()),
     streu: evolvedOf('bombe')==='streubombe' });
   let bx=0,by=0;
   if(treeFlags.mod_bombe==='a' && enemies.length){
@@ -2259,7 +2221,7 @@ function executeSog(){
   const lv=abilityLevel('sog');
   const R=CONFIG.sog.range*(1+0.10*(lv-1))*(1+bonuses.range*0.3);
   const kraft=CONFIG.sog.kraft*(1+0.10*(lv-1));
-  const dmg=Math.round(CONFIG.sog.dmg*abilScale(lv)*(1+bonuses.dmg)*fokusFaktor());
+  const dmg=Math.round(CONFIG.sog.dmg*abilScale(lv)*machtFaktor('sog')*(1+bonuses.dmg)*fokusFaktor());
   for(const en of enemies){
     const dx=player.x-en.x, dy=player.y-en.y, d=Math.hypot(dx,dy);
     if(d>R || d<1) continue;
@@ -2293,7 +2255,7 @@ function executeSog(){
 function executeNova(){
   const lv=abilityLevel('nova');
   const range=CONFIG.nova.range*(1+0.05*(lv-1));
-  const dmg=Math.round(CONFIG.nova.dmg*abilScale(lv)*(1+bonuses.dmg)*fokusFaktor());
+  const dmg=Math.round(CONFIG.nova.dmg*abilScale(lv)*machtFaktor('nova')*(1+bonuses.dmg)*fokusFaktor());
   let treffer=0;
   for(const en of enemies){
     if(Math.hypot(en.x-player.x,en.y-player.y) < range+en.radius){
@@ -3067,7 +3029,9 @@ function update(dt){
     }
     // Distanz-Gegner halten Reichweite, zündende Exploder bleiben stehen; Stun (Nova) friert ein
     const keepRange = en.type==='jaeger' && d<en.shootRange;
-    if(d>1 && !keepRange && !en.exploding && !(en.stunT>0) && !(en.type==='boss' && en.ramT>0)){ en.x+= dx/d * en.speed * dt/1000; en.y+= dy/d * en.speed * dt/1000; }
+    if(d>1 && !keepRange && !en.exploding && !(en.stunT>0) && !(en.type==='boss' && en.ramT>0)){
+      const langsam=en.slowT>0?.55:1; en.x+=dx/d*en.speed*langsam*dt/1000;en.y+=dy/d*en.speed*langsam*dt/1000;
+    }
     // attack if close
     if(!en.exploding && !(en.stunT>0) && d < en.radius + player.radius + 4){
       if(en.hitCd<=0){
@@ -3078,6 +3042,7 @@ function update(dt){
     if(en.hitCd>0) en.hitCd-=dt;
     if(en.flashT>0){ en.flashT-=dt/120; if(en.flashT<0) en.flashT=0; }   // Aufblitzen nach Klingentreffer
     if(en.stunT>0) en.stunT-=dt;
+    if(en.slowT>0) en.slowT-=dt;
     // Jäger (Distanz-Angreifer): lädt sichtbar auf und feuert ein Projektil
     if(en.type==='jaeger'){
       en.shootCd=(en.shootCd||0)-dt;
