@@ -50,7 +50,7 @@ const CONFIG = {
     panzer: { hp:145, dmg:18, speed:86, radius:23, color:'#93a6c2', star:6, xp:38, panzer:true },
     jaeger: { hp:45, dmg:14, speed:165, radius:16, color:'#ffd257', star:2, xp:22, shootRange:300 },
     exploder:{ hp:55, dmg:26, speed:132, radius:19, color:'#ff5aa2', star:3, xp:24 },
-    boss:   { hp:1250, dmg:19, speed:115, radius:34, color:'#b84dff', star:12, xp:80 }
+    boss:   { hp:1150, dmg:19, speed:115, radius:34, color:'#b84dff', star:12, xp:80 }
   },
   shots: { speed:340, radius:5, life:3.2 },        // Projektile der Distanz-Gegner
   jaeger: { shootRange:300, chargeMs:850, cooldown:700 },
@@ -61,11 +61,11 @@ const CONFIG = {
   // Barriere: eine Lebenskugel bei vollem Leben ist nicht mehr verschenkt, sondern
   // wird zu einem Puffer, der VOR den Trefferpunkten aufgebraucht wird.
   barriere: { proKugel:0.06, max:0.30 },
-  wave: { baseCount:6, perWave:2.8, hpScale:0.08, dmgScale:0.08, spawnInterval: 700 },
-  // Die Wahl beim Level-Up IST der Kernspaß — sie muss oft kommen. Vorher gab ein
-  // typischer Lauf 3,8 Karten (Vorbilder: alle 30-60 s eine). Jetzt ~8 bis Welle 6.
-  // Der Tree soll bis Welle 30 ungefähr 24–32 echte Entscheidungen tragen, nicht
-  // die früheren ~68 Karten. Ein Punkt bleibt trotzdem an jeden Level-Aufstieg gebunden.
+  // Etwas kürzere, dichtere Wellen: weniger Leerlauf und rund 10 % weniger Masse,
+  // ohne die Gegnermechaniken oder den 30-Wellen-Bogen zu beschneiden.
+  wave: { baseCount:5, perWave:2.55, hpScale:0.08, dmgScale:0.08, spawnInterval: 580 },
+  // Der Orbitbaum soll bis Welle 30 ungefähr 24–32 Entscheidungen tragen. Ein Punkt
+  // bleibt an jeden Level-Aufstieg gebunden, ohne den Kampf automatisch anzuhalten.
   xpBase: 140, xpPerLevel: 120,
   caps: { dmgMult:2.0, speedMult:1.6, rangeMult:1.8, fireRateMult:1.5, maxHpBonus:150 },
   // Freischaltbare Fähigkeiten (passiv, kein neuer Knopf)
@@ -78,7 +78,6 @@ const CONFIG = {
   // (Klinge ~38 + Boss-Radius 34 ≈ 72), sonst steht man beim Angreifen zwangsläufig
   // im Gefahrenband und kommt nicht mehr heraus.
   boss: { warn:1100, cooldown:2600, ramSpeed:420, ramMs:550, shockInner:95, shockOuter:175 },
-  levelUpCountdown: 1500,  // ms Neuorientierung nach der Kartenwahl (antippbar)
   /* Der Begleiter aus der Werkstatt. Ein Kauf, danach fünf Stufen: jede erhöht
      Schaden und beide Reichweiten. Bewusst schwach genug, dass er unterstützt
      und das Spiel nicht abnimmt — die Reichweite wächst schneller als der Schaden. */
@@ -263,7 +262,7 @@ function hilfeId(){ return HILFEN[save.hilfe] ? save.hilfe : 'standard'; }
 function bestFuer(id){ return (save.best && save.best[id||hilfeId()]) || 0; }
 // Hilfen verändern die Gegnerzahl, aber nicht den Build-Fortschritt. Ohne diesen
 // Ausgleich hätte Entdecker deutlich weniger Tree-Punkte und Meister deutlich mehr.
-function laufXp(wert){ return Math.max(1, Math.round(wert / hilfe().gegner)); }
+function laufXp(wert){ return Math.max(1, Math.round(wert*1.10 / hilfe().gegner)); }
 
 /* KLINGENFORMEN — zweite Kosmetik-Achse, unabhängig von der Farbe. Sechs Farben mal
    drei Formen ergeben 18 Kombinationen aus sehr wenig Code. Die Klinge ist das Ding,
@@ -402,31 +401,29 @@ const PASSIVE_IDS=['kettenblitz','konterstoss','splitter','phaser','lebensregen'
    passive Mächte und Entwicklungen werden hier bewusst aufgebaut. */
 function steigereMacht(id, stufe){ runAbilities[id]=Math.max(runAbilities[id]||1, stufe); }
 function treeRang(id){ return Number(runTree[id])||0; }
+const ACTIVE_MOD_SHORT={
+  wirbel:['ZUG','ZONE'], stoss:['KOLL.','SLOW'], bombe:['HAFT','SOFORT'],
+  nova:['SCHILD','BÖGEN'], sog:['HALT','ORBIT']
+};
 function treeNodes(){
   const n=[
     {id:'orbit_root',stage:0,col:4,kind:'root',name:'Orbitkern',desc:'Deine Klinge und deine Mächte entspringen demselben Kern.',icon:'◉',free:true},
-    {id:'blade_multi',stage:1,col:3,kind:'major',name:'Mehrfachorbit',desc:'Zwei gegenüberliegende Klingen.',icon:'Ⅱ',reqAll:['orbit_root'],exclusiveGroup:'orbit',apply:()=>{bonuses.blades=Math.max(2,bonuses.blades);earnBadge('doppel');}},
-    {id:'blade_single',stage:1,col:5,kind:'major',name:'Singularorbit',desc:'Eine schmale Klinge mit +38 % Sweet-Spot-Schaden.',icon:'┃',reqAll:['orbit_root'],exclusiveGroup:'orbit',apply:()=>{treeFlags.singularorbit=true;treeFlags.sweetBonus=(treeFlags.sweetBonus||0)+0.38;}},
-    {id:'blade_edge',stage:2,col:4,kind:'buff',name:'Klingenschliff',desc:'+8 % Klingenschaden je Rang.',icon:'✦',maxRank:3,reqAny:['blade_multi','blade_single'],apply:()=>bonuses.dmg+=0.08},
-    {id:'orbit_flow',stage:3,col:4,kind:'buff',name:'Orbitfluss',desc:'+7 % Rotation und Bewegung je Rang.',icon:'↻',maxRank:3,reqAll:['blade_edge'],apply:()=>{bonuses.fireRate+=0.07;bonuses.speed+=0.07;}},
-    {id:'focus_core',stage:5,col:4,kind:'buff',name:'Fokuskern',desc:'Fokus lädt schneller und verstärkt Mächte.',icon:'◎',maxRank:3,reqAny:['char_follow_a','char_follow_b'],apply:()=>{treeFlags.fokusRabatt=(treeFlags.fokusRabatt||0)+1;treeFlags.fokusMachtBonus=(treeFlags.fokusMachtBonus||0)+0.08;}},
-    {id:'armor_core',stage:6,col:4,kind:'buff',name:'Resonanzpanzer',desc:'+12 Max-Leben und +8 % Barriere je Rang.',icon:'◈',maxRank:2,reqAll:['focus_core'],apply:()=>{player.maxHp+=12;player.hp+=12;treeFlags.barriereMult=(treeFlags.barriereMult||1)*1.08;}},
-    {id:'orbit_crown',stage:7,col:4,kind:'capstone',name:'Orbitkrone',desc:'Mehrfachorbit erhält eine dritte Klinge; Singularorbit lädt Fokus doppelt.',icon:'★',reqAll:['armor_core'],reqAny:['blade_multi','blade_single'],apply:()=>{if(treeRang('blade_multi')) bonuses.blades=Math.max(3,bonuses.blades);else treeFlags.perfekterOrbit=true;}},
+    {id:'blade_multi',stage:1,col:3,kind:'major',name:'Mehrfachorbit',short:'2 KLINGEN',desc:'Zwei gegenüberliegende Klingen.',icon:'Ⅱ',reqAll:['orbit_root'],exclusiveGroup:'orbit',apply:()=>{bonuses.blades=Math.max(2,bonuses.blades);earnBadge('doppel');}},
+    {id:'blade_single',stage:1,col:5,kind:'major',name:'Singularorbit',short:'SWEET +38%',desc:'Eine schmale Klinge mit +38 % Sweet-Spot-Schaden.',icon:'┃',reqAll:['orbit_root'],exclusiveGroup:'orbit',apply:()=>{treeFlags.singularorbit=true;treeFlags.sweetBonus=(treeFlags.sweetBonus||0)+0.38;}},
+    {id:'blade_core',stage:2,col:4,kind:'buff',name:'Klingenkern',short:'DMG +8%',desc:'+8 % Klingenschaden je Rang.',icon:'✦',maxRank:4,reqAny:['blade_multi','blade_single'],apply:()=>bonuses.dmg+=0.08},
+    {id:'core_resonance',stage:4,col:4,kind:'buff',name:'Kernresonanz',short:'HP + FOKUS',desc:'+10 Max-Leben, +5 % Barriere und schnellerer Fokus je Rang.',icon:'◎',maxRank:3,reqAny:['char_route_a','char_route_b'],apply:()=>{player.maxHp+=10;player.hp+=10;treeFlags.barriereMult=(treeFlags.barriereMult||1)*1.05;treeFlags.fokusRabatt=(treeFlags.fokusRabatt||0)+1;}},
+    {id:'orbit_crown',stage:5,col:4,kind:'capstone',name:'Orbitkrone',short:'KLINGEN-FINALE',desc:'Mehrfachorbit erhält eine dritte Klinge; Singularorbit lädt Fokus doppelt.',icon:'★',reqAll:['core_resonance'],reqAny:['blade_multi','blade_single'],apply:()=>{if(treeRang('blade_multi')) bonuses.blades=Math.max(3,bonuses.blades);else treeFlags.perfekterOrbit=true;}},
   ];
   if(figur().id==='held') n.push(
-    {id:'char_route_a',stage:3,col:3,kind:'major',name:'Wächter',desc:'Fokus-Barriere bremst Gegner in deiner Nähe.',icon:'◈',reqAll:['blade_edge'],exclusiveGroup:'char_route',apply:()=>treeFlags.waechter=true},
-    {id:'char_route_b',stage:3,col:5,kind:'major',name:'Strahlenreiter',desc:'Sweet Hits laden Lichtbahn schneller.',icon:'➤',reqAll:['blade_edge'],exclusiveGroup:'char_route',apply:()=>treeFlags.strahlenreiter=true},
-    {id:'char_follow_a',stage:4,col:3,kind:'major',name:'Lichtreserve',desc:'Voller Fokus erzeugt eine deutlich stärkere Barriere.',icon:'✦',reqAll:['char_route_a'],apply:()=>treeFlags.leuchtfeuer=true},
-    {id:'char_follow_b',stage:4,col:5,kind:'major',name:'Lichtspur',desc:'Lichtbahn wird breiter und hinterlässt Energie.',icon:'━',reqAll:['char_route_b'],apply:()=>treeFlags.lichtspur=true},
-    {id:'char_cap_a',stage:7,col:3,kind:'capstone',name:'Leuchtfeuer',desc:'Fokus macht dich zum standhaften Zentrum des Orbits.',icon:'★',reqAll:['char_follow_a','armor_core'],apply:()=>treeFlags.lichtreserve=true},
-    {id:'char_cap_b',stage:7,col:5,kind:'capstone',name:'Sonnenpfad',desc:'Zwei schwächere Lichtbahn-Ladungen.',icon:'☀',reqAll:['char_follow_b','armor_core'],apply:()=>treeFlags.sonnenpfad=true}
+    {id:'char_route_a',stage:3,col:3,kind:'major',name:'Wächter',short:'SCHUTZ',desc:'Fokus-Barriere bremst Gegner in deiner Nähe.',icon:'◈',reqAll:['blade_core'],exclusiveGroup:'char_route',apply:()=>treeFlags.waechter=true},
+    {id:'char_route_b',stage:3,col:5,kind:'major',name:'Strahlenreiter',short:'LICHTBAHN',desc:'Sweet Hits laden Lichtbahn schneller.',icon:'➤',reqAll:['blade_core'],exclusiveGroup:'char_route',apply:()=>treeFlags.strahlenreiter=true},
+    {id:'char_cap_a',stage:5,col:3,kind:'capstone',name:'Leuchtfeuer',short:'STARKE BARRIERE',desc:'Voller Fokus erzeugt eine starke Barriere und bewahrt Reserven.',icon:'★',reqAll:['char_route_a','core_resonance'],apply:()=>{treeFlags.leuchtfeuer=true;treeFlags.lichtreserve=true;}},
+    {id:'char_cap_b',stage:5,col:5,kind:'capstone',name:'Sonnenpfad',short:'2 LADUNGEN',desc:'Lichtbahn wird breiter, hinterlässt Energie und erhält zwei Ladungen.',icon:'☀',reqAll:['char_route_b','core_resonance'],apply:()=>{treeFlags.lichtspur=true;treeFlags.sonnenpfad=true;}}
   ); else n.push(
-    {id:'char_route_a',stage:3,col:3,kind:'major',name:'Verschlinger',desc:'Günstigere Überladung und stärkere Heilung.',icon:'◆',reqAll:['blade_edge'],exclusiveGroup:'char_route',apply:()=>{treeFlags.leerenOpfer=.10;treeFlags.leerenHeilung=.018;}},
-    {id:'char_route_b',stage:3,col:5,kind:'major',name:'Abgrund',desc:'Wenig Leben verstärkt deinen Sweet Spot stark.',icon:'▼',reqAll:['blade_edge'],exclusiveGroup:'char_route',apply:()=>treeFlags.leerenRisikoBonus=.22},
-    {id:'char_follow_a',stage:4,col:3,kind:'major',name:'Unstillbar',desc:'Kills verlängern die Überladung begrenzt.',icon:'+',reqAll:['char_route_a'],apply:()=>treeFlags.leerenKillDauer=true},
-    {id:'char_follow_b',stage:4,col:5,kind:'major',name:'Dunkler Orbit',desc:'Unter 35 % Leben kreisen drei scharfe Klingen.',icon:'Ⅲ',reqAll:['char_route_b'],apply:()=>treeFlags.leerenKlingen=3},
-    {id:'char_cap_a',stage:7,col:3,kind:'capstone',name:'Satter Abgrund',desc:'Sicherer Lebensraub, geringerer Risikobonus.',icon:'★',reqAll:['char_follow_a','armor_core'],apply:()=>{treeFlags.satterAbgrund=true;treeFlags.leerenHeilung=.026;}},
-    {id:'char_cap_b',stage:7,col:5,kind:'capstone',name:'Ereignishorizont',desc:'Maximaler Schaden, aber kaum Heilung.',icon:'◉',reqAll:['char_follow_b','armor_core'],apply:()=>{treeFlags.ereignishorizont=true;treeFlags.leerenHeilung=.004;}}
+    {id:'char_route_a',stage:3,col:3,kind:'major',name:'Verschlinger',short:'HEILUNG',desc:'Günstigere Überladung und stärkere Heilung.',icon:'◆',reqAll:['blade_core'],exclusiveGroup:'char_route',apply:()=>{treeFlags.leerenOpfer=.10;treeFlags.leerenHeilung=.018;}},
+    {id:'char_route_b',stage:3,col:5,kind:'major',name:'Abgrund',short:'RISIKO-DMG',desc:'Wenig Leben verstärkt deinen Sweet Spot stark.',icon:'▼',reqAll:['blade_core'],exclusiveGroup:'char_route',apply:()=>treeFlags.leerenRisikoBonus=.22},
+    {id:'char_cap_a',stage:5,col:3,kind:'capstone',name:'Satter Abgrund',short:'KILLS VERLÄNGERN',desc:'Kills verlängern Überladung; Lebensraub wird sicherer.',icon:'★',reqAll:['char_route_a','core_resonance'],apply:()=>{treeFlags.leerenKillDauer=true;treeFlags.satterAbgrund=true;treeFlags.leerenHeilung=.026;}},
+    {id:'char_cap_b',stage:5,col:5,kind:'capstone',name:'Ereignishorizont',short:'3 KLINGEN',desc:'Unter 35 % Leben kreisen drei Klingen: maximaler Schaden, kaum Heilung.',icon:'◉',reqAll:['char_route_b','core_resonance'],apply:()=>{treeFlags.leerenKlingen=3;treeFlags.ereignishorizont=true;treeFlags.leerenHeilung=.004;}}
   );
   const aktive=[...new Set([activeSlot1,activeSlot2].filter(Boolean))];
   const evoVon=id=>Object.entries(EVOLUTIONS).find(([,e])=>e.base===id);
@@ -434,22 +431,18 @@ function treeNodes(){
     const side=index===0?1:7, inner=index===0?2:6, pair=evoVon(id), evoId=pair&&pair[0], evo=pair&&pair[1];
     const prefix='power_'+id;
     n.push(
-      {id:prefix+'_a',stage:1,col:side,kind:'major',power:id,name:ABILITIES[id].name+' A',desc:ACTIVE_MODS[id][0],icon:'A',reqAll:['orbit_root'],exclusiveGroup:'mod_'+id,apply:()=>{steigereMacht(id,2);treeFlags['mod_'+id]='a';}},
-      {id:prefix+'_b',stage:1,col:inner,kind:'major',power:id,name:ABILITIES[id].name+' B',desc:ACTIVE_MODS[id][1],icon:'B',reqAll:['orbit_root'],exclusiveGroup:'mod_'+id,apply:()=>{steigereMacht(id,2);treeFlags['mod_'+id]='b';}},
-      {id:prefix+'_tune',stage:2,col:side,kind:'buff',power:id,name:'Machtfluss',desc:'-6 % Abklingzeit je Rang.',icon:'⚡',maxRank:2,reqAny:[prefix+'_a',prefix+'_b'],apply:()=>{steigereMacht(id,3);treeFlags['powerCd_'+id]=(treeFlags['powerCd_'+id]||1)*.94;}},
-      {id:prefix+'_passive',stage:3,col:side,kind:'major',power:id,passive:evo.req,name:ABILITIES[evo.req].name,desc:ABILITIES[evo.req].desc,icon:'✦',maxRank:3,reqAll:[prefix+'_tune'],apply:rank=>{runAbilities[evo.req]=rank===1?1:rank===2?3:5;}},
-      {id:prefix+'_master',stage:4,col:side,kind:'major',power:id,name:'Meisterschaft',desc:STUFEN[id].sprung,icon:'★',reqAll:[prefix+'_passive'],apply:()=>steigereMacht(id,4)},
-      {id:prefix+'_amp',stage:5,col:side,kind:'buff',power:id,name:'Resonanz',desc:'+10 % Schaden dieser Macht je Rang.',icon:'◆',maxRank:2,reqAll:[prefix+'_master'],apply:()=>treeFlags['powerDmg_'+id]=(treeFlags['powerDmg_'+id]||1)*1.10},
-      {id:prefix+'_complete',stage:6,col:side,kind:'major',power:id,name:'Vollendung',desc:'Erreicht Stufe 5 und öffnet die Entwicklung.',icon:'↑',reqAll:[prefix+'_amp'],apply:()=>steigereMacht(id,5)},
-      {id:'evo_'+evoId,stage:7,col:side,kind:'evo',power:id,name:evo.name,desc:evo.desc,icon:'✦',reqAll:[prefix+'_complete'],evo:evoId,apply:()=>{runEvolutions[id]=evoId;zielZaehl('entwicklung');announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}}
+      {id:prefix+'_a',stage:1,col:side,kind:'major',power:id,name:ABILITIES[id].name+' A',short:ACTIVE_MOD_SHORT[id][0],desc:ACTIVE_MODS[id][0],icon:'A',reqAll:['orbit_root'],exclusiveGroup:'mod_'+id,apply:()=>{steigereMacht(id,2);treeFlags['mod_'+id]='a';}},
+      {id:prefix+'_b',stage:1,col:inner,kind:'major',power:id,name:ABILITIES[id].name+' B',short:ACTIVE_MOD_SHORT[id][1],desc:ACTIVE_MODS[id][1],icon:'B',reqAll:['orbit_root'],exclusiveGroup:'mod_'+id,apply:()=>{steigereMacht(id,2);treeFlags['mod_'+id]='b';}},
+      {id:prefix+'_passive',stage:2,col:side,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'PASSIV +1',desc:ABILITIES[evo.req].desc+'; jeder Rang verstärkt die Wirkung.',icon:'✦',maxRank:5,reqAny:[prefix+'_a',prefix+'_b'],apply:rank=>{runAbilities[evo.req]=rank;}},
+      {id:prefix+'_master',stage:3,col:side,kind:'major',power:id,name:'Machtmeisterschaft',short:'MACHT +1',desc:'Steigert die aktive Macht; Rang 2 schaltet den mechanischen Sprung frei.',icon:'★',maxRank:3,reqAll:[prefix+'_passive'],apply:rank=>{steigereMacht(id,rank+2);if(rank>1)treeFlags['powerDmg_'+id]=(treeFlags['powerDmg_'+id]||1)*1.08;}},
+      {id:'evo_'+evoId,stage:5,col:side,kind:'evo',power:id,name:evo.name,short:'ENTWICKLUNG',desc:evo.desc,icon:'✦',reqAll:[prefix+'_master'],reqRanks:{[prefix+'_passive']:3,[prefix+'_master']:3},evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;zielZaehl('stufe5');zielZaehl('entwicklung');announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}}
     );
   });
   // Der zweite Aktiv-Slot kann fehlen. Dann füllt ein kurzer gemeinsamer Seitenast
   // die Punktökonomie, ohne eine unechte zweite Macht vorzutäuschen.
   if(aktive.length===1) n.push(
-    {id:'orbit_reach',stage:2,col:7,kind:'buff',name:'Weiter Orbit',desc:'+8 % Reichweite je Rang.',icon:'↗',maxRank:3,reqAny:['blade_multi','blade_single'],apply:()=>bonuses.range+=.08},
-    {id:'orbit_chase',stage:4,col:7,kind:'major',name:'Nachsetzen',desc:'Aktive Macht gibt kurz Bewegungstempo.',icon:'➤',reqAll:['orbit_reach'],apply:()=>treeFlags.nachsetzen=true},
-    {id:'orbit_pierce',stage:6,col:7,kind:'major',name:'Panzerbrecher',desc:'Sweet Spot ignoriert Panzerung.',icon:'◆',reqAll:['orbit_chase'],apply:()=>treeFlags.panzerbrecher=true}
+    {id:'orbit_reach',stage:2,col:7,kind:'buff',name:'Weiter Orbit',short:'REICHW. +8%',desc:'+8 % Reichweite je Rang.',icon:'↗',maxRank:4,reqAny:['blade_multi','blade_single'],apply:()=>bonuses.range+=.08},
+    {id:'orbit_guard',stage:4,col:7,kind:'buff',name:'Orbitwache',short:'HP +10',desc:'+10 Max-Leben je Rang; letzter Rang durchschlägt Panzerung.',icon:'◈',maxRank:3,reqAll:['orbit_reach'],apply:rank=>{player.maxHp+=10;player.hp+=10;if(rank===3)treeFlags.panzerbrecher=true;}}
   );
   return n;
 }
@@ -509,11 +502,11 @@ function checkMilestones(){
 
 /* TESTFASSUNG des Konzepts vom 11.8.2026 — läuft neben der stabilen Version.
    Eigener Speicherschlüssel, damit ein Testlauf den echten Spielstand nicht anfasst. */
-const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=6;
+const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=7;
 // opts: Bedien-Einstellungen (Seite und Anordnung der Fähigkeiten-Knöpfe)
 // best ist jetzt je Hilfsstufe getrennt — sonst wäre die Bestmarke nicht vergleichbar
 const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin', muted:false, bossKills:0, stars:0, meta:{}, tutorialDone:false,
-  hilfe:'standard', charakter:'held', gewonnen:false, endlosFrei:false,
+  hilfe:'standard', gewonnen:false, endlosFrei:false,
   opts:{ seite:'rechts', anordnung:'nebeneinander' },
   // Mit welchen aktiven Mächten jeder Lauf beginnt. Vorher war das fest verdrahtet,
   // sodass später freigeschaltete Mächte nie am Start standen.
@@ -579,6 +572,12 @@ function migrateSave(data){
     if(alteMeta.slot2) data.meta.slot2=1;
     if(alteMeta.vorlauf) data.meta.startimpuls=1;
     if(alteMeta.begleiter) data.meta.begleiter=Math.min(CONFIG.helfer.maxStufe,alteMeta.begleiter);
+  }
+  // v6 → v7: `charakter` war ein ungenutztes Duplikat von `figur`. Alte
+  // Spielstände übernehmen es nur dann, wenn noch keine gültige Figur existiert.
+  if(data.v<7){
+    if(!data.figur && data.charakter) data.figur=data.charakter;
+    delete data.charakter;
   }
   data.v = SAVE_VERSION;
   return data;
@@ -662,31 +661,55 @@ function tone(freq,dur,type,vol,when,slideTo){
   o.connect(g); g.connect(audioCtx.destination);
   o.start(t0); o.stop(t0+dur+0.03);
 }
+// Kurze gefilterte Rauschfahnen geben den synthetischen Tönen Materialität:
+// Klinge = heller Luftschnitt, Orbit/Macht = tiefer Impuls. Nur ereignisbasiert,
+// damit Audio auf Mobilgeräten keine dauerhafte Rechenlast erzeugt.
+function noiseBurst(dur=0.12,vol=0.045,when=0,freq=1800){
+  if(!audioCtx) return;
+  const t0=audioCtx.currentTime+when, len=Math.max(1,Math.floor(audioCtx.sampleRate*dur));
+  const buf=audioCtx.createBuffer(1,len,audioCtx.sampleRate), data=buf.getChannelData(0);
+  for(let i=0;i<len;i++) data[i]=(Math.random()*2-1)*(1-i/len);
+  const src=audioCtx.createBufferSource(), filter=audioCtx.createBiquadFilter(), gain=audioCtx.createGain();
+  filter.type='bandpass'; filter.frequency.value=freq; filter.Q.value=0.8;
+  gain.gain.setValueAtTime(vol,t0); gain.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  src.buffer=buf; src.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+  src.start(t0); src.stop(t0+dur+0.02);
+}
+function bladeSweep(up=true){
+  tone(up?170:760,0.24,'sawtooth',0.055,0,up?920:150);
+  tone(up?220:680,0.20,'triangle',0.045,0.025,up?1280:210);
+  noiseBurst(0.18,0.035,0.015,2300);
+}
+function orbitPulse(freq=92){
+  tone(freq,0.30,'sine',0.13,0,Math.max(32,freq*0.48));
+  tone(freq*3.02,0.22,'triangle',0.055,0.015,freq*1.4);
+  noiseBurst(0.16,0.025,0.01,520);
+}
 const SFX={
-  kill:    ()=>tone(320,0.08,'square',0.06,0,180),
-  hurt:    ()=>tone(150,0.16,'sawtooth',0.15,0,70),
-  wirbel:  ()=>tone(300,0.20,'sawtooth',0.11,0,760),
-  stoss:   ()=>tone(190,0.22,'sine',0.15,0,60),
+  kill:    ()=>{tone(520,0.065,'triangle',0.045,0,240);noiseBurst(0.045,0.018,0,2600);},
+  hurt:    ()=>{tone(145,0.16,'sawtooth',0.12,0,62);noiseBurst(0.10,0.035,0,420);},
+  wirbel:  ()=>bladeSweep(true),
+  stoss:   ()=>orbitPulse(105),
   levelup: ()=>{tone(520,0.12,'triangle',0.13);tone(780,0.16,'triangle',0.11,0.10);},
-  pick:    ()=>tone(680,0.10,'triangle',0.12),
-  buy:     ()=>tone(900,0.08,'square',0.10),
-  coin:    ()=>tone(1050,0.05,'square',0.04),
+  pick:    ()=>{tone(620,0.09,'sine',0.09);tone(930,0.12,'triangle',0.065,0.05);},
+  buy:     ()=>{tone(540,0.07,'triangle',0.07);tone(810,0.10,'sine',0.055,0.045);},
+  coin:    ()=>tone(1180,0.045,'sine',0.035,0,820),
   xp:      ()=>tone(760,0.06,'triangle',0.10,0,300),
   boss:    ()=>{tone(120,0.45,'sawtooth',0.16,0,70);tone(60,0.5,'sine',0.12);},
   bossdie: ()=>{tone(420,0.28,'sawtooth',0.15,0,120);tone(210,0.4,'sine',0.13,0.12);},
-  shock:   ()=>tone(90,0.30,'sawtooth',0.16,0,40),
-  counter: ()=>tone(520,0.12,'square',0.10,0,940),
+  shock:   ()=>orbitPulse(72),
+  counter: ()=>{bladeSweep(false);tone(1120,0.09,'sine',0.055);},
   unlock:  ()=>{tone(700,0.10,'triangle',0.12);tone(1050,0.14,'triangle',0.10,0.08);},
   heal:    ()=>{tone(620,0.10,'sine',0.11);tone(880,0.14,'sine',0.10,0.07);},
   // Freischaltung: aufsteigende Fanfare, klar von allem anderen unterscheidbar
   unlockBig:()=>{tone(523,0.14,'triangle',0.14);tone(659,0.14,'triangle',0.13,0.11);tone(784,0.16,'triangle',0.13,0.22);tone(1047,0.30,'triangle',0.14,0.33);},
   wave:    ()=>tone(460,0.14,'triangle',0.10),
   gameover:()=>{tone(300,0.3,'sawtooth',0.15,0,120);tone(150,0.5,'sine',0.13,0.15,80);},
-  shoot:   ()=>tone(900,0.07,'square',0.08,0,700),
+  shoot:   ()=>tone(1280,0.065,'triangle',0.055,0,420),
   fuse:    ()=>tone(400,0.10,'sawtooth',0.10,0,80),
   boom:    ()=>{tone(70,0.35,'sawtooth',0.18,0,40);tone(50,0.4,'sine',0.14,0.05,30);},
-  bombe:   ()=>tone(240,0.10,'sawtooth',0.10,0,500),
-  nova:    ()=>{tone(900,0.30,'sine',0.13,0,500);tone(1400,0.35,'sine',0.10,0.02,700);},
+  bombe:   ()=>{tone(210,0.12,'sine',0.09,0,560);noiseBurst(0.08,0.025,0.02,900);},
+  nova:    ()=>{orbitPulse(82);tone(980,0.38,'sine',0.08,0.02,440);tone(1470,0.30,'sine',0.05,0.04,740);},
 };
 function sfx(name){ if(save.muted||!audioCtx) return; const f=SFX[name]; if(f){ try{ f(); }catch(e){} } }
 function updateMuteBtn(){ const b=document.getElementById('mute-btn'); if(b) b.textContent=save.muted?'🔇':'🔊'; }
@@ -698,14 +721,12 @@ window.addEventListener('pointerdown',unlockAudioOnce); window.addEventListener(
 const canvas=document.getElementById('game'), ctx=canvas.getContext('2d');
 const healthBar=document.getElementById('health-bar'), healthText=document.getElementById('health-text');
 const barrierBar=document.getElementById('barrier-bar');
-const xpBar=document.getElementById('xp-bar'), levelText=document.getElementById('level-text');
+const xpBar=document.getElementById('xp-bar'), xpText=document.getElementById('xp-text');
 const coinText=document.getElementById('coin-text'), waveText=document.getElementById('wave-text');
-const fokusWrap=document.getElementById('fokus-wrap'), fokusBar=document.getElementById('fokus-bar');
+const fokusWrap=document.getElementById('fokus-wrap'), fokusBar=document.getElementById('fokus-bar'), fokusText=document.getElementById('fokus-text');
 const zielListe=document.getElementById('ziel-liste');
 const overlayStart=document.getElementById('overlay-start'), overlayPause=document.getElementById('overlay-pause');
-const overlayLevel=document.getElementById('overlay-levelup');
 const overlayOver=document.getElementById('overlay-gameover');
-const levelupGrid=document.getElementById('levelup-grid');
 const treeBtn=document.getElementById('tree-btn'), overlayTree=document.getElementById('overlay-tree');
 const treePunkte=document.getElementById('tree-punkte'), treeBranches=document.getElementById('tree-branches');
 const btnWirbel=document.getElementById('btn-wirbel'), btnStoss=document.getElementById('btn-stoss');
@@ -740,7 +761,6 @@ let counterCd=0, counterFx=0, shards=[]; // Konterstoß-Cooldown/Effekt, kreisen
 let activeSlot1='wirbel', activeSlot2=null;
 let runEvolutions={};                            // baseId -> evoId (nur für diesen Lauf)
 let runTree={}, skillPoints=0, treeFlags={};     // ausschließlich für den aktuellen Lauf
-let rerollFrei=false;                            // „Neu würfeln" noch verfügbar?
 /* Der Begleiter: EIN dauerhaft gekaufter Helfer, der den Spieler umkreist. Er zieht
    Fragmente und Kugeln an UND schießt auf Gegner. Vorher waren das zwei getrennte
    Käufe, die beide nach dem Kauf nichts mehr wurden — jetzt ist es ein Ziel, das
@@ -1065,6 +1085,11 @@ function treeStatus(node, nodes){
     const namen=node.reqAny.map(id=>(nodes.find(n=>n.id===id)||{name:'Verbindung'}).name).join(' oder ');
     return {art:'locked',text:'Benötigt: '+namen};
   }
+  const fehlendeRaenge=Object.entries(node.reqRanks||{}).filter(([id,min])=>treeRang(id)<min);
+  if(fehlendeRaenge.length){
+    const namen=fehlendeRaenge.map(([id,min])=>(nodes.find(n=>n.id===id)||{name:'Verbindung'}).name+' Rang '+min).join(', ');
+    return {art:'locked',text:'Benötigt: '+namen};
+  }
   if(node.passive && !rang && !runAbilities[node.passive] && passiveTreeAnzahl()>=MAX_PASSIVE_SLOTS)
     return {art:'locked', text:'Alle 3 Passivplätze sind belegt'};
   if(skillPoints<1) return {art:'locked', text:'Kein Punkt verfügbar'};
@@ -1082,6 +1107,7 @@ function renderSkillTree(){
     b.dataset.node=node.id; b.style.gridColumn=node.col; b.style.gridRow=node.stage+1;
     b.setAttribute('aria-label',node.name+', '+status.text);
     b.innerHTML='<span class="orbit-icon">'+(status.art==='bought'&&node.kind!=='root'?'✓':node.icon||'✦')+'</span>'+
+      (node.short?'<span class="orbit-short">'+node.short+'</span>':'')+
       '<span class="orbit-label">'+node.name+'</span>'+((node.maxRank||1)>1?'<span class="rank-badge">'+treeRang(node.id)+'/'+node.maxRank+'</span>':'');
     b.onclick=()=>{treeSelected=node.id;renderSkillTree();};
     treeBranches.appendChild(b);
@@ -1185,15 +1211,14 @@ function resetGame(){
   wave=1; waveEnemiesToSpawn=0; waveSpawned=0; spawnTimer=0;
   activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}; phaserCd=0; signaturCd=0; leerenmodusUntil=0; dmgBoostUntil=0; shieldUntil=0; moveBoostUntil=0; stossWaveT=0; wirbelT=0; spinHitTimer=0;
   bonuses={dmg:0, speed:0, range:0, fireRate:0, maxHp:0, blades:1, regen:0};
-  takenUpgrades={}; counterCd=0; shards=[]; bossActive=false; bossHitClean=true; flashUntil=0;
+  counterCd=0; shards=[]; bossActive=false; bossHitClean=true; flashUntil=0;
   const vw=startMaechte();
   activeSlot1=vw.slot1; activeSlot2 = hasSlot2()? vw.slot2 : null;
   runAbilities={}; runEvolutions={}; runTree={}; skillPoints=0; treeFlags={}; bombs=[]; pShots=[]; novaFx=0; novaEcho=0; barriere=0;
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
   wiederaufBenutzt=false; nachhallZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false; setzeLaufziele();
   toasts=[]; banner=null;
-  tutStep=0; tutT=0; unlockFx=0; countdownT=0; offeneLevelUps=0; passivTauschOffen=null; abgelegteStufe={}; setzeHelfer();
-  rerollFrei=false;                                // Karten-System wird nicht mehr verwendet
+  tutStep=0; tutT=0; unlockFx=0; setzeHelfer();
   if(metaLevel('startimpuls')>0){ player.level=2; player.xpNeed=Math.round(CONFIG.xpBase+2*CONFIG.xpPerLevel); skillPoints=1; }
   shake=0; state='playing'; hideAll(); updateTreeButton(); updateHUD(true); startWave();
   // Beim allerersten Spiel übernimmt der Einstieg die Ansage
@@ -1201,7 +1226,7 @@ function resetGame(){
 }
 function hideAll(){
   overlayStart.classList.add('hidden'); overlayPause.classList.add('hidden');
-  overlayLevel.classList.add('hidden'); overlayOver.classList.add('hidden'); overlayTree.classList.add('hidden');
+  overlayOver.classList.add('hidden'); overlayTree.classList.add('hidden');
   document.getElementById('overlay-hangar').classList.add('hidden');
 }
 function startWave(){
@@ -1421,7 +1446,6 @@ function handleJoystickTouch(e){
   // touchend / touchcancel
   for(const t of e.changedTouches) if(t.identifier===joystickTouchId) stickEnd();
 }
-joystickZone.addEventListener('touchstart',e=>{ ueberspringeCountdown(); },{passive:true});
 joystickZone.addEventListener('touchstart',handleJoystickTouch,{passive:false});
 joystickZone.addEventListener('touchmove',handleJoystickTouch,{passive:false});
 joystickZone.addEventListener('touchend',handleJoystickTouch,{passive:false});
@@ -1429,14 +1453,12 @@ joystickZone.addEventListener('touchcancel',handleJoystickTouch,{passive:false})
 // Maus-Ersatz am PC: gleiche Mechanik, überall ziehen (WASD bleibt der Hauptweg)
 let mouseDown=false;
 joystickZone.addEventListener('mousedown',e=>{
-  ueberspringeCountdown();
   if(state!=='playing' || onControl(e.target)) return;
   mouseDown=true; stickStart(e.clientX,e.clientY);
 });
 window.addEventListener('mousemove',e=>{ if(mouseDown) stickMoveTo(e.clientX,e.clientY); });
 window.addEventListener('mouseup',()=>{ if(mouseDown){ mouseDown=false; stickEnd(); } });
 window.addEventListener('keydown',e=>{
-  ueberspringeCountdown();
   keys[e.key.toLowerCase()]=true;
   if(e.key==='1') doActive(1);
   if(e.key==='2') doActive(2);
@@ -1486,121 +1508,40 @@ function abbruchZurueck(){
 document.getElementById('beenden-btn').addEventListener('click', frageAbbruch);
 document.getElementById('abbruch-ja').addEventListener('click', laufBeenden);
 document.getElementById('abbruch-nein').addEventListener('click', abbruchZurueck);
-// Codex: alle Fähigkeiten ansehen + die 2 aktiven Slots umrüsten (Pause → Fähigkeiten)
-/* Der Codex wird aus zwei Richtungen geöffnet: aus dem Pausenmenü und direkt nach
-   einem Level-Up (wenn die Passiv-Slots voll sind). Er MUSS sich merken, woher —
-   sonst landet man nach dem Level-Up im Pausenmenü, dessen „Weiter" wegen
-   `state!=='paused'` nichts tut. Genau das war ein Softlock. */
-let codexReturn='pause';
-function openCodex(from){
-  codexReturn = from || 'pause';
+// Codex: Lauf-Build nur ansehen; aktive Mächte werden ausschließlich vor dem Lauf gewählt.
+function openCodex(){
   renderCodex();
   overlayPause.classList.add('hidden');
-  overlayLevel.classList.add('hidden');
   document.getElementById('overlay-codex').classList.remove('hidden');
 }
 function closeCodex(){
   document.getElementById('overlay-codex').classList.add('hidden');
-  if(codexReturn==='levelup'){ naechsterLevelUp(); return; }   // zurück ins Spiel
   overlayPause.classList.remove('hidden');
 }
-/* Slot-Auswahl: Slot antippen → Liste mit Beschreibung → wählen.
-   Ersetzt das blinde Durchtippen, bei dem man erst hinterher sah, was man bekam.
-
-   Passive dürfen NUR getauscht werden, wenn eine vierte angeboten wird (Entscheidung
-   vom 10.8.) — sonst verlöre die Drei-Slot-Grenze ihre Härte. Die erreichten Stufen
-   bleiben im Lauf erhalten, auch wenn eine Macht zwischenzeitlich abgelegt war:
-   dafür merkt sich `runAbilities` den Wert weiter, `passivGetragen` steuert nur,
-   was aktuell wirkt. */
-let passivTauschOffen=null;      // id der angebotenen vierten Passive, sonst null
-let pickReturn='codex';
-
 function openPick(art, slotNr){
-  const liste=document.getElementById('pick-liste');
-  const titel=document.getElementById('pick-titel');
+  const liste=document.getElementById('pick-liste'), titel=document.getElementById('pick-titel');
   const hinweis=document.getElementById('pick-hinweis');
-  liste.innerHTML='';
-  /* Nur noch zwei Arten:
-     'vorwahl' — welche Aktive der nächste Lauf mitbringt (Hauptmenü, schreibt in den Speicher)
-     'passive' — welche der drei getragenen Passiven einer vierten weicht (im Lauf)
-     Der Aktiv-Tausch IM Lauf ist entfallen: Er ist jetzt eine Festlegung vor dem Start. */
-  const istAktiv = art==='vorwahl';
-  // Der Rückweg gehört zur Auswahlart, nicht zum Aufrufer: Wer den Dialog öffnet,
-  // soll ihn nicht zusätzlich setzen müssen — sonst landet man beim Abbrechen im Codex.
-  if(istAktiv) pickReturn='vorwahl';
-  titel.textContent = istAktiv? ('Slot '+slotNr+' belegen') : 'Passive Macht ersetzen';
-  hinweis.textContent = istAktiv
-    ? 'Mit dieser Macht startest du künftig jeden Lauf.'
-    : 'Welche deiner drei Mächte soll der neuen weichen?';
-
-  const vw = istAktiv? startMaechte() : null;
-  const kandidaten = istAktiv
-    ? ACTIVE_IDS.filter(id=>abilUnlocked(id))
-    : PASSIVE_IDS.filter(isCarried);           // beim Tausch: die drei getragenen
-  const belegt = istAktiv ? (slotNr===1? vw.slot2 : vw.slot1) : null;
-
-  for(const id of kandidaten){
-    const a=ABILITIES[id], lv=istAktiv? 0 : (runAbilities[id]||0);
-    const gesperrt = istAktiv && id===belegt;   // steckt schon im anderen Slot
-    const b=document.createElement('button');
+  liste.innerHTML=''; titel.textContent='Slot '+slotNr+' belegen';
+  hinweis.textContent='Mit dieser Macht startest du künftig jeden Lauf.';
+  const vw=startMaechte(), belegt=slotNr===1?vw.slot2:vw.slot1;
+  for(const id of ACTIVE_IDS.filter(id=>abilUnlocked(id))){
+    const a=ABILITIES[id], gesperrt=id===belegt, b=document.createElement('button');
     b.className='pick-karte'+(gesperrt?' locked':'');
-    b.innerHTML=`${svg(abilIcon(id))}
-      <div class="pick-info"><h3>${a.name}</h3><p>${a.desc}</p>
-      <div class="pick-lv">${istAktiv? 'Startet auf Stufe 1'
-        : (lv? 'Stufe '+lv+' von '+MAX_ABIL_LEVEL+pipsHTML(lv) : 'noch nicht gesteigert')}</div></div>
-      ${gesperrt? '<span class="slot-badge">im anderen Slot</span>':''}`;
-    if(!gesperrt) b.onclick=()=>waehlePick(art, slotNr, id);
+    b.innerHTML=`${svg(abilIcon(id))}<div class="pick-info"><h3>${a.name}</h3><p>${a.desc}</p>
+      <div class="pick-lv">Startet auf Stufe 1</div></div>${gesperrt?'<span class="slot-badge">im anderen Slot</span>':''}`;
+    if(!gesperrt) b.onclick=()=>waehlePick(slotNr,id);
     liste.appendChild(b);
   }
-  document.getElementById('overlay-codex').classList.add('hidden');
   document.getElementById('overlay-startmaechte').classList.add('hidden');
   document.getElementById('overlay-pick').classList.remove('hidden');
 }
-function waehlePick(art, slotNr, id){
-  if(art==='vorwahl'){
-    const vw=startMaechte();
-    if(slotNr===1) vw.slot1=id; else vw.slot2=id;
-    startMaechte();          // Doppelbelegung sofort auflösen
-    persist();
-  } else {
-    // id = die abzulegende Macht; die neue kommt aus passivTauschOffen.
-    // Stufe der abgelegten bleibt in runAbilities stehen (Entscheidung: Stufen bleiben).
-    const neue=passivTauschOffen;
-    abgelegteStufe[id]=runAbilities[id]||1;
-    delete runAbilities[id];
-    runAbilities[neue]=abgelegteStufe[neue]||1;   // frühere Stufe zurückholen
-    passivTauschOffen=null;
-  }
-  if(sfx) sfx('pick');
-  schliessePick();
+function waehlePick(slotNr,id){
+  const vw=startMaechte(); if(slotNr===1) vw.slot1=id; else vw.slot2=id;
+  startMaechte(); persist(); if(sfx) sfx('pick'); schliessePick();
 }
 function schliessePick(){
   document.getElementById('overlay-pick').classList.add('hidden');
-  // Abgebrochen -> wartende Macht verfällt, damit nichts hängen bleibt
-  passivTauschOffen=null;
-  if(pickReturn==='levelup'){ pickReturn='codex'; naechsterLevelUp(); return; }
-  if(pickReturn==='vorwahl'){
-    pickReturn='codex';
-    renderStartMaechte();
-    document.getElementById('overlay-startmaechte').classList.remove('hidden');
-    return;
-  }
-  renderCodex();
-  document.getElementById('overlay-codex').classList.remove('hidden');
-}
-let abgelegteStufe={};          // merkt Stufen abgelegter Mächte (Passiv wie Aktiv) im Lauf
-
-function cycleSlot(n){
-  const cur=n===1?activeSlot1:activeSlot2, other=n===1?activeSlot2:activeSlot1;
-  const avail=ACTIVE_IDS.filter(id=>abilUnlocked(id));
-  const idx=avail.indexOf(cur);
-  let next=cur;
-  for(let i=1;i<=avail.length;i++){
-    const cand=avail[(idx+i)%avail.length];
-    if(cand!==other){ next=cand; break; }
-  }
-  if(n===1) activeSlot1=next; else activeSlot2=next;
-  updateActiveButtons(); renderCodex();
+  renderStartMaechte(); document.getElementById('overlay-startmaechte').classList.remove('hidden');
 }
 // Die echte Freischalt-Welle steht in MILESTONES — ABILITIES.unlock war veraltet
 // und zeigte teils falsche Zahlen an.
@@ -1668,10 +1609,8 @@ function renderCodex(){
   /* Gruppierung nach dem, was der Spieler wissen will — „trage ich das? kann ich es
      kriegen? oder ist es noch zu?" — statt nach der internen Einteilung aktiv/passiv.
      Genau daran ist das alte Menü gescheitert. */
-  const getragenBox=document.getElementById('codex-getragen');
   const verfuegbarBox=document.getElementById('codex-verfuegbar');
   const gesperrtBox=document.getElementById('codex-gesperrt');
-  if(getragenBox) getragenBox.innerHTML='';
   if(verfuegbarBox) verfuegbarBox.innerHTML='';
   if(gesperrtBox) gesperrtBox.innerHTML='';
 
@@ -2474,143 +2413,14 @@ const ICON={
 };
 function svg(paths){ return `<svg class="card-icon" viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`; }
 
-/* Level-Up = Lauf-Build: Stat-Karten (wiederholbar, gecappt) + einmalige
-   Waffen-Upgrades + Fähigkeiten (Erwerb & Buff, max 10 Stufen, Pips-Anzeige). */
-let takenUpgrades={};
-// Pip-Reihe: gefüllte Kreise = aktuelle Stufe, leer = noch ausbaubar (max 10)
-/* Zeigt „+45% von +100%" plus Balken statt nur der Obergrenze — vorher sah man
-   die Grenze, aber nicht, wie weit man selbst schon ist. */
-function fortschrittText(jetzt, grenze){
-  const p=Math.min(100, Math.round(jetzt/grenze*100));
-  return `+${Math.round(jetzt*100)}% von +${Math.round(grenze*100)}%`+
-    `<span class="capbar"><i style="width:${p}%"></i></span>`;
-}
+// Pip-Reihe für die kompakten Stufenanzeigen in Codex und Hangar.
 function pipsHTML(level, max=MAX_ABIL_LEVEL){
   let s='<span class="pips">';
   for(let i=1;i<=max;i++) s+=`<i class="pip ${i<=level?'on':''}"></i>`;
   return s+'</span>';
 }
-// Buff-Karte für eine bereits getragene Fähigkeit: Stufe +1, Pips zeigen den Fortschritt.
-// Auf der Karte steht, was die Stufe konkret bringt. Ist es der mechanische Sprung
-// (Stufe 4), wird die Karte hochgestuft und markiert — sie soll auffallen.
-function levelUpCard(id){
-  const a=ABILITIES[id], lv=abilityLevel(id);
-  const sprung = (lv+1===SPRUNG_STUFE) && STUFEN[id] && STUFEN[id].sprung;
-  return { rar: sprung? 'selten':'gut', id, name:`${a.name} +1`,
-    desc:(sprung? '★ ':'')+stufenText(id, lv), icon:abilIcon(id), color:'card-ability',
-    pips:lv, max:MAX_ABIL_LEVEL,
-    cap:()=>`Stufe ${lv} → ${lv+1} von ${MAX_ABIL_LEVEL}`,
-    apply:()=>{ runAbilities[id]=lv+1; if(lv+1>=MAX_ABIL_LEVEL) zielZaehl('stufe5'); } };
-}
-function buildUpgradePool(){
-  const pool=[];
-  // Stat-Karten (unbegrenzt wiederholbar, hart gecappt)
-  pool.push({rar:'gewoehnlich', id:'dmg', name:'+15% Schaden', desc:'Jeder Treffer sitzt härter', icon:ICON.schaden, color:'card-damage',
-    available:()=>bonuses.dmg < CONFIG.caps.dmgMult-1-1e-9,
-    cap:()=>fortschrittText(bonuses.dmg, CONFIG.caps.dmgMult-1),
-    apply:()=>{bonuses.dmg=Math.min(bonuses.dmg+0.15, CONFIG.caps.dmgMult-1)}});
-  pool.push({rar:'gewoehnlich', id:'range', name:'+15% Reichweite', desc:'Die Klinge wird sichtbar länger', icon:ICON.reichweite, color:'card-range',
-    available:()=>bonuses.range < CONFIG.caps.rangeMult-1-1e-9,
-    cap:()=>fortschrittText(bonuses.range, CONFIG.caps.rangeMult-1),
-    apply:()=>{bonuses.range=Math.min(bonuses.range+0.15, CONFIG.caps.rangeMult-1)}});
-  pool.push({rar:'gewoehnlich', id:'firerate', name:'+12% Rotationstempo', desc:'Das Schwert kreist schneller — mehr Treffer', icon:ICON.tempo, color:'card-firerate',
-    available:()=>bonuses.fireRate < CONFIG.caps.fireRateMult-1-1e-9,
-    cap:()=>fortschrittText(bonuses.fireRate, CONFIG.caps.fireRateMult-1),
-    apply:()=>{bonuses.fireRate=Math.min(bonuses.fireRate+0.12, CONFIG.caps.fireRateMult-1)}});
-  // Waffen-Upgrades (kein Slot, einmalig)
-  if(!takenUpgrades.doppelklinge && player.level>=3)
-    pool.push({rar:'mythisch', id:'doppelklinge', name:'Doppelklinge', desc:'Zweite Klinge gegenüber — doppelte Deckung, kein blinder Winkel', icon:ICON.doppel, color:'card-unlock',
-      once:true, cap:()=>'Einmalige Freischaltung',
-      apply:()=>{bonuses.blades=2; earnBadge('doppel');}});
-  if(isAvailable('ability','dreifachklinge') && bonuses.blades===2 && !takenUpgrades.dreifachklinge)
-    pool.push({rar:'mythisch', id:'dreifachklinge', name:'Dreifachklinge', desc:'Dritte Klinge — lückenlose Deckung', icon:ICON.dreifach, color:'card-unlock',
-      once:true, cap:()=>'Setzt Doppelklinge voraus',
-      apply:()=>{bonuses.blades=3;}});
-  // ENTWICKLUNGEN zuerst prüfen — sie sind der stärkste Moment und sollen nicht
-  // von gewöhnlichen Karten verdrängt werden, wenn sie einmal möglich sind.
-  for(const evoId in EVOLUTIONS){
-    const e=EVOLUTIONS[evoId];
-    if(runEvolutions[e.base]) continue;                       // schon entwickelt
-    if(!isCarried(e.base) || (runAbilities[e.base]||1) < MAX_ABIL_LEVEL) continue;
-    if(!isCarried(e.req)) continue;
-    pool.push({rar:'mythisch', id:'evo_'+evoId, name:e.name, desc:e.desc, icon:abilIcon(e.base), color:'card-evo', evo:true,
-      cap:()=>ABILITIES[e.base].name+' + '+ABILITIES[e.req].name,
-      apply:()=>{ runEvolutions[e.base]=evoId; zielZaehl('entwicklung'); announce('Entwicklung!', e.name, '#ffd257'); unlockFx=1; if(sfx) sfx('unlockBig'); }});
-  }
-  // Passive Fähigkeiten: Erwerb (nur solange Slots frei) oder Buff für getragene
-  const passivGetragen=PASSIVE_IDS.filter(isCarried).length;
-  for(const id of PASSIVE_IDS){
-    if(!abilUnlocked(id)) continue;
-    if(!isCarried(id)){
-      // Bei vollen Slots trotzdem anbieten — die Wahl ist dann ein Tausch
-      pool.push({rar:'selten', id, name:ABILITIES[id].name, desc:ABILITIES[id].desc, icon:abilIcon(id), color:'card-ability',
-        neu:true, tausch: passivGetragen>=MAX_PASSIVE_SLOTS,
-        cap:()=>passivGetragen>=MAX_PASSIVE_SLOTS? 'Passiv · ersetzt eine andere' : 'Passiv · Slot '+(passivGetragen+1)+' von '+MAX_PASSIVE_SLOTS, pips:1,
-        apply:()=>{ if(passivGetragen>=MAX_PASSIVE_SLOTS){ passivTauschOffen=id; } else { runAbilities[id]=abgelegteStufe[id]||1; } if(sfx) sfx('unlock'); }});
-    } else if(runAbilities[id]<MAX_ABIL_LEVEL){
-      pool.push(levelUpCard(id));
-    }
-  }
-  /* Aktive Mächte: NUR Verstärkung für die getragenen. Welche man trägt, entscheidet
-     man vor dem Lauf unter „Startmächte" — im Lauf ist es festgelegt.
-     Vorher gab es hier zusätzlich Ausrüst-Karten für freigeschaltete Mächte ohne Slot.
-     Gemessen war das spät im Lauf schädlich: bei Welle 26 bestanden von sechs Karten
-     zwei daraus, sodass 80 % aller Aufstiege eine Karte enthielten, die man nicht will —
-     und sie verdrängten dabei die Entwicklungen. Die Festlegung vor dem Lauf ersetzt sie. */
-  for(const id of ACTIVE_IDS){
-    if(!isCarried(id)) continue;
-    if((runAbilities[id]||1)<MAX_ABIL_LEVEL) pool.push(levelUpCard(id));
-  }
-  return pool;
-}
-// Wählt bis zu n unterschiedliche, aktuell verfügbare Karten
-/* Rückfallkarte — bewusst bescheiden. Sie greift nur, wenn sonst zu wenig da ist,
-   und wechselt zwischen zwei Varianten, damit sie sich nicht wie ein Platzhalter
-   anfühlt: dauerhaft etwas mehr Leben, oder sofortige Heilung, wenn man verletzt ist. */
-/* Rückfallkarten — greifen nur, wenn der Stapel sonst zu dünn wäre. Seit die
-   Ausrüst-Karten entfallen sind, tragen sie das späte Spiel mit, deshalb gibt es
-   mehrere Sorten statt einer: Immer dieselbe Karte zu sehen wäre schlimmer als eine
-   kleine Wirkung. Die Liste ist nach Nützlichkeit sortiert — was gerade am meisten
-   bringt, steht vorn, und `pickUpgrades` nimmt von oben ohne Wiederholung. */
-function rueckfallKarten(){
-  const karten=[];
-  if(player.hp < player.maxHp*0.75){
-    karten.push({ rar:'gewoehnlich', id:'notheil', name:'Reparatur', desc:'Stellt sofort 40 % deiner Lebenskraft wieder her',
-      icon:ICON.leben, color:'card-ability', cap:()=>'Sofortwirkung',
-      apply:()=>{ player.hp=Math.min(player.maxHp, player.hp+player.maxHp*0.4); if(sfx) sfx('heal'); } });
-  }
-  if(barriere < barriereMax()-0.5){
-    karten.push({ rar:'gewoehnlich', id:'notbarriere', name:'Barriere aufladen', desc:'Legt sofort einen Schutzpuffer an, der Schaden vor deinem Leben abfängt',
-      icon:ICON.leben, color:'card-range', cap:()=>'Sofortwirkung',
-      apply:()=>{ barriere=Math.min(barriereMax(), barriere+player.maxHp*0.15); if(sfx) sfx('unlock'); } });
-  }
-  karten.push({ rar:'gewoehnlich', id:'reserve', name:'+8 Max-Leben', desc:'Dauerhaft etwas mehr Puffer für diesen Lauf',
-    icon:ICON.leben, color:'card-ability', cap:()=>'Immer verfügbar',
-    apply:()=>{ player.maxHp+=8; player.hp+=8; } });
-  karten.push({ rar:'gewoehnlich', id:'fundstueck', name:'+30 Fragmente', desc:'Sofort aufs Konto — für die Werkstatt nach dem Lauf',
-    icon:ICON.tempo, color:'card-range', cap:()=>'Immer verfügbar',
-    apply:()=>{ player.stars+=30; if(sfx) sfx('coin'); } });
-  karten.push({ rar:'gewoehnlich', id:'zaehigkeit', name:'Zähigkeit', desc:'Heilt dich dauerhaft etwas schneller',
-    icon:ICON.leben, color:'card-ability', cap:()=>'Immer verfügbar',
-    apply:()=>{ bonuses.regen=(bonuses.regen||0)+0.4; } });
-  return karten;
-}
-function pickUpgrades(n){
-  // available() filtern: Beim Umbau auf buildUpgradePool ging dieser Filter verloren,
-  // dadurch wurden ausgereizte Stat-Karten weiter angeboten und verpufften beim Klick.
-  const pool=buildUpgradePool().filter(c=>!c.available || c.available());
-  /* Rueckfallkarten: Ist alles ausgereizt, gab es bisher GAR NICHTS — in Welle 22
-     brachte ein Aufstieg nichts mehr. Sie sind bewusst klein und ungedeckelt, damit
-     ein Aufstieg nie wertlos ist, ohne die Balance zu brechen. Ohne Wiederholung
-     auffüllen, sonst stünde dieselbe Karte zweimal nebeneinander. */
-  const rueck=rueckfallKarten();
-  for(let i=0; pool.length<n && i<rueck.length; i++) pool.push(rueck[i]);
-  for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-  return pool.slice(0,n);
-}
 /* Mehrere Stufen auf einmal werden als Punkte gesammelt. Der Kampf wird nicht mehr
    unterbrochen: Der Spieler öffnet den Tree selbst, wenn der Moment passt. */
-let offeneLevelUps=0;
 function checkLevelUp(){
   let neuePunkte=0;
   while(player.xp >= player.xpNeed){
@@ -2625,71 +2435,6 @@ function checkLevelUp(){
     updateTreeButton(); updateHUD(true);
   }
 }
-// Zeigt den nächsten anstehenden Aufstieg, oder kehrt ins Spiel zurück
-function naechsterLevelUp(){
-  // Solange versuchen, bis eine Auswahl steht — sonst zurück ins Spiel.
-  // Ohne diese Schleife bliebe der Zustand auf 'levelup' hängen, wenn keine
-  // Karte mehr verfügbar ist: Overlay zu, Spiel eingefroren.
-  while(offeneLevelUps>0){
-    offeneLevelUps--;
-    if(triggerLevelUp()) return;
-  }
-  starteCountdown();
-}
-// Liefert false, wenn nichts anzubieten ist — der Aufrufer muss dann zurück ins Spiel
-function triggerLevelUp(){
-  const picks=pickUpgrades(3);
-  if(picks.length===0) return false;      // alles ausgereizt
-  state='levelup'; if(sfx) sfx('levelup');
-  zeigeKarten(picks);
-  overlayLevel.classList.remove('hidden');
-  return true;
-}
-function zeigeKarten(picks){
-  levelupGrid.innerHTML='';
-  for(const up of picks){
-    const btn=document.createElement('button');
-    btn.className='levelup-card '+up.color+(up.evo?' is-evo':'');
-    // „Neu" muss sich vom Vorhandenen abheben — deshalb ein eigenes Abzeichen,
-    // nicht nur ein Wort in der Fußzeile.
-    if(up.rar) btn.classList.add('rar-'+up.rar);      // Seltenheit färbt Rahmen und Leuchten
-    // Aktiv/Inaktiv sichtbar machen — sonst weiß man nicht, ob die Macht schon wirkt
-    const status = up.status==='inaktiv'? '<span class="karte-status aus">Nicht ausgerüstet</span>'
-                 : (up.pips!==undefined? '<span class="karte-status an">Ausgerüstet</span>' : '');
-    const abzeichen = up.evo? '<span class="badge-evo">Entwicklung</span>'
-                    : up.neu? '<span class="badge-neu">Neu</span>' : '';
-    btn.innerHTML=`${abzeichen}${status}${svg(up.icon)}<h3>${up.name}</h3><p>${up.desc}</p>`+
-      `<div class="cap">${up.cap()}${up.pips? pipsHTML(up.pips, up.max||MAX_ABIL_LEVEL) : ''}</div>`;
-    btn.onclick=()=>{
-      up.apply();
-      if(up.once) takenUpgrades[up.id]=true;
-      if(sfx) sfx('pick');
-      // Passiv-Slots voll und gerade eine Fähigkeit genommen? Dann direkt umrüsten lassen,
-      // statt den Spieler raten zu lassen, warum nichts Neues mehr angeboten wird.
-      overlayLevel.classList.add('hidden');
-      if(passivTauschOffen){ pickReturn='levelup'; openPick('passive'); return; }
-      naechsterLevelUp();
-    };
-    levelupGrid.appendChild(btn);
-  }
-  // Gekaufter Meta-Vorteil: einmal pro Lauf eine neue Auswahl ziehen
-  const rr=document.getElementById('levelup-reroll');
-  if(rr){
-    rr.style.display = rerollFrei? '' : 'none';
-    rr.onclick=()=>{ if(!rerollFrei) return; rerollFrei=false; if(sfx) sfx('pick'); zeigeKarten(pickUpgrades(3)); };
-  }
-}
-
-/* Kurzer Countdown nach der Kartenwahl: Nach der Pause weiß man nicht mehr, wo die
-   Gegner stehen. 1,5 s zum Neuorientieren — antippbar, damit es bei ~8 Level-Ups
-   pro Lauf nicht zur Bremse wird. Der Spieler ist währenddessen unverwundbar. */
-let countdownT=0;
-function starteCountdown(){
-  countdownT=CONFIG.levelUpCountdown;
-  state='playing'; lastTime=performance.now(); updateHUD();
-}
-function ueberspringeCountdown(){ if(countdownT>0) countdownT=0; }
-
 function metaLevel(id){ return (save.meta&&save.meta[id])||0; }
 function metaValue(id){ const m=META_UPGRADES.find(u=>u.id===id); return m? metaLevel(id)*m.step : 0; }
 function metaPrice(id){ const m=META_UPGRADES.find(u=>u.id===id); return Math.round(m.base*Math.pow(m.grow, metaLevel(id))); }
@@ -2770,12 +2515,13 @@ function updateHUD(force=false){
   }
   healthText.textContent=Math.ceil(player.hp)+' / '+player.maxHp+(barriere>0.5? '  +'+Math.round(barriere) : '');
   xpBar.style.width=(player.xp/player.xpNeed*100)+'%';
-  levelText.textContent='Level '+player.level+' · XP '+player.xp+'/'+player.xpNeed;
+  xpText.textContent='Level '+player.level+' · '+player.xp+' / '+player.xpNeed+' XP';
   coinText.textContent='◆ '+player.stars;
   // Fokus-Leiste
   if(fokusWrap && fokusBar){
     fokusBar.style.width=Math.min(100, fokus/fokusZiel()*100)+'%';
     fokusWrap.classList.toggle('bereit', fokusBereit);
+    fokusText.textContent=fokusBereit?'FOKUS BEREIT':'Fokus '+Math.floor(fokus)+' / '+fokusZiel();
   }
   // Laufziele — nur neu bauen, wenn sich etwas geändert hat, sonst flackert es
   if(zielListe){
@@ -2848,8 +2594,6 @@ function gameOver(){
 
 // Loop
 function update(dt){
-  // Countdown nach dem Level-Up: Welt steht still, Spieler kann sich orientieren
-  if(countdownT>0){ countdownT-=dt; if(countdownT<0) countdownT=0; return; }
   if(state!=='playing') return;
   // cooldowns (aktive Fähigkeiten) + Cooldown-Anzeige auf den Buttons
   for(const id of ACTIVE_IDS) if(activeCd[id]>0) activeCd[id]=Math.max(0, activeCd[id]-dt);
@@ -3742,7 +3486,7 @@ function draw(){
     ctx.shadowColor='#ffcf4d'; sb(12); ctx.fillStyle='#ffd257';
     // Kantiger Splitter statt Stern — passend zum Namen. Leichte Eigendrehung,
     // damit die Kante im Licht blitzt und man ihn im Getümmel wahrnimmt.
-    ctx.rotate(Math.sin((Date.now()+c.x*7)/600)*0.5);
+    ctx.rotate(Math.sin((now+c.x*7)/600)*0.5);
     ctx.beginPath();
     ctx.moveTo(0,-7.5); ctx.lineTo(4.5,-1.5); ctx.lineTo(2.6,6.5);
     ctx.lineTo(-2.8,5.8); ctx.lineTo(-4.6,-2.2);
@@ -3756,7 +3500,7 @@ function draw(){
   for(const o of orbs){
     if(!sichtbar(o.x,o.y,22)) continue;
     ctx.save(); ctx.translate(o.x,o.y);
-    const r=o.r*(o.big?1.7:1)*(1+0.15*Math.sin(Date.now()/120));
+    const r=o.r*(o.big?1.7:1)*(1+0.15*Math.sin(now/120));
     // Lebenskugeln rot, XP-Orbs blau — die Farbe muss auf einen Blick sagen, was es ist
     const oc = o.hp? '#ff5a5a' : (o.big?'#9fd6ff':'#6ec8ff');
     ctx.shadowColor=oc; sb(14); ctx.fillStyle=oc;
@@ -3780,16 +3524,18 @@ function draw(){
     const ang = Math.atan2(player.y-en.y, player.x-en.x);
     // Lichtaura in Gegnerfarbe: hebt die Figur vom jetzt reicheren Hintergrund ab
     // und macht auf einen Blick klar, welcher Typ da kommt.
-    ctx.save(); ctx.globalCompositeOperation='lighter';
-    const hg=ctx.createRadialGradient(en.x,en.y,0,en.x,en.y,r*2.1);
-    hg.addColorStop(0, hexA(en.color,0.20)); hg.addColorStop(1, hexA(en.color,0));
-    ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(en.x,en.y,r*2.1,0,Math.PI*2); ctx.fill();
-    ctx.restore();
+    if(fxAn){
+      ctx.save(); ctx.globalCompositeOperation='lighter';
+      const hg=ctx.createRadialGradient(en.x,en.y,0,en.x,en.y,r*2.1);
+      hg.addColorStop(0, hexA(en.color,0.20)); hg.addColorStop(1, hexA(en.color,0));
+      ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(en.x,en.y,r*2.1,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
     // Bodenschatten (nicht rotiert)
     ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(en.x, en.y+r*0.75, r*0.85, r*0.35,0,0,Math.PI*2); ctx.fill();
     ctx.save(); ctx.translate(en.x,en.y); ctx.rotate(ang);
     ctx.lineJoin='round'; ctx.shadowColor=en.color; sb(15); ctx.strokeStyle=en.color; ctx.lineWidth=2.5;
-    const tNow=Date.now();
+    const tNow=now;
     if(en.type==='drohne'){
       // Drohne: schnelle Pfeil-/Rautenform, Sensorauge pulsiert beim Scannen
       ctx.fillStyle='#0a1526';
@@ -3843,7 +3589,7 @@ function draw(){
       // Exploder: gepanzerte Kugel mit pulsierendem Kern; beim Zünden wächst ein heller Ring
       ctx.fillStyle='#2a0a18';
       ctx.beginPath(); ctx.arc(0,0,r*0.95,0,Math.PI*2); ctx.fill(); ctx.stroke();
-      const pulse = 1+0.15*Math.sin(Date.now()/140);
+      const pulse = 1+0.15*Math.sin(now/140);
       sb(10); ctx.fillStyle=en.exploding? '#ffd257' : en.color;
       ctx.beginPath(); ctx.arc(0,0,r*0.32*pulse,0,Math.PI*2); ctx.fill();
       if(en.exploding){
@@ -3937,7 +3683,7 @@ function draw(){
     }
     ctx.restore();
     // Nova-Stun: kurzes weißes Blinken zeigt den Stun an
-    if(en.stunT>0 && Math.floor(Date.now()/110)%2===0){
+    if(en.stunT>0 && Math.floor(now/110)%2===0){
       ctx.strokeStyle='rgba(255,255,255,0.7)'; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.arc(en.x,en.y,r+6,0,Math.PI*2); ctx.stroke();
     }
@@ -4012,7 +3758,7 @@ function draw(){
   const bob = Math.sin(player.bobPhase||0);
   ctx.translate(0, bob*2.2);
   // Schild
-  if(Date.now()<shieldUntil){
+  if(now<shieldUntil){
     ctx.strokeStyle='rgba(124,200,255,0.9)'; ctx.lineWidth=2; ctx.shadowColor='#7cc8ff'; sb(16);
     ctx.beginPath(); ctx.arc(0,0,player.radius+13,0,Math.PI*2); ctx.stroke(); sb(0);
   }
@@ -4025,7 +3771,7 @@ function draw(){
     ctx.beginPath(); ctx.arc(0,0,player.radius+8,0,Math.PI*2); ctx.fill();
   }
   if(leerenmodusAktiv()){
-    const puls=0.58+Math.sin(Date.now()/90)*0.10;
+    const puls=0.58+Math.sin(now/90)*0.10;
     ctx.strokeStyle='rgba(199,125,255,'+puls.toFixed(2)+')'; ctx.lineWidth=2.5;
     ctx.shadowColor='#c77dff'; sb(18);
     ctx.beginPath(); ctx.arc(0,0,player.radius+12,0,Math.PI*2); ctx.stroke(); sb(0);
@@ -4119,8 +3865,8 @@ function draw(){
 
   // — Bildschirm-Ebene (folgt nicht der Kamera) —
   // Treffer-Blitz: kurzer roter Rand, wenn der Spieler getroffen wird
-  if(Date.now()<flashUntil){
-    const a=(flashUntil-Date.now())/140;
+  if(now<flashUntil){
+    const a=(flashUntil-now)/140;
     const fg=ctx.createRadialGradient(w/2,h/2,Math.min(w,h)*0.3,w/2,h/2,Math.max(w,h)*0.7);
     fg.addColorStop(0,'rgba(255,40,40,0)'); fg.addColorStop(1,'rgba(255,30,30,'+(0.35*a).toFixed(3)+')');
     ctx.fillStyle=fg; ctx.fillRect(0,0,w,h);
@@ -4177,26 +3923,6 @@ function draw(){
     ug.addColorStop(0,'rgba(255,210,87,0)');
     ug.addColorStop(1,'rgba(255,210,87,'+(0.30*a).toFixed(3)+')');
     ctx.fillStyle=ug; ctx.fillRect(0,0,w,h);
-  }
-  // Countdown nach der Kartenwahl — Welt steht still, Spieler orientiert sich
-  if(countdownT>0){
-    const sek=Math.ceil(countdownT/1000);
-    const anteil=1-(countdownT/CONFIG.levelUpCountdown);
-    ctx.save(); ctx.textAlign='center';
-    ctx.fillStyle='rgba(4,7,13,0.45)'; ctx.fillRect(0,0,w,h);
-    // Ring, der sich füllt — zeigt ohne Text, wie lange es noch dauert
-    const cx=w/2, cy=h*0.42, rr=Math.min(w,h)*0.085;
-    ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=5;
-    ctx.beginPath(); ctx.arc(cx,cy,rr,0,Math.PI*2); ctx.stroke();
-    ctx.strokeStyle='#6ec8ff'; ctx.lineWidth=5; ctx.lineCap='round';
-    ctx.shadowColor='#6ec8ff'; sb(14);
-    ctx.beginPath(); ctx.arc(cx,cy,rr,-Math.PI/2,-Math.PI/2+anteil*Math.PI*2); ctx.stroke();
-    sb(0);
-    ctx.fillStyle='#e6edf7'; ctx.font='800 '+Math.round(rr*0.9)+'px system-ui';
-    ctx.fillText(sek, cx, cy+rr*0.32);
-    ctx.font='600 '+Math.round(Math.min(w,h)*0.028)+'px system-ui';
-    ctx.fillStyle='#8fa3bf'; ctx.fillText('Tippen zum Fortfahren', cx, cy+rr+34);
-    ctx.restore();
   }
   // Große Ansage in der Mitte (Welle/Boss/Meilenstein)
   if(banner){

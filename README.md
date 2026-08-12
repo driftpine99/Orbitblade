@@ -15,19 +15,15 @@ Nur diese Pfade gehören zur aktuellen Version:
 - `konzept/index.html`
 - `konzept/style.css`
 - `konzept/game.js`
-- `tools/local-preview-server.js`
 - `CLAUDE.md` als maßgeblicher Projektstand
 
 `archive/` enthält ausschließlich alte Versionen, Sicherungen und historische
 Dokumente. Für normale Entwicklung nicht lesen oder verändern.
 
-## Lokal starten
+## Veröffentlichen und testen
 
-```powershell
-node tools/local-preview-server.js
-```
-
-Danach: http://127.0.0.1:8765/
+Änderungen werden über GitHub Pages veröffentlicht. Nach dem Push ist die aktuelle
+Version unter dem GitHub-Pages-Link oben erreichbar.
 
 ## Git-Ablauf
 

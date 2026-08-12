@@ -34,13 +34,14 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
   box-shadow:0 0 12px rgba(124,200,255,.55);transition:width .15s}
 #barrier-bar.an{border-left:1px solid rgba(220,245,255,.75)}
 #health-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:var(--fs-sm);font-weight:700;letter-spacing:.04em;text-shadow:0 1px 3px rgba(0,0,0,.9)}
-#xp-wrap{margin-top:5px;height:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+#xp-wrap{position:relative;margin-top:5px;height:16px;background:var(--panel);border:1px solid var(--line);border-radius:999px;overflow:hidden}
 #xp-bar{height:100%;width:0%;background:linear-gradient(90deg,#3aa0e0,var(--accent));box-shadow:0 0 10px rgba(110,200,255,.5);transition:width .2s}
+#xp-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:.05em;color:#eef8ff;text-shadow:0 1px 3px #07101d;font-variant-numeric:tabular-nums}
 /* Fokus: füllt sich mit Sweet-Spot-Treffern, leuchtet wenn bereit */
-#fokus-wrap{position:relative;margin-top:5px;height:9px;background:var(--panel);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+#fokus-wrap{position:relative;margin-top:5px;height:16px;background:var(--panel);border:1px solid var(--line);border-radius:999px;overflow:hidden}
 #fokus-bar{height:100%;width:0%;background:linear-gradient(90deg,#d9e6f5,#ffffff);transition:width .12s}
 #fokus-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-size:8px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);opacity:0;transition:opacity .2s}
+  font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#eef8ff;text-shadow:0 1px 3px #07101d;opacity:1;transition:color .2s}
 #fokus-wrap.bereit{border-color:#fff;box-shadow:0 0 14px rgba(255,255,255,.7)}
 #fokus-wrap.bereit #fokus-bar{background:#fff}
 #fokus-wrap.bereit #fokus-text{opacity:1;color:#16203a}
@@ -55,7 +56,6 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .ziel.fertig{opacity:.45;text-decoration:line-through}
 @media (max-height:480px) and (orientation:landscape){ #ziel-liste{display:none} }
 
-#level-text{margin-top:5px;font-size:var(--fs-xs);font-weight:600;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #coin-text,#wave-text{font-size:var(--fs-sm);font-weight:700;background:var(--panel);border:1px solid var(--line);padding:7px 10px;border-radius:4px;letter-spacing:.03em;backdrop-filter:blur(8px);white-space:nowrap}
 #coin-text{color:var(--gold)}
 #pause-btn,#mute-btn{width:var(--tap);height:var(--tap);border-radius:4px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:19px;cursor:pointer;backdrop-filter:blur(8px);flex:none}
@@ -168,113 +168,6 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .shop-card button{margin-top:10px;width:100%;min-height:var(--tap);padding:10px;border-radius:4px;border:1px solid rgba(255,210,87,.5);background:rgba(255,210,87,.12);color:var(--gold);font-weight:700;font-size:var(--fs-sm);letter-spacing:.04em;cursor:pointer;transition:background .15s}
 .shop-card button:hover:not(:disabled){background:rgba(255,210,87,.24)}
 .shop-card button:disabled{opacity:.3;cursor:not-allowed}
-/* Grid statt Flex: auf dem Handy eine Spalte, ab genug Breite drei nebeneinander */
-#levelup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));
-  gap:clamp(10px,3vw,16px);margin-top:clamp(14px,4vw,20px);width:100%;max-width:680px}
-.levelup-card{
-  --cc:var(--accent); --ccRGB:110,200,255;
-  position:relative;width:100%;padding:clamp(12px,3.2vw,15px) clamp(12px,3.4vw,15px) clamp(11px,3vw,13px);border-radius:12px;
-  border:1px solid var(--line);
-  background:linear-gradient(165deg,rgba(18,30,50,.92),rgba(8,14,26,.92));
-  cursor:pointer;text-align:center;color:var(--text);overflow:hidden;
-  transition:transform .18s cubic-bezier(.2,.8,.3,1),box-shadow .22s,border-color .22s;
-}
-/* farbige Lichtkante oben: sofort erkennbar, um welche Art Karte es sich handelt */
-.levelup-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,transparent,rgba(var(--ccRGB),.95),transparent);
-}
-/* weicher Farbschimmer hinter dem Icon */
-.levelup-card::after{
-  content:'';position:absolute;top:-40px;left:50%;transform:translateX(-50%);
-  width:150px;height:110px;border-radius:50%;
-  background:radial-gradient(circle,rgba(var(--ccRGB),.20),transparent 70%);
-  pointer-events:none;
-}
-.levelup-card:hover,.levelup-card:focus-visible{
-  transform:translateY(-5px);border-color:rgba(var(--ccRGB),.7);
-  box-shadow:0 12px 32px rgba(0,0,0,.5), 0 0 30px rgba(var(--ccRGB),.30);
-  outline:none;
-}
-.levelup-card:active{transform:translateY(-1px) scale(.985)}
-.levelup-card .card-icon{
-  position:relative;width:clamp(28px,7vw,34px);height:clamp(28px,7vw,34px);margin:0 auto clamp(7px,2vw,9px);
-  filter:drop-shadow(0 0 10px rgba(var(--ccRGB),.55));
-}
-.levelup-card h3{font-size:var(--fs-md);margin-bottom:4px;font-weight:600;letter-spacing:.02em;line-height:1.2}
-/* min-height nur, wenn nebeneinander gestapelt wird — einspaltig wäre es Leerraum */
-.levelup-card p{font-size:var(--fs-xs);color:var(--muted);line-height:1.35}
-.levelup-card .cap{
-  font-size:10px;margin-top:7px;padding-top:6px;letter-spacing:.06em;text-transform:uppercase;
-  color:rgba(var(--ccRGB),.9);border-top:1px solid rgba(255,255,255,.07);
-}
-/* Je Kartenart eine Leitfarbe — Rand, Icon-Glow, Lichtkante und Fußzeile ziehen sie automatisch */
-.card-damage  { --cc:#ff6b6b; --ccRGB:255,107,107 }
-.card-range   { --cc:#ffd257; --ccRGB:255,210,87 }
-.card-firerate{ --cc:#c77dff; --ccRGB:199,125,255 }
-.card-ability { --cc:#4de0a0; --ccRGB:77,224,160 }
-.card-damage .card-icon,.card-range .card-icon,.card-firerate .card-icon,
-.card-ability .card-icon,.card-unlock .card-icon{color:var(--cc)}
-/* Einmalige Freischaltung: hebt sich bewusst vom Rest ab */
-.card-unlock{
-  --cc:#6ec8ff; --ccRGB:110,200,255;
-  border-color:rgba(110,200,255,.75);
-  background:linear-gradient(165deg,rgba(26,52,84,.95),rgba(8,14,26,.95));
-  box-shadow:0 0 30px rgba(110,200,255,.26);
-}
-.card-unlock .cap{font-weight:700}
-
-/* Balken unter der Karten-Fußzeile: zeigt, wie nah man an der Obergrenze ist */
-.capbar{display:block;height:3px;margin-top:4px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
-.capbar i{display:block;height:100%;background:rgba(var(--rr,110,200,255),.9);border-radius:999px}
-
-/* Seltenheit: Rahmen und Leuchten zeigen den Wert der Karte, das Icon behält seine
-   Kategoriefarbe. So tragen beide Informationen gleichzeitig. */
-.rar-gewoehnlich{ --rr:150,166,190 }
-.rar-gut        { --rr:255,210,87  }
-.rar-selten     { --rr:255,90,90   }
-.rar-mythisch   { --rr:255,140,40  }
-.levelup-card[class*="rar-"]{ border-color:rgba(var(--rr),.75) }
-.levelup-card.rar-gut       { box-shadow:0 0 20px rgba(var(--rr),.18) }
-.levelup-card.rar-selten    { box-shadow:0 0 26px rgba(var(--rr),.26) }
-.levelup-card.rar-mythisch  { box-shadow:0 0 34px rgba(var(--rr),.40) }
-.levelup-card[class*="rar-"]:hover{ box-shadow:0 12px 32px rgba(0,0,0,.5), 0 0 38px rgba(var(--rr),.5) }
-/* Seltenheits-Streifen oben ersetzt die bisherige Kategorie-Lichtkante */
-.levelup-card[class*="rar-"]::before{
-  background:linear-gradient(90deg,transparent,rgba(var(--rr),.95),transparent);
-  height:3px;
-}
-.rar-mythisch::before{ height:4px }
-
-/* Entwicklung: der stärkste Moment im Lauf — bekommt Gold und darf auffallen */
-.card-evo{
-  --cc:#ffd257; --ccRGB:255,210,87;
-  border-color:rgba(255,210,87,.85);
-  background:linear-gradient(165deg,rgba(64,50,16,.95),rgba(14,12,6,.95));
-  box-shadow:0 0 34px rgba(255,210,87,.30);
-}
-.card-evo:hover{box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 46px rgba(255,210,87,.5)}
-.card-evo .cap{font-weight:700}
-@keyframes evoGlow{
-  0%,100%{box-shadow:0 0 30px rgba(255,210,87,.28)}
-  50%    {box-shadow:0 0 46px rgba(255,210,87,.55)}
-}
-.levelup-card.is-evo{animation:evoGlow 1.6s ease-in-out infinite}
-@media(prefers-reduced-motion:reduce){.levelup-card.is-evo{animation:none}}
-
-/* Abzeichen „Neu" / „Entwicklung" — hebt sich klar vom immer vorhandenen Farbring ab */
-.badge-neu,.badge-evo{
-  position:absolute;top:10px;right:10px;z-index:2;
-  font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  padding:4px 9px;border-radius:999px;line-height:1;
-}
-.badge-neu{background:var(--good);color:#04140c;box-shadow:0 0 14px rgba(77,224,160,.7)}
-.badge-evo{background:var(--gold);color:#241a00;box-shadow:0 0 16px rgba(255,210,87,.8)}
-@keyframes badgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
-.badge-neu,.badge-evo{animation:badgePulse 1.3s ease-in-out infinite}
-@media(prefers-reduced-motion:reduce){.badge-neu,.badge-evo{animation:none}}
-#levelup-reroll{margin-top:14px}
-
 /* Pips: gefüllte Kreise = Fähigkeits-Stufe (max 10), direkt an der Karte/Zeile */
 .pips{display:inline-flex;gap:3px;margin-left:8px;vertical-align:middle}
 .pip{width:7px;height:7px;border-radius:50%;background:rgba(120,140,170,.25);display:inline-block}
@@ -385,7 +278,6 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 /* Mobile first: die Grundregeln oben sind die Handy-Fassung. Ab hier nur noch
    Zugaben für größere Schirme — nichts wird zurückgenommen. */
 @media (min-width:601px){
-  .levelup-card p{min-height:30px}       /* gleiche Kartenhöhe, wenn sie nebeneinander stehen */
   .primary,.secondary{width:auto}         /* am PC keine vollbreiten Knöpfe nötig */
   .primary{padding:15px 40px}
   .secondary{padding:12px 26px}
@@ -396,9 +288,6 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
   .overlay{justify-content:flex-start;padding-top:12px}
   .subtitle,.hint{display:none}
   .overlay h1{font-size:clamp(24px,5vw,34px);margin-bottom:6px}
-  #levelup-grid{margin-top:8px}
-  .levelup-card{padding:12px 12px 10px}
-  .levelup-card .card-icon{width:30px;height:30px;margin-bottom:6px}
 }
 
 /* Slot-Kacheln: zeigen auf einen Blick, was belegt ist — statt Listenzeilen zum Durchtippen */
@@ -460,17 +349,17 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .compact-tab{min-height:36px;border:1px solid var(--line);border-radius:5px;background:rgba(10,18,32,.7);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
 .compact-tab.active{border-color:var(--accent);background:rgba(110,200,255,.15);color:#fff}
 #tree-scroll{width:100%;max-width:760px;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 0;text-align:left}
-#tree-branches{position:relative;width:100%;min-height:650px;display:grid;grid-template-columns:repeat(7,minmax(44px,1fr));grid-template-rows:repeat(8,74px);align-items:center;justify-items:center;gap:2px;padding:8px 2px 14px;background:radial-gradient(circle at 50% 4%,rgba(110,200,255,.11),transparent 46%)}
+#tree-branches{position:relative;width:100%;min-height:500px;display:grid;grid-template-columns:repeat(7,minmax(44px,1fr));grid-template-rows:repeat(6,78px);align-items:center;justify-items:center;gap:2px;padding:8px 2px 18px;background:radial-gradient(circle at 50% 4%,rgba(110,200,255,.11),transparent 46%)}
 .orbit-lines{position:absolute;inset:0;width:100%;height:100%;z-index:0;overflow:visible;pointer-events:none}.orbit-lines path{fill:none;stroke-width:2}.orbit-lines .dim{stroke:rgba(96,166,236,.13)}.orbit-lines .open{stroke:rgba(255,210,87,.42);stroke-dasharray:4 4}.orbit-lines .lit{stroke:#4de0a0;filter:drop-shadow(0 0 4px rgba(77,224,160,.8))}
 .orbit-node{position:relative;z-index:1;width:58px;min-width:44px;height:58px;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3px;border:1px solid rgba(96,166,236,.3);border-radius:50%;background:radial-gradient(circle,#172842,#09111f);color:var(--muted);cursor:pointer;box-shadow:0 0 0 3px rgba(5,10,18,.85)}
-.orbit-node .orbit-icon{font-size:19px;line-height:1;font-weight:850}.orbit-node .orbit-label{position:absolute;top:59px;left:50%;width:82px;transform:translateX(-50%);font-size:11px;line-height:1.05;text-align:center;color:#fff;text-shadow:0 2px 3px #02050a;pointer-events:none;opacity:0;transition:opacity .15s}.orbit-node.selected .orbit-label,.orbit-node.root .orbit-label{opacity:1}.rank-badge{position:absolute;right:-4px;top:-4px;min-width:22px;height:18px;padding:0 3px;display:grid;place-items:center;border-radius:9px;background:#111a29;border:1px solid var(--line);font-size:11px;color:#fff}
-.orbit-node.major{border-radius:13px;transform:rotate(45deg)}.orbit-node.major>*{transform:rotate(-45deg)}.orbit-node.major .orbit-label{top:48px;left:48px;transform:translateX(-50%) rotate(-45deg)}
+.orbit-node .orbit-icon{font-size:19px;line-height:1;font-weight:850}.orbit-short{position:absolute;top:39px;left:50%;transform:translateX(-50%);min-width:48px;padding:1px 3px;border-radius:3px;background:#07101d;border:1px solid currentColor;color:inherit;font-size:8px;font-weight:850;line-height:1.1;white-space:nowrap;text-align:center}.orbit-node .orbit-label{position:absolute;top:59px;left:50%;width:82px;transform:translateX(-50%);font-size:11px;line-height:1.05;text-align:center;color:#fff;text-shadow:0 2px 3px #02050a;pointer-events:none;opacity:0;transition:opacity .15s}.orbit-node.selected .orbit-label,.orbit-node.root .orbit-label{opacity:1}.rank-badge{position:absolute;right:-4px;top:-4px;min-width:22px;height:18px;padding:0 3px;display:grid;place-items:center;border-radius:9px;background:#111a29;border:1px solid var(--line);font-size:11px;color:#fff}
+.orbit-node.major{border-radius:13px;transform:rotate(45deg)}.orbit-node.major>*{transform:rotate(-45deg)}.orbit-node.major .orbit-short{top:40px;left:40px}.orbit-node.major .orbit-label{top:48px;left:48px;transform:translateX(-50%) rotate(-45deg)}
 .orbit-node.capstone,.orbit-node.evo{width:64px;height:64px;border-radius:18px}.orbit-node.evo{border-color:rgba(199,125,255,.65);color:#d9b5ff}.orbit-node.root{width:68px;height:68px;border-color:var(--accent);color:#fff;box-shadow:0 0 22px rgba(110,200,255,.35)}
 .orbit-node.locked{opacity:.38}.orbit-node.blocked{opacity:.2;filter:grayscale(1)}.orbit-node.ready{border-color:var(--gold);color:var(--gold);animation:orbitReady 1.7s ease-in-out infinite}.orbit-node.bought{border-color:var(--good);color:var(--good);background:radial-gradient(circle,#174038,#091a1b);box-shadow:0 0 13px rgba(77,224,160,.3),0 0 0 3px rgba(5,10,18,.85)}.orbit-node.selected{outline:2px solid #fff;outline-offset:3px}
 @keyframes orbitReady{50%{box-shadow:0 0 18px rgba(255,210,87,.55),0 0 0 3px rgba(5,10,18,.85)}}
 #tree-detail{width:100%;max-width:760px;min-height:76px;display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:8px;padding:7px 8px;border-top:1px solid var(--line);background:rgba(5,10,18,.96);text-align:left}.detail-icon{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--accent);border-radius:50%;color:var(--accent);font-size:18px}.detail-icon.major{border-radius:9px}.detail-icon.evo,.detail-icon.capstone{border-color:var(--gold);color:var(--gold)}#tree-detail b{display:block;font-size:12px}#tree-detail small{display:block;font-size:11px;line-height:1.2;color:var(--muted);margin-top:2px}#tree-detail em{display:block;font-size:11px;color:var(--gold);font-style:normal;margin-top:2px}#tree-detail button{min-width:88px;min-height:44px;padding:5px 8px;border:1px solid var(--gold);border-radius:5px;background:rgba(255,210,87,.14);color:var(--gold);font-weight:750;font-size:11px}.detail-state{font-size:11px;color:var(--muted)}
 #tree-message{position:absolute;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translate(-50%,12px);max-width:90%;padding:8px 12px;border:1px solid var(--gold);border-radius:6px;background:#11192a;color:#fff;font-size:11px;opacity:0;pointer-events:none;transition:.18s;z-index:2}#tree-message.show{opacity:1;transform:translate(-50%,0)}
-@media(max-width:370px){.orbit-node{width:48px;height:48px}.orbit-node .orbit-label{top:50px;width:62px}.orbit-node.major .orbit-label{top:40px;left:40px}.orbit-node.root{width:56px;height:56px}#tree-branches{grid-template-columns:repeat(7,minmax(42px,1fr))}}
+@media(max-width:370px){.orbit-node{width:48px;height:48px}.orbit-short{top:32px;font-size:7px;min-width:43px}.orbit-node .orbit-label{top:50px;width:62px}.orbit-node.major .orbit-short{top:34px;left:34px}.orbit-node.major .orbit-label{top:40px;left:40px}.orbit-node.root{width:56px;height:56px}#tree-branches{grid-template-columns:repeat(7,minmax(42px,1fr))}}
 
 /* Auswahl-Dialog für einen Slot */
 #pick-liste{width:100%;max-width:520px;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px}
@@ -486,7 +375,3 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .pick-lv{font-size:10px;color:var(--muted);margin-top:4px}
 
 /* Status auf der Level-Up-Karte: sagt, ob die Macht schon wirkt */
-.karte-status{position:absolute;top:10px;left:10px;z-index:2;font-size:9px;font-weight:800;
-  letter-spacing:.09em;text-transform:uppercase;padding:3px 7px;border-radius:999px;line-height:1}
-.karte-status.an{background:rgba(77,224,160,.22);color:var(--good);border:1px solid rgba(77,224,160,.5)}
-.karte-status.aus{background:rgba(150,166,190,.18);color:#b6c3d6;border:1px solid rgba(150,166,190,.4)}

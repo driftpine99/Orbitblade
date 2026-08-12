@@ -63,7 +63,7 @@ Gestaltungsregeln:
   ausgerüsteten Macht oder Mehrfach-/Singularorbit.
 - Mächte bilden die auffälligen Seitenäste. Klinge, Charakter, Fokus und Schutz
   bilden den verbundenen Mittelstamm.
-- Kleine runde Knoten sind sinnvolle Buffs auf dem Weg und besitzen teils 2–3 Ränge.
+- Kleine runde Knoten sind sinnvolle Buffs auf dem Weg und besitzen wenige gebündelte Ränge.
 - Rauten verändern Mechaniken. Große leuchtende Knoten sind Endknoten oder
   Entwicklungen.
 - Eine sichtbare Linienführung zeigt Abhängigkeiten. Gekaufte Wege leuchten grün,
@@ -77,12 +77,13 @@ Gestaltungsregeln:
 Jede ausgerüstete aktive Macht besitzt:
 
 1. sofortige exklusive A/B-Modifikation;
-2. zweistufigen Abklingzeit-Buff;
-3. passendes dreistufiges Passivmodul;
-4. Meisterschaft mit mechanischem Stufe-4-Sprung;
-5. zweistufige Resonanz für Machtschaden;
-6. Vollendung auf Stufe 5;
-7. Entwicklung.
+2. das passende Passivmodul mit bis zu fünf Rängen;
+3. drei Meisterschaftsränge inklusive mechanischem Sprung;
+4. die Entwicklung als klaren Endpunkt.
+
+Die Entwicklung benötigt mindestens Passivrang 3 und volle Meisterschaft. Jeder
+Knoten trägt direkt ein Kurzlabel wie `PASSIV +1`, `MACHT +1` oder
+`ENTWICKLUNG`; die Detailleiste erklärt weiterhin die vollständige Wirkung.
 
 Entwicklungspaare:
 
@@ -95,36 +96,51 @@ Entwicklungspaare:
 ### Mittelstamm
 
 - Mehrfachorbit oder Singularorbit
-- Klingenschliff und Orbitfluss als mehrstufige Wegverstärker
-- pro Charakter zwei exklusive Routen mit Folgeknoten
-- Fokuskern und Resonanzpanzer
-- charakterabhängige Endknoten und die `Orbitkrone` als Klingenabschluss
+- ein vierstufiger Klingenkern statt zweier ähnlicher Prozentleiter
+- pro Charakter zwei exklusive Routen und je ein echter Endknoten
+- eine dreistufige Kernresonanz für Leben, Barriere und Fokus
+- die `Orbitkrone` als Klingenabschluss
 
-Mit einem Aktiv-Slot existieren etwa 32, mit zwei Slots etwa 38 sinnvoll ausgebbare
-Punkte. Ein Weg benötigt jeweils nur Rang 1 eines Buffs; weitere Ränge sind freiwillige
-Spezialisierung. Dadurch bleibt der Baum bis Welle 30 unvollständig, ohne Sackgasse.
+Mit einem Aktiv-Slot existieren 29, mit zwei Slots 32 sinnvoll ausgebbare Punkte
+(gegenseitig ausgeschlossene Alternativen bereits abgezogen).
+Dadurch bleibt der Baum bis Welle 30 planbar, aber nicht automatisch vollständig.
+
+## Umgesetzter Stand vom 12.08.2026
+
+- Orbitbaum auf wenige verständliche Pfade reduziert; Kurzwerte sind ohne Öffnen der
+  Detailansicht direkt am Knoten sichtbar.
+- Level und XP stehen im XP-Balken. Fokus zeigt jederzeit Wert/Ziel und bei voller
+  Ladung `FOKUS BEREIT`.
+- Laufkurve vorsichtig gestrafft: Gegnerzahl ungefähr 10 % reduziert, Spawnintervall
+  700 → 580 ms, Boss-Basisleben 1250 → 1150. XP wurde um 10 % angehoben, damit die
+  Zahl der Orbitpunkte stabil bleibt. Die Zielkorridore müssen per Spieltest bestätigt
+  werden: Entdecker 15–18, Standard 19–23, Meister 23–27 Minuten.
+- Soundprofil neu aufgebaut: helle gefilterte Klingen-Sweeps, tiefe Orbitimpulse und
+  kurze räumliche Rauschfahnen statt überwiegend rechteckiger Arcade-Töne.
+- Das ungenutzte Karten-Level-up einschließlich Overlay, Tauschkaskaden und CSS wurde
+  entfernt. Level-ups vergeben nur noch Orbitpunkte.
+- Speicherversion 7 entfernt das doppelte Feld `charakter`; alte Werte werden
+  verlustfrei nach `figur` übernommen.
+- Offensichtliche Canvas-Last reduziert: Im Effekt-Sparmodus werden die teuren
+  Gegner-Aura-Gradienten tatsächlich nicht mehr erzeugt; Zeitwerte werden pro Frame
+  wiederverwendet.
+- Monetarisierung wurde ausdrücklich nicht bearbeitet.
 
 ## Nächste Arbeitsreihenfolge
 
-1. Orbitbaum auf Handy und Desktop spielerisch testen und nach Feedback korrigieren.
-2. Laufdauer und Balance abstimmen; Zielkorridore: Entdecker 15–18, Standard 19–23,
-   Meister 23–27 Minuten.
-3. Sounddesign auf Orbit, Weltraum und Energieklinge umstellen.
-4. Altlasten entfernen: ungenutzter Karten-Code und `charakter`/`figur`.
-5. Gesamte neue Version plausibilisieren.
-6. Danach Performancevergleich auf Pixel 9 und X1 Carbon.
-7. Monetarisierung erst behandeln, wenn Kernschleife und Wiederspielwert tragen.
+1. Änderungen über GitHub Pages auf Pixel 9 und X1 Carbon praktisch testen.
+2. Laufzeiten je Hilfe, erreichte Level/Orbitpunkte und subjektive Klarheit notieren.
+3. Erst danach Zahlen feinbalancieren oder weitere Performancearbeit beginnen.
+4. Monetarisierung erst behandeln, wenn Kernschleife und Wiederspielwert tragen.
 
 Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 Änderungen genügen derzeit proportionale Checks: mindestens
-`node --check konzept/game.js`, lokaler Serverstart und betroffene Klickwege.
+`node --check konzept/game.js` und betroffene Klickwege über GitHub Pages.
 
 ## Bekannte Baustellen
 
 - Orbitbaum-Zahlen, A/B-Modifikationen und Entwicklungen sind noch nicht feinbalanciert.
-- Die Browserumgebung des Coding-Agenten kann den lokalen Windows-Server nicht direkt
-  erreichen; echte Klick- und Layouttests erfolgen deshalb durch den Nutzer.
-- Der alte Karten-Code ist ungenutzt, aber noch vorhanden.
+- Echte Klick- und Layouttests erfolgen über GitHub Pages durch den Nutzer.
 - Gerätemessung der Performance ist auf den neuen Gesamtstand verschoben.
 
 ## Arbeitsregeln
