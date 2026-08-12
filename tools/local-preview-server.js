@@ -10,9 +10,9 @@ const port = Number(process.argv[2]) || 8765;
 
 http.createServer((req, res) => {
   const clean = decodeURIComponent((req.url || '/').split('?')[0]);
-  const relative = clean === '/' ? 'konzept/index.html' : clean.replace(/^\/+/, '');
+  const relative = clean === '/' ? 'index.html' : clean.replace(/^\/+/, '');
   let file = path.resolve(root, relative);
-  if (clean.endsWith('/')) file = path.join(file, 'index.html');
+  if (clean !== '/' && clean.endsWith('/')) file = path.join(file, 'index.html');
   if (!file.startsWith(root + path.sep)) { res.writeHead(403); return res.end('Forbidden'); }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); return res.end('Not found'); }
