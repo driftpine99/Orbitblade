@@ -333,6 +333,8 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .compact-overlay #startmaechte-scroll,.compact-overlay #progress-scroll,.compact-overlay #metashop-scroll{flex:1;min-height:0;max-height:none;width:100%;max-width:760px;overflow-y:auto;padding:7px 2px}
 .prepare-panel,.collection-panel{display:none}.prepare-panel.active,.collection-panel.active{display:block}
 #charakter-wahl{grid-template-columns:repeat(2,minmax(0,1fr))}.prepare-panel .wahl-karte{padding:8px;min-height:64px}.prepare-panel .wahl-karte h3{font-size:12px}.prepare-panel .wahl-fuer{font-size:11px}
+#charakter-wahl .wahl-karte{position:relative;min-height:82px;padding-left:78px}
+.wahl-portrait{position:absolute;left:1px;top:7px;width:76px;height:64px;pointer-events:none}
 #charakter-detail{margin-top:8px;padding:9px;border:1px solid var(--line);border-radius:7px;background:rgba(10,18,32,.55)}#charakter-detail h3{font-size:13px;margin-bottom:4px}
 #hilfe-wahl{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#hilfe-wahl .wahl-karte{padding:7px;min-width:0}#hilfe-wahl .wahl-werte{display:grid}#hilfe-wahl .wahl-fuer{display:none}
 .compact-overlay .slot-reihe{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.compact-overlay .slot-kachel{padding:8px;min-height:82px}

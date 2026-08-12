@@ -969,6 +969,82 @@ function zeichneKonstrukt(g, lean, farbe, kern, blur){
   g.translate(0, -schweb);
 }
 
+/* Neue Charakter-Silhouetten aus dem v5-Zielkonzept. Die alten Zeichenfunktionen
+   bleiben vorerst als sichere Rueckfallebene im Quelltext; alle aktiven Aufrufe nutzen
+   diese kompakteren, staerker unterscheidbaren Canvas-Figuren. */
+function zeichneLichthueterNeu(g, moving, lean, bobPhase, farbe, blur){
+  const bl=blur||(v=>{g.shadowBlur=v;}), t=Date.now();
+  const stride=moving?Math.sin(bobPhase)*3.2:0;
+  g.lineJoin='round';
+  // Beine und geteilter, lichtdurchlaessiger Mantel.
+  g.fillStyle='#c7d2df';
+  g.beginPath(); g.roundRect(-7+stride*.5,7,5.5,10,2.5); g.fill();
+  g.beginPath(); g.roundRect(1.5-stride*.5,7,5.5,10,2.5); g.fill();
+  g.fillStyle='rgba(92,190,255,.22)';
+  for(const s of [-1,1]){
+    g.beginPath(); g.moveTo(s*7,-5); g.quadraticCurveTo(s*(18+lean*.25),6,s*(13+lean),18);
+    g.lineTo(s*(4+lean*.35),11); g.lineTo(s*3,-3); g.closePath(); g.fill();
+  }
+  // Goldener Schutzhalo als sofort lesbares Merkmal des Hueters.
+  g.save(); g.strokeStyle='rgba(229,185,91,.75)'; g.lineWidth=1.8;
+  g.shadowColor='#e5b95b'; bl(6); g.globalAlpha=.82+Math.sin(t/650)*.08;
+  g.beginPath(); g.arc(0,-14,11.8,0,Math.PI*2); g.stroke();
+  for(let i=0;i<4;i++){
+    const a=Math.PI/4+i*Math.PI/2;
+    g.beginPath(); g.moveTo(Math.cos(a)*10,-14+Math.sin(a)*10); g.lineTo(Math.cos(a)*14,-14+Math.sin(a)*14); g.stroke();
+  }
+  g.restore(); bl(0);
+  // Weiss-goldener, spitz zulaufender Brustpanzer.
+  g.strokeStyle='#d9b45c'; g.lineWidth=1.15; g.fillStyle='#edf3f8';
+  g.beginPath(); g.moveTo(-9,-8); g.lineTo(-11,1); g.lineTo(0,11); g.lineTo(11,1); g.lineTo(9,-8); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#c7d2df'; g.beginPath(); g.moveTo(-7,-6); g.lineTo(0,6); g.lineTo(7,-6); g.lineTo(0,-1); g.closePath(); g.fill();
+  const pul=.55+.45*Math.sin(t/380);
+  g.save(); g.shadowColor=farbe; bl(10*pul); g.fillStyle=farbe;
+  g.beginPath(); g.arc(0,-1.5,2.5,0,Math.PI*2); g.fill(); g.restore(); bl(0);
+  // Breite Schulterplatten.
+  g.fillStyle='#f6f8fb';
+  for(const s of [-1,1]){
+    g.beginPath(); g.moveTo(s*7,-7); g.lineTo(s*15,-5); g.lineTo(s*12,1); g.lineTo(s*7,-1); g.closePath(); g.fill(); g.stroke();
+  }
+  // Geschlossener Helm mit Krone und cyanfarbenem Visier.
+  g.fillStyle='#eef3f8'; g.beginPath();
+  g.moveTo(0,-24); g.lineTo(7,-19); g.lineTo(6,-11); g.lineTo(0,-7); g.lineTo(-6,-11); g.lineTo(-7,-19); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#d9b45c'; g.beginPath(); g.moveTo(0,-26); g.lineTo(2,-21); g.lineTo(0,-18); g.lineTo(-2,-21); g.closePath(); g.fill();
+  g.save(); g.shadowColor=farbe; bl(7); g.fillStyle=farbe;
+  g.beginPath(); g.moveTo(-4.8,-17); g.lineTo(0,-14.5); g.lineTo(4.8,-17); g.lineTo(4.2,-14.5); g.lineTo(0,-12.6); g.lineTo(-4.2,-14.5); g.closePath(); g.fill(); g.restore(); bl(0);
+}
+
+function zeichneLeerenklingeNeu(g, lean, farbe, kern, blur){
+  const bl=blur||(v=>{g.shadowBlur=v;}), t=Date.now();
+  const schweb=Math.sin(t/520)*1.9, leere='#a855f7', leereHell='#e9d5ff';
+  g.translate(0,schweb); g.lineJoin='round';
+  // Instabiles Portal statt technischer Triebwerksglut.
+  g.save(); g.globalAlpha=.62; g.strokeStyle=leere; g.lineWidth=2; g.shadowColor=leere; bl(12);
+  g.beginPath(); g.ellipse(0,14,9,3.3,0,0,Math.PI*2); g.stroke(); g.restore(); bl(0);
+  g.strokeStyle='rgba(216,180,254,.52)'; g.lineWidth=1;
+  // Schwarze Energiefinnen reagieren sichtbar auf Bewegung.
+  for(const s of [-1,1]){
+    const flap=Math.sin(t/260+s)*2;
+    g.fillStyle='#171022'; g.beginPath();
+    g.moveTo(s*6,-7); g.lineTo(s*(19+Math.abs(lean)*.2),-11+flap); g.lineTo(s*13,-2); g.lineTo(s*18,7-flap); g.lineTo(s*6,4); g.closePath(); g.fill(); g.stroke();
+    g.save(); g.strokeStyle=leere; g.shadowColor=leere; bl(7); g.globalAlpha=.75;
+    g.beginPath(); g.moveTo(s*7,-5); g.lineTo(s*16,-8+flap); g.moveTo(s*8,2); g.lineTo(s*16,5-flap); g.stroke(); g.restore(); bl(0);
+  }
+  // Geschichteter schwarzer Panzer mit violetten Rissen.
+  g.fillStyle='#100d17'; g.beginPath();
+  g.moveTo(0,-20); g.lineTo(8,-11); g.lineTo(10,3); g.lineTo(0,13); g.lineTo(-10,3); g.lineTo(-8,-11); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#252033'; g.beginPath(); g.moveTo(0,-15); g.lineTo(6,-8); g.lineTo(5,4); g.lineTo(0,8); g.lineTo(-5,4); g.lineTo(-6,-8); g.closePath(); g.fill();
+  g.save(); g.strokeStyle=leere; g.shadowColor=leere; bl(9); g.lineWidth=1.5;
+  g.beginPath(); g.moveTo(-5,3); g.lineTo(0,8); g.lineTo(5,3); g.moveTo(0,-13); g.lineTo(0,-8); g.stroke();
+  g.fillStyle=leere; g.beginPath(); g.ellipse(lean*.15,-5,4.8,2.8,0,0,Math.PI*2); g.fill();
+  bl(3); g.fillStyle=leereHell; g.beginPath(); g.ellipse(lean*.15,-5,1.4,2,0,0,Math.PI*2); g.fill(); g.restore(); bl(0);
+  // Hornplatten unterscheiden den Umriss auch ohne Farbe.
+  g.fillStyle='#171220';
+  g.beginPath(); g.moveTo(-5,-16); g.lineTo(-10,-24); g.lineTo(-2,-19); g.closePath(); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(5,-16); g.lineTo(10,-24); g.lineTo(2,-19); g.closePath(); g.fill(); g.stroke();
+  g.translate(0,-schweb);
+}
+
 /* Die Klinge zeichnet sich selbst — auf das Spielfeld oder auf eine Vorschau-Leinwand.
    `blur` ist der Setzer für das Leuchten: im Spiel sb(), das die Sparmodi kennt,
    in der Vorschau ein einfaches Setzen. Ursprung ist der Griff, +x zeigt zur Spitze. */
@@ -1703,6 +1779,15 @@ function renderCharakterWahl(){
     b.innerHTML=`<div class="wahl-kopf"><h3>${f.name}</h3>
         ${frei? (save.figur===id?'<span class="wahl-marke">gewählt</span>':'') : '<span class="wahl-marke aus">🔒 ab Welle '+(skinReqWave(id,'figur')||'?')+'</span>'}</div>
       <p class="wahl-fuer">${f.desc}</p>`;
+    const farbe=currentSkin();
+    const portrait=vorschauLeinwand(76,64,g=>{
+      g.translate(0,5); g.scale(1.12,1.12);
+      const c1=frei?farbe.blade:'#63708a', c2=frei?farbe.core:'#9aa6bb';
+      if(id==='konstrukt') zeichneLeerenklingeNeu(g,0,c1,c2);
+      else zeichneLichthueterNeu(g,false,0,0,c1);
+    });
+    portrait.className='wahl-portrait';
+    b.prepend(portrait);
     if(frei) b.onclick=()=>{ save.figur=id; persist(); if(sfx) sfx('pick'); renderCharakterWahl(); };
     box.appendChild(b);
   }
@@ -1958,8 +2043,8 @@ function renderProgress(){
       const bild=vorschauLeinwand(72, 58, g=>{
         g.translate(0, 4);
         const c1=avail? farbe.blade : '#63708a', c2=avail? farbe.core : '#9aa6bb';
-        if(id==='konstrukt') zeichneKonstrukt(g, 0, c1, c2);
-        else zeichneHeld(g, false, 0, 0, c1);
+        if(id==='konstrukt') zeichneLeerenklingeNeu(g, 0, c1, c2);
+        else zeichneLichthueterNeu(g, false, 0, 0, c1);
       });
       cell.appendChild(bild);
       const txt=document.createElement('div');
@@ -3778,8 +3863,8 @@ function draw(){
   }
   const lean = moving ? moveVec.x*7 : 0;
   // Figur — welche gezeichnet wird, kommt aus der Sammlung
-  if(schwebt) zeichneKonstrukt(ctx, lean, KLINGE, KLINGE_KERN, sb);
-  else zeichneHeld(ctx, moving, lean, player.bobPhase||0, KLINGE, sb);
+  if(schwebt) zeichneLeerenklingeNeu(ctx, lean, KLINGE, KLINGE_KERN, sb);
+  else zeichneLichthueterNeu(ctx, moving, lean, player.bobPhase||0, KLINGE, sb);
   // Plasmaklinge(n) – rotieren permanent, Form kommt aus der Sammlung
   for(const a of angles){
     ctx.save(); ctx.rotate(a);

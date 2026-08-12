@@ -143,6 +143,14 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 - Echte Klick- und Layouttests erfolgen über GitHub Pages durch den Nutzer.
 - Gerätemessung der Performance ist auf den neuen Gesamtstand verschoben.
 
+## Charakterdarstellung vom 12.08.2026
+
+- Lichthüter und Leerenklinge verwenden neue prozedurale Canvas-Silhouetten auf Basis
+  des v5-Zielkonzepts: weiß-goldener Schutzhalo gegen schwarzen, violetten Leerenpanzer.
+- Dieselben Zeichenfunktionen laufen im Spiel, in der Charakterwahl und in der Sammlung;
+  es werden keine zusätzlichen Bilddateien oder Animationen geladen.
+- Die Änderung ist rein visuell und verändert keine Charakterwerte oder Fähigkeiten.
+
 ## Arbeitsregeln
 
 - Vor Änderungen `git status --short` prüfen und fremde Änderungen erhalten.
