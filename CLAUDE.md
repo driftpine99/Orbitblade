@@ -321,7 +321,26 @@ kann ihren vollständigen Laufpfad spielen.
   Zahl der Orbitpunkte stabil bleibt. Die Zielkorridore müssen per Spieltest bestätigt
   werden: Entdecker 15–18, Standard 19–23, Meister 23–27 Minuten.
 - Soundprofil neu aufgebaut: helle gefilterte Klingen-Sweeps, tiefe Orbitimpulse und
-  kurze räumliche Rauschfahnen statt überwiegend rechteckiger Arcade-Töne.
+  kurze räumliche Rauschfahnen statt überwiegend rechteckiger Arcade-Töne. Dazu
+  laufen ein sehr leises prozedurales Space-Bett und eine sparsame Tonfolge. Schüsse,
+  Klingentreffer, Sweet Spot, Panzerung, Bossdrohnen und Baumkäufe haben unterscheidbare,
+  gedrosselte Effekte; ein wiederverwendeter Rauschpuffer vermeidet Audio-Allokationen
+  bei jedem Treffer.
+- Das versionierte Erstspiel-Tutorial erklärt nach der Bewegung nun sichtbar den
+  automatischen 360-Grad-Orbitschaden und den Sweet Spot als Extraschaden. Der
+  Sweet-Spot-Hinweis reagiert bevorzugt auf einen echten Treffer, hat aber einen
+  zeitgesteuerten Ersatz, damit kein Einsteiger festhängt. Bestehende Speicherstände
+  sehen diese neue Erklärung genau einmal.
+- Frühe Orbitkäufe werden beim Kauf am Spieler inszeniert und beim Schließen benannt.
+  Partnerfähigkeiten erhalten bereits auf Rang 2/3 klare Mechaniksprünge; die
+  Machtmeisterschaft fügt je nach Hauptmacht unter anderem Haftladung, Stasefeld,
+  Wirbel-Nachlauf, Entladungsmarke, Gravitationskern oder Nova-Salven hinzu.
+- Der Boss-Rammbock ist langsamer und kürzer, verursacht 65 statt 80 Prozent seines
+  Kontaktschadens und besitzt danach eine kurze Erholungsphase. Während der Ramme kann
+  nicht zusätzlich normaler Kontaktschaden ausgelöst werden.
+- Vom Boss beschworene Drohnen geben keine XP, Fragmente, Heilung oder Kill-Fortschritt
+  mehr. Ihr Abschuss verursacht stattdessen 1,8 Prozent Boss-Maximalleben als sichtbaren
+  Rückschlag; Aufräumen bleibt damit nützlich, Endlos-Farming nicht.
 - Das ungenutzte Karten-Level-up einschließlich Overlay, Tauschkaskaden und CSS wurde
   entfernt. Level-ups vergeben nur noch Orbitpunkte.
 - Speicherversion 8 migriert den alten fünfstufigen Begleiter in fünf sichtbare Projekte
@@ -350,6 +369,10 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 ## Bekannte Baustellen
 
 - Wirkungszahlen der neuen Mechaniken sind Startwerte für die spätere Balancingrunde.
+- Lautstärke, Klangfarbe und Ereignisdichte des neuen Space-Audios müssen auf Pixel 9
+  und X1 Carbon mit Lautsprechern sowie Kopfhörern subjektiv getestet werden.
+- Rammbockschaden, 550-ms-Erholung und 1,8-Prozent-Drohnenrückschlag sind bewusst
+  vorsichtige Startwerte und brauchen mindestens einen echten Boss-Test.
 - Die XP-Kurve wurde rechnerisch von 28–29 auf ungefähr 15 reguläre Punkte umgestellt
   (`xpBase 1000`, `xpPerLevel 300`), ist aber noch nicht in einem vollständigen Lauf
   bestätigt. Der erste Browser-Smoke-Test der Zwischenkurve war zu schnell und führte
