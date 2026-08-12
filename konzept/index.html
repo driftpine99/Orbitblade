@@ -129,26 +129,18 @@
   </div>
 
   <!-- Startmächte: mit welchen aktiven Mächten jeder Lauf beginnt -->
-  <div id="overlay-startmaechte" class="overlay hidden">
-    <h2>Vor dem Lauf</h2>
-    <p class="subtitle">Charakter, Hilfe und Startmächte</p>
+  <div id="overlay-startmaechte" class="overlay compact-overlay hidden">
+    <header class="compact-head"><button id="startmaechte-back" class="icon-back" aria-label="Zurück">‹</button><h2>Vorbereitung</h2><span></span></header>
+    <nav id="prepare-tabs" class="compact-tabs">
+      <button class="compact-tab active" data-prepare="charakter">Charakter</button>
+      <button class="compact-tab" data-prepare="hilfe">Hilfe</button>
+      <button class="compact-tab" data-prepare="maechte">Mächte</button>
+    </nav>
     <div id="startmaechte-scroll">
-      <h3 class="sec-title">Charakter</h3>
-      <p class="sec-hinweis">Verändert Werte und bringt eine eigene Besonderheit mit.</p>
-      <div id="charakter-wahl"></div>
-
-      <h3 class="sec-title">Hilfe</h3>
-      <p class="sec-hinweis">Dasselbe Spiel, nur mit mehr oder weniger Rückenwind.
-      <b>Hilfen sperren nichts</b> — Freischaltungen, Abzeichen und der Sieg zählen auf
-      jeder Stufe. Nur die Bestmarke wird getrennt geführt.</p>
-      <div id="hilfe-wahl"></div>
-
-      <h3 class="sec-title">Startmächte</h3>
-      <p class="sec-hinweis">Tippe einen Slot an. Im Lauf stärkst du diese Mächte,
-      Passives und Entwicklungen über den <b>Skill-Tree</b>.</p>
-      <div id="startmaechte-slots" class="slot-reihe"></div>
+      <section class="prepare-panel active" data-prepare-panel="charakter"><div id="charakter-wahl"></div><div id="charakter-detail"></div></section>
+      <section class="prepare-panel" data-prepare-panel="hilfe"><p class="sec-hinweis">Hilfen sperren nichts. Bestmarken werden getrennt geführt.</p><div id="hilfe-wahl"></div></section>
+      <section class="prepare-panel" data-prepare-panel="maechte"><p class="sec-hinweis">Diese aktiven Mächte bleiben für den gesamten Lauf fest.</p><div id="startmaechte-slots" class="slot-reihe"></div></section>
     </div>
-    <button id="startmaechte-back" class="primary">Zurück</button>
   </div>
 
   <!-- Auswahl für einen Slot: öffnet sich beim Antippen eines Slots -->
@@ -168,15 +160,17 @@
   </div>
 
   <!-- Laufgebundener Skill-Tree: Punkte werden nur freiwillig zwischen Kämpfen verteilt. -->
-  <div id="overlay-tree" class="overlay hidden">
-    <h2>Skill-Tree</h2>
-    <p class="subtitle" id="tree-punkte">0 Punkte verfügbar</p>
+  <div id="overlay-tree" class="overlay compact-overlay hidden">
+    <header class="compact-head">
+      <button id="tree-back" class="icon-back" aria-label="Weiterkämpfen">‹</button>
+      <h2>Skill-Tree</h2>
+      <strong id="tree-punkte">0 Punkte</strong>
+    </header>
+    <nav id="tree-tabs" class="compact-tabs" aria-label="Skill-Tree-Bereiche"></nav>
     <div id="tree-scroll">
-      <p class="codex-hinweis">Jeder Aufstieg gibt einen Punkt. Knoten brauchen ihre
-        Verbindung davor – wähle deinen Weg bewusst.</p>
       <div id="tree-branches"></div>
     </div>
-    <button id="tree-back" class="primary">Weiterkämpfen</button>
+    <div id="tree-message" role="status"></div>
   </div>
 
   <!-- Game Over -->
@@ -197,18 +191,17 @@
   </div>
 
   <!-- Werkstatt: dauerhafte Verbesserungen nach dem Lauf, bezahlt mit Fragmenten -->
-  <div id="overlay-metashop" class="overlay hidden">
-    <h2>Werkstatt</h2>
+  <div id="overlay-metashop" class="overlay compact-overlay hidden">
+    <header class="compact-head"><button id="metashop-back" class="icon-back" aria-label="Zurück">‹</button><h2>Hangar</h2><span></span></header>
+    <nav class="compact-tabs hangar-tabs"><button class="compact-tab active">Werkstatt</button><button id="workshop-collection-tab" class="compact-tab">Sammlung</button></nav>
     <div class="guthaben">
       <span class="guthaben-sym">◆</span>
       <span class="guthaben-zahl" id="metashop-stars">0</span>
       <span class="guthaben-label">Fragmente</span>
     </div>
-    <p class="subtitle">Dauerhafte Freischaltungen, keine Pflichtwerte</p>
     <div id="metashop-scroll">
       <div id="metashop-grid"></div>
     </div>
-    <button id="metashop-back" class="primary">Zurück</button>
   </div>
 
   <!-- Hangar bündelt alles zwischen den Läufen, damit der Start sofort beim Spielen bleibt. -->
@@ -250,8 +243,7 @@
         <p><b>Aktive Mächte</b> löst du selbst über die runden Knöpfe aus (die Seite
         stellst du in den Einstellungen ein). Du trägst eine, eine zweite kannst du in
         der Werkstatt freischalten. Womit du <b>startest</b>, wählst du im Hauptmenü
-        unter „Vorbereitung" — das bleibt dann so. Mitten im Lauf umrüsten geht über
-        Pause → „Mächte &amp; Ausrüstung".</p>
+        unter „Vorbereitung" — das bleibt dann für den gesamten Lauf so.</p>
         <p>Welche aktiven Mächte du hast, steht mit dem Start <b>fest</b> — im Lauf
         wechselst du sie nicht mehr. Im Tree kannst du sie bis Stufe 5 ausbauen.</p>
         <p><b>Passive Mächte</b> wirken von allein. Du aktivierst und stärkst sie im Tree;
@@ -292,25 +284,21 @@
   </div>
 
   <!-- Fortschritt / Sammlung -->
-  <div id="overlay-progress" class="overlay hidden">
-    <h2>Sammlung</h2>
+  <div id="overlay-progress" class="overlay compact-overlay hidden">
+    <header class="compact-head"><button id="progress-back" class="icon-back" aria-label="Zurück">‹</button><h2>Hangar</h2><span></span></header>
+    <nav id="collection-tabs" class="compact-tabs">
+      <button id="collection-workshop-tab" class="compact-tab">Werkstatt</button>
+      <button class="compact-tab active" data-collection="rekorde">Rekorde</button>
+      <button class="compact-tab" data-collection="klinge">Klinge</button>
+      <button class="compact-tab" data-collection="charaktere">Charaktere</button>
+      <button class="compact-tab" data-collection="abzeichen">Abzeichen</button>
+    </nav>
     <div id="progress-scroll">
-      <h3 class="sec-title">Bestmarken</h3>
-      <div id="best-grid"></div>
-      <h3 class="sec-title">Klingenfarbe</h3>
-      <div id="skin-grid"></div>
-      <h3 class="sec-title">Klingenform</h3>
-      <p class="sec-hinweis">Form und Farbe lassen sich frei kombinieren. Rein optisch —
-      Reichweite und Schaden ändern sich nicht.</p>
-      <div id="form-grid"></div>
-      <h3 class="sec-title">Charaktere</h3>
-      <p class="sec-hinweis">Nicht mehr nur Optik — jeder Charakter hat eigene Werte und eine
-      Besonderheit. Die Werte siehst du bei <b>„Vor dem Lauf"</b> im Hauptmenü.</p>
-      <div id="figur-grid"></div>
-      <h3 class="sec-title">Abzeichen</h3>
-      <div id="badge-grid"></div>
+      <section class="collection-panel active" data-collection-panel="rekorde"><div id="best-grid"></div></section>
+      <section class="collection-panel" data-collection-panel="klinge"><p class="sec-hinweis">Form und Farbe sind rein optisch und frei kombinierbar.</p><div id="skin-grid"></div><div id="form-grid"></div></section>
+      <section class="collection-panel" data-collection-panel="charaktere"><div id="figur-grid"></div></section>
+      <section class="collection-panel" data-collection-panel="abzeichen"><div id="badge-grid"></div></section>
     </div>
-    <button id="progress-back" class="primary">Zurück</button>
   </div>
 </div>
 <script src="game.js"></script>

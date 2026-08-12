@@ -441,20 +441,41 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 /* Startmächte-Vorwahl */
 #startmaechte-scroll{width:100%;max-width:520px;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px;text-align:left}
 #startmaechte-slots{margin-top:12px}
+.compact-overlay #startmaechte-scroll,.compact-overlay #progress-scroll,.compact-overlay #metashop-scroll{flex:1;min-height:0;max-height:none;width:100%;max-width:760px;overflow-y:auto;padding:7px 2px}
+.prepare-panel,.collection-panel{display:none}.prepare-panel.active,.collection-panel.active{display:block}
+#charakter-wahl{grid-template-columns:repeat(2,minmax(0,1fr))}.prepare-panel .wahl-karte{padding:8px;min-height:64px}.prepare-panel .wahl-karte h3{font-size:12px}.prepare-panel .wahl-fuer{font-size:11px}
+#charakter-detail{margin-top:8px;padding:9px;border:1px solid var(--line);border-radius:7px;background:rgba(10,18,32,.55)}#charakter-detail h3{font-size:13px;margin-bottom:4px}
+#hilfe-wahl{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#hilfe-wahl .wahl-karte{padding:7px;min-width:0}#hilfe-wahl .wahl-werte{display:grid}#hilfe-wahl .wahl-fuer{display:none}
+.compact-overlay .slot-reihe{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.compact-overlay .slot-kachel{padding:8px;min-height:82px}
+.hangar-tabs{grid-template-columns:1fr 1fr;grid-auto-flow:row}.guthaben{margin:6px 0!important}.compact-overlay #metashop-grid{display:flex;flex-direction:column;gap:7px;margin:0;width:100%;max-width:none}
+.compact-overlay .shop-card{display:grid;grid-template-columns:minmax(120px,1fr) minmax(120px,2fr) 76px;align-items:center;gap:8px;padding:8px 9px}.compact-overlay .shop-head{margin:0}.compact-overlay .shop-card p{margin:0;font-size:11px}.compact-overlay .shop-card .lv{display:none}.compact-overlay .shop-card button{grid-column:3;grid-row:1;margin:0;min-height:44px}.compact-overlay .shop-card .meta-bar{grid-column:1/3;margin:0;height:3px}
+#collection-tabs{grid-auto-columns:minmax(68px,1fr);overflow-x:auto}.collection-panel #skin-grid,.collection-panel #form-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:8px}.collection-panel .skin-cell,.collection-panel .kosm-cell{padding:7px 4px;min-height:64px}.collection-panel .kosm-desc{display:none}.collection-panel #badge-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.collection-panel .badge-cell{padding:7px 4px}.collection-panel .badge-desc{display:none}
 
-/* Skill-Tree: drei feste Pfade, mobil lesbar statt einer winzigen Zoombox. */
-#tree-scroll{width:100%;max-width:720px;max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px;text-align:left}
-#tree-branches{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,205px),1fr));gap:12px;margin:14px 0 4px}
-.tree-branch{border:1px solid var(--line);border-radius:10px;background:rgba(6,13,25,.66);padding:10px}
-.tree-branch h3{font-size:var(--fs-sm);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:2px 2px 9px}
-.tree-node{position:relative;display:block;width:100%;min-height:76px;margin-top:8px;padding:10px 10px 9px 42px;text-align:left;border:1px solid rgba(96,166,236,.24);border-radius:7px;background:rgba(13,25,44,.66);color:var(--text);cursor:pointer}
-.tree-node::before{content:'';position:absolute;left:19px;top:-9px;width:2px;height:9px;background:rgba(96,166,236,.30)}
-.tree-node:first-of-type::before{display:none}.tree-node .tree-dot{position:absolute;left:10px;top:13px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#16243a;border:1px solid rgba(96,166,236,.45);font-size:11px;color:var(--muted)}
-.tree-node h4{font-size:var(--fs-sm);font-weight:700;margin-bottom:3px}.tree-node p{font-size:var(--fs-xs);line-height:1.35;color:var(--muted)}
-.tree-node .tree-req{display:block;margin-top:5px;font-size:10px;color:#f0bd71}.tree-node.ready{border-color:rgba(255,210,87,.75);box-shadow:0 0 15px rgba(255,210,87,.12)}
-.tree-node.ready .tree-dot{background:#3b3216;border-color:var(--gold);color:var(--gold)}
+/* Kompakte Overlays: Kopf und Tabs bleiben stehen, nur der Inhalt scrollt. */
+.compact-overlay{justify-content:flex-start;padding:env(safe-area-inset-top) 8px env(safe-area-inset-bottom);overflow:hidden}
+.compact-head{width:100%;max-width:760px;min-height:48px;display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:6px;border-bottom:1px solid var(--line)}
+.compact-head h2{font-size:15px;margin:0;text-align:left}.compact-head strong{font-size:12px;color:var(--gold);padding-right:6px;white-space:nowrap}
+.icon-back{width:44px;height:44px;border:0;background:transparent;color:var(--text);font-size:32px;cursor:pointer}
+.compact-tabs{width:100%;max-width:760px;height:40px;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px 0}
+.compact-tab{min-height:36px;border:1px solid var(--line);border-radius:5px;background:rgba(10,18,32,.7);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer}
+.compact-tab.active{border-color:var(--accent);background:rgba(110,200,255,.15);color:#fff}
+#tree-scroll{width:100%;max-width:760px;flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 0;text-align:left}
+#tree-branches{width:100%}.tree-branch{padding:0 2px 8px}
+.tree-tier{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:8px;padding-top:7px}
+.tree-tier::before{content:'';position:absolute;top:0;left:15%;right:15%;height:1px;background:rgba(96,166,236,.25)}
+.tree-tier:first-child::before{display:none}.tree-tier:has(> :only-child){grid-template-columns:minmax(0,1fr)}
+.tree-node{position:relative;display:flex;align-items:center;gap:7px;width:100%;min-height:54px;padding:5px 7px;text-align:left;border:1px solid rgba(96,166,236,.24);border-radius:6px;background:rgba(13,25,44,.78);color:var(--text);cursor:pointer;overflow:hidden}
+.tree-dot{width:24px;height:24px;flex:none;border-radius:50%;display:grid;place-items:center;background:#16243a;border:1px solid rgba(96,166,236,.45);font-size:11px;color:var(--muted)}
+.tree-copy{min-width:0}.tree-node h4{font-size:11px;font-weight:750;line-height:1.15;margin:0 0 2px}.tree-node p{font-size:11px;line-height:1.2;color:var(--muted);margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tree-node.ready{border-color:rgba(255,210,87,.75);box-shadow:0 0 12px rgba(255,210,87,.1)}.tree-node.ready .tree-dot{background:#3b3216;border-color:var(--gold);color:var(--gold)}
 .tree-node.bought{border-color:rgba(77,224,160,.65);background:rgba(18,54,49,.52);cursor:default}.tree-node.bought .tree-dot{background:#123d35;border-color:var(--good);color:var(--good)}
-.tree-node.locked{opacity:.48;cursor:not-allowed}.tree-node:disabled{cursor:not-allowed}
+.tree-node.locked{opacity:.5}.tree-node.blocked{opacity:.32;border-style:dashed}.tree-node.mini{min-height:44px;padding:4px}.tree-node.mini .tree-dot{width:20px;height:20px}.tree-node.mini p{display:none}
+.power-path{margin:7px 0;padding:6px;border:1px solid var(--line);border-radius:7px;background:rgba(6,13,25,.55)}.power-path h3{font-size:11px;color:var(--accent);margin:0 0 5px;text-transform:uppercase;letter-spacing:.08em}
+.power-path-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.power-path-row .tree-node{min-height:50px}.power-path-row .tree-node h4{font-size:10px}.power-path-row .tree-node p{font-size:10px}
+.passive-modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}.passive-module{border:1px solid var(--line);border-radius:7px;padding:6px;background:rgba(6,13,25,.55)}.passive-module.active{border-color:rgba(77,224,160,.38)}
+.passive-title{display:flex;justify-content:space-between;gap:4px;align-items:center;margin-bottom:5px;font-size:11px}.passive-title span{font-size:10px;color:var(--muted)}.passive-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.passive-steps:has(> :only-child){grid-template-columns:1fr}
+#tree-message{position:absolute;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translate(-50%,12px);max-width:90%;padding:8px 12px;border:1px solid var(--gold);border-radius:6px;background:#11192a;color:#fff;font-size:11px;opacity:0;pointer-events:none;transition:.18s;z-index:2}#tree-message.show{opacity:1;transform:translate(-50%,0)}
+@media(min-width:600px){.tree-tier{grid-template-columns:repeat(3,minmax(0,1fr))}.power-path-row{grid-template-columns:repeat(6,minmax(0,1fr))}.passive-modules{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 /* Auswahl-Dialog für einen Slot */
 #pick-liste{width:100%;max-width:520px;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px}
