@@ -32,12 +32,6 @@
 
   <!-- Special Buttons -->
   <div id="special-zone">
-    <button id="btn-signatur" class="special-btn sp-signatur" aria-label="Signaturfähigkeit">
-      <span class="cd-sweep" id="cd-signatur"></span>
-      <span class="s-icon sig-glyph" aria-hidden="true">✦</span>
-      <span class="s-label">Signatur</span>
-      <span class="s-key">3</span>
-    </button>
     <button id="btn-wirbel" class="special-btn sp-wirbel" aria-label="Wirbelangriff">
       <span class="cd-sweep" id="cd-wirbel"></span>
       <svg class="s-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -75,7 +69,7 @@
     <button id="hangar-btn" class="secondary">Hangar</button>
     <button id="info-btn" class="secondary menu-tool">ⓘ Hilfe</button>
     <button id="settings-btn" class="secondary menu-tool">⚙ Einstellungen</button>
-    <p class="hint">Zieh in eine Richtung — die Klinge greift von allein an.<br><span style="opacity:.7">PC: WASD/Pfeile · 1, 2 und 3 für deine Mächte.</span></p>
+    <p class="hint">Zieh in eine Richtung — die Klinge greift von allein an.<br><span style="opacity:.7">PC: WASD/Pfeile · 1 und 2 für deine Mächte.</span></p>
   </div>
 
   <!-- Pause -->
@@ -100,29 +94,21 @@
   <div id="overlay-codex" class="overlay hidden">
     <h2>Mächte &amp; Ausrüstung</h2>
     <div id="codex-scroll">
-      <p class="codex-hinweis">Jeder Aufstieg gibt im Lauf <b>einen Punkt für den Skill-Tree</b>.
+      <p class="codex-hinweis">Jeder Aufstieg gibt im Lauf <b>einen Punkt für den Orbitbaum</b>.
       Hier siehst du deinen aktuellen Aufbau, Freischaltungen und Entwicklungen.</p>
 
       <h3 class="sec-title">Aktive Mächte — auf Knopfdruck</h3>
       <p class="sec-hinweis">Im Lauf festgelegt. Womit du startest, wählst du vor dem
-      Spiel im Hauptmenü unter <b>„Startmächte"</b>.</p>
+      Spiel im Hauptmenü unter <b>„Vorbereitung"</b>.</p>
       <div id="codex-slots" class="slot-reihe"></div>
 
-      <h3 class="sec-title">Passive Mächte — wirken von allein</h3>
+      <h3 class="sec-title">Partnerfähigkeit — wächst mit deinem Pfad</h3>
       <p class="sec-hinweis" id="passiv-hinweis"></p>
       <div id="codex-passivslots" class="slot-reihe"></div>
 
-      <h3 class="sec-title">Entwicklungen — zwei Mächte verschmelzen</h3>
-      <p class="sec-hinweis">Aktive Macht auf Stufe 5 <b>plus</b> die passende passive Macht.</p>
+      <h3 class="sec-title">Super-Macht</h3>
+      <p class="sec-hinweis">Meistere Hauptmacht und Partner im Orbitbaum, um diese Form freizuschalten.</p>
       <div id="codex-evo"></div>
-
-      <h3 class="sec-title">Noch nicht getragen</h3>
-      <p class="sec-hinweis">Diese Mächte kannst du im Skill-Tree in diesem Lauf aktivieren.</p>
-      <div id="codex-verfuegbar"></div>
-
-      <h3 class="sec-title">Noch gesperrt</h3>
-      <p class="sec-hinweis">Erreiche die genannte Welle, um sie dauerhaft freizuschalten.</p>
-      <div id="codex-gesperrt"></div>
     </div>
     <button id="codex-back" class="primary">Zurück</button>
   </div>
@@ -138,7 +124,7 @@
     <div id="startmaechte-scroll">
       <section class="prepare-panel active" data-prepare-panel="charakter"><div id="charakter-wahl"></div><div id="charakter-detail"></div></section>
       <section class="prepare-panel" data-prepare-panel="hilfe"><p class="sec-hinweis">Hilfen sperren nichts. Bestmarken werden getrennt geführt.</p><div id="hilfe-wahl"></div></section>
-      <section class="prepare-panel" data-prepare-panel="maechte"><p class="sec-hinweis">Diese aktiven Mächte bleiben für den gesamten Lauf fest.</p><div id="startmaechte-slots" class="slot-reihe"></div></section>
+      <section class="prepare-panel" data-prepare-panel="maechte"><p class="sec-hinweis">Diese aktiven Mächte bleiben für den gesamten Lauf fest.</p><div id="startmaechte-slots" class="slot-reihe"></div><div id="orbit-presets"></div></section>
     </div>
   </div>
 
@@ -160,7 +146,7 @@
     <div id="tree-scroll">
       <div id="tree-branches" aria-label="Orbitbaum"></div>
     </div>
-    <aside id="tree-detail"><span class="detail-icon">◉</span><span><b>Wähle deinen Weg</b><small>Tippe einen Knoten für Details und erneut zum Kaufen.</small></span></aside>
+    <aside id="tree-detail"><span class="detail-icon">◉</span><span><b>Wähle deinen Weg</b><small>Alle Wirkungen stehen direkt am Knoten.</small></span></aside>
     <div id="tree-message" role="status"></div>
   </div>
 
@@ -221,8 +207,8 @@
         <h3>Level-Ups: hier entsteht dein Aufbau</h3>
         <p>Gegner geben Erfahrung. Bei jedem Aufstieg erhältst du <b>einen Punkt</b>.
         Tippe oben rechts auf <b>✦</b> und investiere ihn im Orbitbaum.</p>
-        <p>Alles ist verbunden: Starte mit einer neuen Macht- oder Klingenmechanik und
-        nimm auf dem Weg passende Verstärkungen, Passives und Charakterkräfte mit.</p>
+        <p>Alles ist ein Pfad: Wähle zuerst deine Klingenführung, forme dann deine
+        Hauptmacht und verbinde beides mit der Haltung deines Charakters.</p>
         <ul class="info-liste">
           <li><span class="dot" style="background:#ffd257"></span> Pulsierende Knoten kannst du jetzt kaufen.</li>
           <li><span class="dot" style="background:#4de0a0"></span> Grüne Linien zeigen deinen gewählten Weg.</li>
@@ -235,13 +221,10 @@
         stellst du in den Einstellungen ein). Du trägst eine, eine zweite kannst du in
         der Werkstatt freischalten. Womit du <b>startest</b>, wählst du im Hauptmenü
         unter „Vorbereitung" — das bleibt dann für den gesamten Lauf so.</p>
-        <p>Welche aktiven Mächte du hast, steht mit dem Start <b>fest</b> — im Lauf
-        wechselst du sie nicht mehr. Im Tree kannst du sie bis Stufe 5 ausbauen.</p>
-        <p><b>Passive Mächte</b> wirken von allein. Du aktivierst und stärkst sie im Tree;
-        du kannst <b>höchstens drei</b> gleichzeitig tragen.</p>
-        <p><b>Entwicklungen</b> sind der stärkste Moment: Bringst du eine aktive Macht auf
-        Stufe 5 <b>und</b> trägst die passende passive Macht, verschmelzen beide zu etwas
-        Neuem. Welche Kombination wozu führt, steht unter „Mächte &amp; Ausrüstung".</p>
+        <p>Nur deine <b>Hauptmacht auf Taste 1</b> wird im Orbitbaum zur Super-Macht.
+        Taste 2 bleibt ein nützliches Werkzeug und erzeugt keinen zweiten Parallelbaum.</p>
+        <p>Jede Hauptmacht bringt genau eine passende <b>Partnerfähigkeit</b> mit. Sie wirkt
+        automatisch und wächst auf dem Weg zur Super-Macht in drei Rängen.</p>
       </div>
       <div class="info-block">
         <h3>Fragmente ◆ und die Werkstatt</h3>

@@ -64,9 +64,10 @@ const CONFIG = {
   // Etwas kürzere, dichtere Wellen: weniger Leerlauf und rund 10 % weniger Masse,
   // ohne die Gegnermechaniken oder den 30-Wellen-Bogen zu beschneiden.
   wave: { baseCount:5, perWave:2.55, hpScale:0.08, dmgScale:0.08, spawnInterval: 580 },
-  // Der Orbitbaum soll bis Welle 30 ungefähr 24–32 Entscheidungen tragen. Ein Punkt
-  // bleibt an jeden Level-Aufstieg gebunden, ohne den Kampf automatisch anzuhalten.
-  xpBase: 140, xpPerLevel: 120,
+  // 15 reguläre Punkte sollen den kompakten Orbitbaum bis Welle 30 füllen. Die
+  // Anforderungen liegen etwa beim alten Gesamt-XP bis Level 29: Derselbe Lauf endet
+  // dadurch nahe Level 16, also bei den vorgesehenen 15 regulären Punkten.
+  xpBase: 1000, xpPerLevel: 300,
   caps: { dmgMult:2.0, speedMult:1.6, rangeMult:1.8, fireRateMult:1.5, maxHpBonus:150 },
   // Freischaltbare Fähigkeiten (passiv, kein neuer Knopf)
   abil: {
@@ -283,14 +284,12 @@ const FIGUREN = {
   held:      { id:'held', name:'Lichthüter', desc:'Hüter mit präzise geführter Orbit-Klinge', start:true,
                hp:1.08, tempo:1.0, reichweite:1.02, fokusZiel:1.0, barriereMal:1.25,
                staerke:'Lichtbund · Bewegung stärkt Präzision, voller Fokus erzeugt Barriere',
-               fuer:'Kontrolliertes Positionieren, Schutz und eine sichere Lichtbahn',
-               signatur:{name:'Lichtbahn', glyph:'➤', cooldown:6500} },
+               fuer:'Kontrolliertes Positionieren, Schutz und präzise Orbit-Treffer' },
   // Die interne ID bleibt für vorhandene v5-Spielstände bestehen.
   konstrukt: { name:'Leerenklinge', desc:'Schwebender Träger einer instabilen Orbit-Klinge',
                id:'konstrukt', hp:0.88, tempo:1.07, reichweite:0.98, fokusZiel:0.88, barriereMal:0.75,
                staerke:'Leerenhunger · fehlendes Leben verstärkt Sweet Spot und Orbit',
-               fuer:'Hohes Risiko, aggressives Kreisen und mächtige Überladung',
-               signatur:{name:'Leerenüberladung', glyph:'◆', cooldown:9000} },
+               fuer:'Hohes Risiko, aggressives Kreisen und starke Klingen-Kombos' },
 };
 function figur(){ return isAvailable('figur', save.figur)? FIGUREN[save.figur] : FIGUREN.held; }
 
@@ -314,9 +313,7 @@ const ABILITIES = {
   nachhall:      { name:'Nachhall',        desc:'Jeder vierte Sweet-Spot-Treffer löst eine Druckwelle aus',   slot:'passive', iconKey:'boost' },
 };
 const ACTIVE_IDS=['wirbel','stoss','bombe','nova','sog'];
-// Buff-Stufen und Passiv-Slots bewusst klein: ein Lauf bringt ~8 Karten, alles darüber
-// wäre unerreichbar. Wenige Stufen heißt außerdem: jede einzelne ist spürbar.
-const MAX_ABIL_LEVEL=5, MAX_PASSIVE_SLOTS=3;
+const MAX_ABIL_LEVEL=5;
 
 /* WAS EINE STUFE BRINGT.
    Vorher stand auf einer Steigerungskarte nur "Stufe 2 von 5" — man wusste nicht,
@@ -395,10 +392,11 @@ const BOSS_KINDS=[
 function bossKindFor(w){ return BOSS_KINDS[(Math.floor(w/5)-1+BOSS_KINDS.length*4) % BOSS_KINDS.length]; }
 const PASSIVE_IDS=['kettenblitz','konterstoss','splitter','phaser','lebensregen','schneide','nachhall'];
 
-/* LAUFGEBUNDENER SKILL-TREE
-   Keine Kartenlotterie mehr: Jeder Knoten ist sichtbar, hat klare Voraussetzungen
-   und kostet genau einen Punkt. Aktive Mächte sind die vorher gewählte Ausrüstung;
-   passive Mächte und Entwicklungen werden hier bewusst aufgebaut. */
+/* DER ORBITBAUM
+   Ein einziger, acht Stufen tiefer Laufpfad. Nur Klinge, Hauptmacht und Haltung
+   verzweigen; alle weiteren Knoten vertiefen diese Entscheidungen. Dadurch sind
+   stets nur zwölf Knoten sichtbar und jeder Punkt führt zu einer verständlichen
+   spielerischen Wirkung. Slot 2 bleibt ein Werkzeug und erhält keinen zweiten Baum. */
 function steigereMacht(id, stufe){ runAbilities[id]=Math.max(runAbilities[id]||1, stufe); }
 function treeRang(id){ return Number(runTree[id])||0; }
 const ACTIVE_MOD_SHORT={
@@ -406,44 +404,22 @@ const ACTIVE_MOD_SHORT={
   nova:['SCHILD','BÖGEN'], sog:['HALT','ORBIT']
 };
 function treeNodes(){
+  const id=activeSlot1, pair=Object.entries(EVOLUTIONS).find(([,e])=>e.base===id);
+  const evoId=pair[0], evo=pair[1], power='power_'+id, partner='partner_'+id;
   const n=[
-    {id:'orbit_root',stage:0,col:4,kind:'root',name:'Orbitkern',desc:'Deine Klinge und deine Mächte entspringen demselben Kern.',icon:'◉',free:true},
-    {id:'blade_multi',stage:1,col:3,kind:'major',name:'Mehrfachorbit',short:'2 KLINGEN',desc:'Zwei gegenüberliegende Klingen.',icon:'Ⅱ',reqAll:['orbit_root'],exclusiveGroup:'orbit',apply:()=>{bonuses.blades=Math.max(2,bonuses.blades);earnBadge('doppel');}},
-    {id:'blade_single',stage:1,col:5,kind:'major',name:'Singularorbit',short:'SWEET +38%',desc:'Eine schmale Klinge mit +38 % Sweet-Spot-Schaden.',icon:'┃',reqAll:['orbit_root'],exclusiveGroup:'orbit',apply:()=>{treeFlags.singularorbit=true;treeFlags.sweetBonus=(treeFlags.sweetBonus||0)+0.38;}},
-    {id:'blade_core',stage:2,col:4,kind:'buff',name:'Klingenkern',short:'DMG +8%',desc:'+8 % Klingenschaden je Rang.',icon:'✦',maxRank:4,reqAny:['blade_multi','blade_single'],apply:()=>bonuses.dmg+=0.08},
-    {id:'core_resonance',stage:4,col:4,kind:'buff',name:'Kernresonanz',short:'HP + FOKUS',desc:'+10 Max-Leben, +5 % Barriere und schnellerer Fokus je Rang.',icon:'◎',maxRank:3,reqAny:['char_route_a','char_route_b'],apply:()=>{player.maxHp+=10;player.hp+=10;treeFlags.barriereMult=(treeFlags.barriereMult||1)*1.05;treeFlags.fokusRabatt=(treeFlags.fokusRabatt||0)+1;}},
-    {id:'orbit_crown',stage:5,col:4,kind:'capstone',name:'Orbitkrone',short:'KLINGEN-FINALE',desc:'Mehrfachorbit erhält eine dritte Klinge; Singularorbit lädt Fokus doppelt.',icon:'★',reqAll:['core_resonance'],reqAny:['blade_multi','blade_single'],apply:()=>{if(treeRang('blade_multi')) bonuses.blades=Math.max(3,bonuses.blades);else treeFlags.perfekterOrbit=true;}},
+    {id:'blade_multi',stage:0,col:3,kind:'major',name:'Doppelorbit',short:'2 KLINGEN',desc:'Zwei gegenüberliegende Klingen geben sichere Rundum-Kontrolle.',icon:'Ⅱ',exclusiveGroup:'orbit',apply:()=>{bonuses.blades=2;earnBadge('doppel');}},
+    {id:'blade_single',stage:0,col:5,kind:'major',name:'Präzisionsorbit',short:'ZONE +45%',desc:'Eine schmalere Trefferzone verursacht dort +45 % Schaden und bricht Panzerung.',icon:'┃',exclusiveGroup:'orbit',apply:()=>{treeFlags.singularorbit=true;treeFlags.sweetBonus=.45;treeFlags.panzerbrecher=true;}},
+    {id:power+'_a',stage:1,col:3,kind:'major',name:ABILITIES[id].name+' · A',short:ACTIVE_MOD_SHORT[id][0],desc:ACTIVE_MODS[id][0],icon:'A',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',apply:()=>treeFlags['mod_'+id]='a'},
+    {id:power+'_b',stage:1,col:5,kind:'major',name:ABILITIES[id].name+' · B',short:ACTIVE_MOD_SHORT[id][1],desc:ACTIVE_MODS[id][1],icon:'B',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',apply:()=>treeFlags['mod_'+id]='b'},
+    {id:partner,stage:2,col:4,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'RANG +1',desc:ABILITIES[evo.req].desc+'; drei deutlich spürbare Ränge.',icon:'✦',maxRank:3,reqAny:[power+'_a',power+'_b'],apply:rank=>runAbilities[evo.req]=rank},
+    {id:'char_route_a',stage:3,col:3,kind:'major',name:figur().id==='held'?'Wächter':'Verschlinger',short:figur().id==='held'?'BARRIERE':'LEBENSRAUB',desc:figur().id==='held'?'Fokus erzeugt mehr Barriere und stoppt nahe Gegner.':'Besiegte Gegner heilen einen kleinen Teil deines Lebens.',icon:figur().id==='held'?'◈':'◆',reqAll:[partner],reqRanks:{[partner]:3},exclusiveGroup:'char_route',apply:()=>{if(figur().id==='held'){treeFlags.waechter=true;treeFlags.fokusBarriereBonus=.08;}else treeFlags.leerenHeilung=.006;}},
+    {id:'char_route_b',stage:3,col:5,kind:'major',name:figur().id==='held'?'Sonnenjäger':'Abgrund',short:figur().id==='held'?'BEWEGUNGS-DMG':'RISIKO-DMG',desc:figur().id==='held'?'Bewegung verstärkt präzise Klingentreffer zusätzlich.':'Fehlendes Leben steigert den Sweet-Spot-Schaden stark.',icon:figur().id==='held'?'☀':'▼',reqAll:[partner],reqRanks:{[partner]:3},exclusiveGroup:'char_route',apply:()=>{if(figur().id==='held')treeFlags.duellantBonus=.18;else treeFlags.leerenRisikoBonus=.28;}},
+    {id:'power_master',stage:4,col:4,kind:'buff',name:'Machtmeisterschaft',short:'MACHT +1',desc:'Mehr Wirkung; Rang 3 schaltet den mechanischen Sprung der Hauptmacht frei.',icon:'⬡',maxRank:3,reqAny:['char_route_a','char_route_b'],apply:rank=>steigereMacht(id,rank+1)},
+    {id:'blade_synergy',stage:5,col:3,kind:'major',name:figur().id==='held'?(treeRang('char_route_a')?'Leuchtfeuer':'Sonnenorbit'):(treeRang('char_route_a')?'Satter Abgrund':'Ereignishorizont'),short:figur().id==='held'?(treeRang('char_route_a')?'FOKUS-SCHILD':'3. TREFFER'):(treeRang('char_route_a')?'HEIL-KOMBO':'3 KLINGEN'),desc:figur().id==='held'?(treeRang('char_route_a')?'Volle Fokusladung erzeugt eine besonders starke Barriere.':'Jeder dritte Zonentreffer schlägt ein zweites Mal zu.'):(treeRang('char_route_a')?'Klingen-Kills heilen stärker, solange du angeschlagen bist.':'Unter 35 % Leben kreisen drei Klingen um dich.'),icon:'✦',reqAll:['power_master'],reqRanks:{power_master:3},apply:()=>{if(figur().id==='held'){if(treeRang('char_route_a'))treeFlags.leuchtfeuer=true;else treeFlags.klingentakt=true;}else{if(treeRang('char_route_a'))treeFlags.satterAbgrund=true;else treeFlags.ereignishorizont=true;}}},
+    {id:'evo_'+evoId,stage:5,col:5,kind:'evo',power:id,name:evo.name,short:'SUPER-MACHT',desc:evo.desc,icon:'✹',reqAll:['power_master'],reqRanks:{power_master:3,[partner]:3},evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;zielZaehl('stufe5');zielZaehl('entwicklung');announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}},
+    {id:'orbit_resonance',stage:6,col:4,kind:'buff',name:'Orbitresonanz',short:'KOMBO +1',desc:'Verbindet Klinge und Mächte: schnellere Abklingzeit, mehr Fokus, stärkere Kombos.',icon:'◎',maxRank:3,reqAll:['blade_synergy','evo_'+evoId],apply:rank=>{treeFlags.aktiveCdMult=Math.pow(.94,rank);treeFlags.fokusRabatt=rank;if(rank>=2)treeFlags.fokusMachtBonus=.15;if(rank>=3)treeFlags.orbitResonanz=true;}},
+    {id:'orbit_crown',stage:7,col:4,kind:'capstone',name:'Orbitkrone',short:treeRang('orbit_crown')?'KERNRESERVE':'FINALE',desc:treeRang('orbit_crown')?'Der Startimpuls wird zur einmaligen Rettung vor einem tödlichen Treffer.':(treeRang('blade_multi')?'Drei Klingen vollenden deinen Rundum-Orbit.':'Zonentreffer laden Fokus doppelt und entfesseln die Hauptmacht.'),icon:'★',maxRank:metaLevel('startimpuls')?2:1,reqAll:['orbit_resonance'],reqRanks:{orbit_resonance:3},apply:rank=>{if(rank===1){if(treeRang('blade_multi'))bonuses.blades=3;else treeFlags.perfekterOrbit=true;treeFlags.orbitKrone=true;}else treeFlags.kernreserve=true;}},
   ];
-  if(figur().id==='held') n.push(
-    {id:'char_route_a',stage:3,col:3,kind:'major',name:'Wächter',short:'SCHUTZ',desc:'Fokus-Barriere bremst Gegner in deiner Nähe.',icon:'◈',reqAll:['blade_core'],exclusiveGroup:'char_route',apply:()=>treeFlags.waechter=true},
-    {id:'char_route_b',stage:3,col:5,kind:'major',name:'Strahlenreiter',short:'LICHTBAHN',desc:'Sweet Hits laden Lichtbahn schneller.',icon:'➤',reqAll:['blade_core'],exclusiveGroup:'char_route',apply:()=>treeFlags.strahlenreiter=true},
-    {id:'char_cap_a',stage:5,col:3,kind:'capstone',name:'Leuchtfeuer',short:'STARKE BARRIERE',desc:'Voller Fokus erzeugt eine starke Barriere und bewahrt Reserven.',icon:'★',reqAll:['char_route_a','core_resonance'],apply:()=>{treeFlags.leuchtfeuer=true;treeFlags.lichtreserve=true;}},
-    {id:'char_cap_b',stage:5,col:5,kind:'capstone',name:'Sonnenpfad',short:'2 LADUNGEN',desc:'Lichtbahn wird breiter, hinterlässt Energie und erhält zwei Ladungen.',icon:'☀',reqAll:['char_route_b','core_resonance'],apply:()=>{treeFlags.lichtspur=true;treeFlags.sonnenpfad=true;}}
-  ); else n.push(
-    {id:'char_route_a',stage:3,col:3,kind:'major',name:'Verschlinger',short:'HEILUNG',desc:'Günstigere Überladung und stärkere Heilung.',icon:'◆',reqAll:['blade_core'],exclusiveGroup:'char_route',apply:()=>{treeFlags.leerenOpfer=.10;treeFlags.leerenHeilung=.018;}},
-    {id:'char_route_b',stage:3,col:5,kind:'major',name:'Abgrund',short:'RISIKO-DMG',desc:'Wenig Leben verstärkt deinen Sweet Spot stark.',icon:'▼',reqAll:['blade_core'],exclusiveGroup:'char_route',apply:()=>treeFlags.leerenRisikoBonus=.22},
-    {id:'char_cap_a',stage:5,col:3,kind:'capstone',name:'Satter Abgrund',short:'KILLS VERLÄNGERN',desc:'Kills verlängern Überladung; Lebensraub wird sicherer.',icon:'★',reqAll:['char_route_a','core_resonance'],apply:()=>{treeFlags.leerenKillDauer=true;treeFlags.satterAbgrund=true;treeFlags.leerenHeilung=.026;}},
-    {id:'char_cap_b',stage:5,col:5,kind:'capstone',name:'Ereignishorizont',short:'3 KLINGEN',desc:'Unter 35 % Leben kreisen drei Klingen: maximaler Schaden, kaum Heilung.',icon:'◉',reqAll:['char_route_b','core_resonance'],apply:()=>{treeFlags.leerenKlingen=3;treeFlags.ereignishorizont=true;treeFlags.leerenHeilung=.004;}}
-  );
-  const aktive=[...new Set([activeSlot1,activeSlot2].filter(Boolean))];
-  const evoVon=id=>Object.entries(EVOLUTIONS).find(([,e])=>e.base===id);
-  aktive.forEach((id,index)=>{
-    const side=index===0?1:7, inner=index===0?2:6, pair=evoVon(id), evoId=pair&&pair[0], evo=pair&&pair[1];
-    const prefix='power_'+id;
-    n.push(
-      {id:prefix+'_a',stage:1,col:side,kind:'major',power:id,name:ABILITIES[id].name+' A',short:ACTIVE_MOD_SHORT[id][0],desc:ACTIVE_MODS[id][0],icon:'A',reqAll:['orbit_root'],exclusiveGroup:'mod_'+id,apply:()=>{steigereMacht(id,2);treeFlags['mod_'+id]='a';}},
-      {id:prefix+'_b',stage:1,col:inner,kind:'major',power:id,name:ABILITIES[id].name+' B',short:ACTIVE_MOD_SHORT[id][1],desc:ACTIVE_MODS[id][1],icon:'B',reqAll:['orbit_root'],exclusiveGroup:'mod_'+id,apply:()=>{steigereMacht(id,2);treeFlags['mod_'+id]='b';}},
-      {id:prefix+'_passive',stage:2,col:side,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'PASSIV +1',desc:ABILITIES[evo.req].desc+'; jeder Rang verstärkt die Wirkung.',icon:'✦',maxRank:5,reqAny:[prefix+'_a',prefix+'_b'],apply:rank=>{runAbilities[evo.req]=rank;}},
-      {id:prefix+'_master',stage:3,col:side,kind:'major',power:id,name:'Machtmeisterschaft',short:'MACHT +1',desc:'Steigert die aktive Macht; Rang 2 schaltet den mechanischen Sprung frei.',icon:'★',maxRank:3,reqAll:[prefix+'_passive'],apply:rank=>{steigereMacht(id,rank+2);if(rank>1)treeFlags['powerDmg_'+id]=(treeFlags['powerDmg_'+id]||1)*1.08;}},
-      {id:'evo_'+evoId,stage:5,col:side,kind:'evo',power:id,name:evo.name,short:'ENTWICKLUNG',desc:evo.desc,icon:'✦',reqAll:[prefix+'_master'],reqRanks:{[prefix+'_passive']:3,[prefix+'_master']:3},evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;zielZaehl('stufe5');zielZaehl('entwicklung');announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}}
-    );
-  });
-  // Der zweite Aktiv-Slot kann fehlen. Dann füllt ein kurzer gemeinsamer Seitenast
-  // die Punktökonomie, ohne eine unechte zweite Macht vorzutäuschen.
-  if(aktive.length===1) n.push(
-    {id:'orbit_reach',stage:2,col:7,kind:'buff',name:'Weiter Orbit',short:'REICHW. +8%',desc:'+8 % Reichweite je Rang.',icon:'↗',maxRank:4,reqAny:['blade_multi','blade_single'],apply:()=>bonuses.range+=.08},
-    {id:'orbit_guard',stage:4,col:7,kind:'buff',name:'Orbitwache',short:'HP +10',desc:'+10 Max-Leben je Rang; letzter Rang durchschlägt Panzerung.',icon:'◈',maxRank:3,reqAll:['orbit_reach'],apply:rank=>{player.maxHp+=10;player.hp+=10;if(rank===3)treeFlags.panzerbrecher=true;}}
-  );
   return n;
 }
 
@@ -468,28 +444,14 @@ const BADGES = {
    Vorher gab es teils zwei auf einmal und schon ab Welle 3 — dadurch fühlte sich
    keine davon nach etwas an. Die erste liegt jetzt auf dem ersten Boss (Welle 5). */
 const MILESTONES = [
-  { wave:5,  badge:'boss1',   unlocks:[{kind:'ability',id:'kettenblitz'}] },
-  { wave:7,  badge:null,      unlocks:[{kind:'ability',id:'schneide'}] },
-  { wave:8,  badge:null,      unlocks:[{kind:'skin',   id:'bernstein'}] },
-  { wave:13, badge:null,      unlocks:[{kind:'ability',id:'nachhall'}] },
-  { wave:18, badge:null,      unlocks:[{kind:'ability',id:'sog'}] },
-  { wave:11, badge:null,      unlocks:[{kind:'ability',id:'phaser'}] },
-  { wave:14, badge:null,      unlocks:[{kind:'ability',id:'konterstoss'}] },
-  { wave:17, badge:null,      unlocks:[{kind:'skin',   id:'smaragd'}] },
-  { wave:20, badge:'welle20', unlocks:[{kind:'ability',id:'bombe'}] },
-  { wave:23, badge:null,      unlocks:[{kind:'ability',id:'splitter'}] },
-  { wave:26, badge:null,      unlocks:[{kind:'ability',id:'nova'}] },
-  { wave:29, badge:null,      unlocks:[{kind:'skin',   id:'amethyst'}] },
-  { wave:32, badge:null,      unlocks:[{kind:'ability',id:'dreifachklinge'}] },
-  { wave:35, badge:null,      unlocks:[{kind:'ability',id:'lebensregen'}] },
-  { wave:38, badge:null,      unlocks:[{kind:'skin',   id:'tuerkis'}] },
-  // Diese Wellen trugen bisher nur ein Abzeichen. Die Kosmetik hängt jetzt hier,
-  // damit die Zwischenstufen nicht leer bleiben und die Fähigkeits-Leiter oben
-  // unverändert bleibt (die ist auf Spielbalance abgestimmt, Kosmetik nicht).
-  { wave:10, badge:'welle10', unlocks:[{kind:'form',  id:'wucht'}] },
-  { wave:15, badge:'welle15', unlocks:[{kind:'figur', id:'konstrukt'}] },
-  { wave:25, badge:'welle25', unlocks:[{kind:'form',  id:'zwilling'}] },
-  { wave:30, badge:'welle30', unlocks:[] },
+  // Macht- und Charakterfunde sind Blaupausen: Der Fund gewährt den großen
+  // Werkstattrabatt, das Projekt macht den Inhalt anschließend dauerhaft startbar.
+  { wave:5,  badge:'boss1',   unlocks:[{kind:'ability',id:'bombe'}] },
+  { wave:10, badge:'welle10', unlocks:[{kind:'skin',id:'bernstein'}] },
+  { wave:15, badge:'welle15', unlocks:[{kind:'figur',id:'konstrukt'}] },
+  { wave:20, badge:'welle20', unlocks:[{kind:'ability',id:'nova'}] },
+  { wave:25, badge:'welle25', unlocks:[{kind:'form',id:'wucht'}] },
+  { wave:30, badge:'welle30', unlocks:[{kind:'ability',id:'sog'}] },
 ];
 // Beim Erreichen einer Welle: Abzeichen + Freischaltungen gewähren
 function checkMilestones(){
@@ -502,7 +464,7 @@ function checkMilestones(){
 
 /* TESTFASSUNG des Konzepts vom 11.8.2026 — läuft neben der stabilen Version.
    Eigener Speicherschlüssel, damit ein Testlauf den echten Spielstand nicht anfasst. */
-const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=7;
+const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=8;
 // opts: Bedien-Einstellungen (Seite und Anordnung der Fähigkeiten-Knöpfe)
 // best ist jetzt je Hilfsstufe getrennt — sonst wäre die Bestmarke nicht vergleichbar
 const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin', muted:false, bossKills:0, stars:0, meta:{}, tutorialDone:false,
@@ -579,6 +541,16 @@ function migrateSave(data){
     if(!data.figur && data.charakter) data.figur=data.charakter;
     delete data.charakter;
   }
+  // v7 → v8: Der eine fünfstufige Begleiter wird zu fünf sichtbaren Projekten.
+  // Bereits freigespielte Startinhalte werden großzügig als gebaut übernommen.
+  if(data.v<8){
+    data.meta=data.meta||{};
+    const altBegleiter=Math.min(5,data.meta.begleiter||0);
+    for(let i=1;i<=altBegleiter;i++) data.meta['begleiter'+i]=1;
+    delete data.meta.begleiter;
+    const alt=[['ability:bombe','bombenkern'],['ability:nova','novakern'],['ability:sog','gravitationskern'],['figur:konstrukt','leerenprotokoll']];
+    for(const [unlock,projekt] of alt) if(data.unlocks&&data.unlocks[unlock]) data.meta[projekt]=1;
+  }
   data.v = SAVE_VERSION;
   return data;
 }
@@ -596,6 +568,9 @@ const UNLOCK_ARTEN = {
   figur:   { tabelle:()=>FIGUREN,   label:'Figur'        },
   ability: { tabelle:()=>ABILITIES, label:'Fähigkeit'    },
 };
+const BLUEPRINT_PROJECTS={
+  'ability:bombe':'bombenkern','ability:nova':'novakern','ability:sog':'gravitationskern','figur:konstrukt':'leerenprotokoll'
+};
 function unlockMeta(kind, id){
   const a=UNLOCK_ARTEN[kind] || UNLOCK_ARTEN.ability;
   return a.tabelle()[id];
@@ -604,6 +579,10 @@ function isAvailable(kind, id){
   const meta = unlockMeta(kind, id);
   if(!meta) return false;
   if(meta.start) return true;
+  const projekt=BLUEPRINT_PROJECTS[kind+':'+id];
+  if(projekt) return !!(save.meta&&save.meta[projekt]);
+  if(kind==='skin' && save.meta&&save.meta.farblabor) return true;
+  if(kind==='form' && save.meta&&save.meta.formarchiv) return true;
   if(!save.unlocks[kind+':'+id]) return false;
   if(meta.voll && !FULL_VERSION) return false;
   return true;
@@ -623,7 +602,7 @@ function codexRelevant(){
 }
 function refreshMenuVisibility(){
   showEl(document.getElementById('hangar-btn'), true);
-  showEl(document.getElementById('codex-btn'), codexRelevant());
+  showEl(document.getElementById('codex-btn'), true);
   showEl(document.getElementById('startmaechte-btn'), true);
 }
 
@@ -636,6 +615,10 @@ function grantUnlock(u){
   const meta = unlockMeta(u.kind, u.id);
   if(!meta) return;
   const label = (UNLOCK_ARTEN[u.kind]||UNLOCK_ARTEN.ability).label+' '+meta.name;
+  if(BLUEPRINT_PROJECTS[key]){
+    announce('Blaupause gefunden!',meta.name+' · Werkstattpreis stark reduziert','#ffd257');
+    unlockFx=1; if(sfx)sfx('unlockBig'); return;
+  }
   if(meta.voll && !FULL_VERSION){ pushToast('In der Vollversion: '+label); return; }
   // Große Feier statt kleinem Hinweis — eine Freischaltung soll ein Moment sein
   announce('Freigeschaltet!', label, u.kind==='skin' ? meta.blade : '#4de0a0');
@@ -730,8 +713,7 @@ const overlayOver=document.getElementById('overlay-gameover');
 const treeBtn=document.getElementById('tree-btn'), overlayTree=document.getElementById('overlay-tree');
 const treePunkte=document.getElementById('tree-punkte'), treeBranches=document.getElementById('tree-branches');
 const btnWirbel=document.getElementById('btn-wirbel'), btnStoss=document.getElementById('btn-stoss');
-const btnSignatur=document.getElementById('btn-signatur');
-let cdWirbel=document.getElementById('cd-wirbel'), cdStoss=document.getElementById('cd-stoss'), cdSignatur=document.getElementById('cd-signatur');
+let cdWirbel=document.getElementById('cd-wirbel'), cdStoss=document.getElementById('cd-stoss');
 const joystickZone=document.getElementById('joystick-zone');   // unsichtbare Ziehfläche über dem Spielfeld
 
 loadSave();
@@ -740,7 +722,7 @@ let player, enemies=[], stars=[], particles=[], floats=[], shots=[], orbs=[];
 let swordAngle=0, spinHitTimer=0;
 let wave=1, waveEnemiesToSpawn=0, waveSpawned=0, spawnTimer=0, killCount=0, hpKillCount=0;
 let shake=0, activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}, phaserCd=0;
-let dmgBoostUntil=0, shieldUntil=0, moveBoostUntil=0, signaturCd=0, leerenmodusUntil=0;
+let dmgBoostUntil=0, shieldUntil=0, moveBoostUntil=0;
 let wiederaufBenutzt=false;      // „Entdecker": das eine Wiederaufstehen pro Lauf
 let nachhallZaehler=0;           // zählt Sweet-Spot-Treffer für die Nachhall-Druckwelle
 /* Barriere: ein Puffer, der VOR den Trefferpunkten aufgebraucht wird. Er entsteht
@@ -765,7 +747,7 @@ let runTree={}, skillPoints=0, treeFlags={};     // ausschließlich für den akt
    Fragmente und Kugeln an UND schießt auf Gegner. Vorher waren das zwei getrennte
    Käufe, die beide nach dem Kauf nichts mehr wurden — jetzt ist es ein Ziel, das
    über fünf Stufen weiterwächst. */
-let helfer=[];
+let helfer=[], helferOverdriveUntil=0;
 function begleiterWerte(stufe){
   const H=CONFIG.helfer, s=Math.max(1,stufe);
   return { sammel:H.sammelBasis+H.sammelProStufe*(s-1),
@@ -774,8 +756,13 @@ function begleiterWerte(stufe){
 }
 function setzeHelfer(){
   helfer=[];
-  const stufe=metaLevel('begleiter');
+  const stufe=begleiterStufe();
   if(stufe>0) helfer.push({stufe, ang:0, r:58, cd:0});
+}
+function begleiterStufe(){
+  let stufe=0;
+  for(let i=1;i<=5;i++) if(save.meta&&save.meta['begleiter'+i]) stufe=i; else break;
+  return stufe;
 }
 function hasSlot2(){ return (save.meta&&save.meta.slot2)>0; }
 /* Die gespeicherte Startbelegung, gegen die Wirklichkeit geprüft: Eine Macht, die
@@ -827,9 +814,8 @@ function tutorialTick(dt){
 
 // Klingenlänge: multiplikativ, damit "+15% Reichweite" auch wirklich +15% bedeutet
 function bladeLength(){ return CONFIG.bladeBaseLen * (1 + bonuses.range) * figur().reichweite; }
-function leerenmodusAktiv(){ return figur().id==='konstrukt' && leerenmodusUntil>Date.now(); }
 function effektiveKlingen(){
-  return leerenmodusAktiv() ? Math.max(bonuses.blades, treeFlags.leerenKlingen||2) : bonuses.blades;
+  return treeFlags.ereignishorizont && player.hp/player.maxHp<.35 ? Math.max(3,bonuses.blades) : bonuses.blades;
 }
 // Winkel aller aktiven Klingen (Doppelklinge = zweite Klinge gegenüber)
 function bladeAngles(){
@@ -870,6 +856,10 @@ function fokusTreffer(){
       const anteil=(treeFlags.leuchtfeuer?0.14:0.05)+(treeFlags.fokusBarriereBonus||0);
       barriere=Math.min(barriereMax(),barriere+player.maxHp*anteil*figur().barriereMal);
       if(treeFlags.waechter) enemies.forEach(en=>{if(Math.hypot(en.x-player.x,en.y-player.y)<150) en.stunT=Math.max(en.stunT||0,260);});
+    }
+    if(begleiterStufe()>=4){
+      barriere=Math.min(barriereMax(),barriere+player.maxHp*.05);
+      particles.push({ring:true,x:player.x,y:player.y,color:'#4de0a0',life:.32,max:.32});
     }
     pushFloat(player.x, player.y-38, 'FOKUS!', '#ffffff', 1.3);
     if(sfx) sfx('unlock');
@@ -1106,14 +1096,6 @@ function activeCdMax(id){
   const basis=id==='bombe'? CONFIG.bombeCooldown : id==='nova'? CONFIG.novaCooldown : id==='sog'? CONFIG.sog.cooldown : id==='stoss'? CONFIG.stossCooldown : CONFIG.wirbelCooldown;
   return basis*(treeFlags.aktiveCdMult||1)*(treeFlags['powerCd_'+id]||1);
 }
-function signaturCdMax(){ return figur().signatur.cooldown*(treeFlags.signaturCdMult||1); }
-function updateSignaturButton(){
-  const s=figur().signatur;
-  btnSignatur.setAttribute('aria-label',s.name);
-  btnSignatur.innerHTML='<span class="cd-sweep" id="cd-signatur"></span><span class="s-icon sig-glyph" aria-hidden="true">'+s.glyph+'</span><span class="s-label">'+s.name+'</span><span class="s-key">3</span>';
-  cdSignatur=document.getElementById('cd-signatur');
-  updateCooldownUI(btnSignatur,cdSignatur,signaturCd,signaturCdMax(),'signatur');
-}
 const ACTIVE_COLORS={ wirbel:['#ffb340','255,179,64'], stoss:['#6ec8ff','110,200,255'], bombe:['#ff7a5a','255,122,90'], nova:['#c77dff','199,125,255'], sog:['#4de0a0','77,224,160'] };
 // Aktiven-Buttons passend zu den gewählten Slots neu aufbauen (Icon, Name, Farbe)
 function activeBtnHTML(key,keyLabel){
@@ -1125,7 +1107,6 @@ function activeBtnHTML(key,keyLabel){
     <span class="s-key">${keyLabel}</span>`;
 }
 function updateActiveButtons(){
-  updateSignaturButton();
   const c1=ACTIVE_COLORS[activeSlot1]||['#6ec8ff','110,200,255'];
   btnWirbel.innerHTML=activeBtnHTML('a','1');
   cdWirbel=document.getElementById('cd-a');
@@ -1141,8 +1122,7 @@ function updateActiveButtons(){
   updateCooldownUI(btnStoss, cdStoss, activeCd[activeSlot2]||0, activeCdMax(activeSlot2), 'b');
 }
 
-function passiveTreeAnzahl(){ return PASSIVE_IDS.filter(id=>!!runAbilities[id]).length; }
-let treeSelected=null;
+let treeSelected=null, treeUndo=null;
 function treeStatus(node, nodes){
   const rang=treeRang(node.id), max=node.maxRank||1;
   if(node.free) return {art:'bought',text:'Ausgangspunkt',rang:1,max:1};
@@ -1166,8 +1146,6 @@ function treeStatus(node, nodes){
     const namen=fehlendeRaenge.map(([id,min])=>(nodes.find(n=>n.id===id)||{name:'Verbindung'}).name+' Rang '+min).join(', ');
     return {art:'locked',text:'Benötigt: '+namen};
   }
-  if(node.passive && !rang && !runAbilities[node.passive] && passiveTreeAnzahl()>=MAX_PASSIVE_SLOTS)
-    return {art:'locked', text:'Alle 3 Passivplätze sind belegt'};
   if(skillPoints<1) return {art:'locked', text:'Kein Punkt verfügbar'};
   return {art:'ready', text:'1 Punkt · Rang '+(rang+1)+' / '+max,rang,max};
 }
@@ -1195,9 +1173,12 @@ function renderTreeDetail(node,nodes){
   const box=document.getElementById('tree-detail'); if(!box||!node) return;
   const status=treeStatus(node,nodes), max=node.maxRank||1, rang=treeRang(node.id);
   const rangText=max>1?'Rang '+rang+' / '+max:'Mechanik';
+  const actions=(status.art==='ready'?'<button id="tree-buy">'+(rang?'Verbessern':'Freischalten')+'</button>':'<span class="detail-state">'+rangText+'</span>')+
+    (treeUndo?'<button id="tree-undo" class="tree-undo">↶ Letzten Punkt</button>':'');
   box.innerHTML='<span class="detail-icon '+(node.kind||'buff')+'">'+(node.icon||'✦')+'</span><span><b>'+node.name+'</b><small>'+node.desc+'</small><em>'+status.text+'</em></span>'+
-    (status.art==='ready'?'<button id="tree-buy">'+(rang?'Verbessern':'Freischalten')+'</button>':'<span class="detail-state">'+rangText+'</span>');
+    '<span class="tree-actions">'+actions+'</span>';
   const buy=document.getElementById('tree-buy'); if(buy) buy.onclick=()=>kaufenTreeKnoten(node.id);
+  const undo=document.getElementById('tree-undo'); if(undo) undo.onclick=rueckgaengigTreeKnoten;
 }
 function drawOrbitLines(nodes){
   const svg=treeBranches.querySelector('.orbit-lines'); if(!svg) return;
@@ -1220,9 +1201,23 @@ function treeMeldung(text){
 function kaufenTreeKnoten(id){
   const nodes=treeNodes(), node=nodes.find(n=>n.id===id);
   if(!node || treeStatus(node,nodes).art!=='ready') return;
+  treeUndo={name:node.name,snapshot:{
+    runTree:{...runTree}, skillPoints, bonuses:{...bonuses}, treeFlags:{...treeFlags},
+    runAbilities:{...runAbilities}, runEvolutions:{...runEvolutions},
+    hp:player.hp,maxHp:player.maxHp,barriere
+  }};
   skillPoints--; const next=treeRang(id)+1; runTree[id]=next; node.apply(next);
   if(node.evo && sfx) sfx('unlockBig'); else if(sfx) sfx('pick');
   updateActiveButtons(); updateHUD(true); updateTreeButton(); renderSkillTree();
+}
+function rueckgaengigTreeKnoten(){
+  if(!treeUndo) return;
+  const s=treeUndo.snapshot;
+  runTree=s.runTree; skillPoints=s.skillPoints; bonuses=s.bonuses; treeFlags=s.treeFlags;
+  runAbilities=s.runAbilities; runEvolutions=s.runEvolutions;
+  player.maxHp=s.maxHp; player.hp=Math.min(s.hp,player.maxHp); barriere=Math.min(s.barriere,barriereMax());
+  const name=treeUndo.name; treeUndo=null;
+  updateActiveButtons(); updateHUD(true); updateTreeButton(); renderSkillTree(); treeMeldung(name+' rückgängig');
 }
 function updateTreeButton(){
   if(!treeBtn) return;
@@ -1235,7 +1230,7 @@ function openSkillTree(){
 }
 function closeSkillTree(){
   if(state!=='tree') return;
-  overlayTree.classList.add('hidden'); state='playing'; lastTime=performance.now(); updateTreeButton();
+  treeUndo=null; overlayTree.classList.add('hidden'); state='playing'; lastTime=performance.now(); updateTreeButton();
 }
 treeBtn.addEventListener('click',openSkillTree);
 document.getElementById('tree-back').addEventListener('click',closeSkillTree);
@@ -1262,12 +1257,22 @@ resize();
 // Icon-Namen (Strings) werden erst beim Rendern über ICON aufgelöst, damit dieser
 // Block vor newPlayer() stehen darf (newPlayer liest metaValue bereits beim Start).
 const META_UPGRADES=[
-  // Mechanische Käufe verändern, WIE ein Lauf abläuft — nicht nur seine Werte.
-  { id:'slot2',   name:'Zweite Macht',  desc:'Ein zweiter aktiver Slot · dauerhaft',        icon:'doppel', color:'card-evo', step:1, cap:1, base:260, grow:1, einmalig:true },
-  { id:'startimpuls', name:'Startimpuls', desc:'Jeder Lauf beginnt mit 1 Skillpunkt',         icon:'tempo',  color:'card-evo', step:1, cap:1, base:220, grow:1, einmalig:true },
-  // Langzeit-Senke, bewusst gedeckelt, damit der Begleiter das Spiel nicht abnimmt.
-  { id:'begleiter', name:'Begleiter', desc:'Sammelt für dich ein und schießt auf Gegner · jede Stufe: mehr Schaden und Reichweite',
-    icon:'splitter', color:'card-evo', step:1, cap:CONFIG.helfer.maxStufe, base:900, grow:1.55 },
+  {gruppe:'Kernsysteme',id:'startimpuls',name:'Startimpuls',desc:'Jeder Lauf beginnt mit 1 zusätzlichen Orbitpunkt.',icon:'tempo',base:700},
+  {gruppe:'Kernsysteme',id:'slot2',name:'Zweite Macht',desc:'Schaltet den zweiten aktiven Werkzeug-Slot frei.',icon:'doppel',base:1000},
+  {gruppe:'Kernsysteme',id:'orbitarchiv',name:'Orbitarchiv',desc:'Speichert zwei Startkonfigurationen in der Vorbereitung.',icon:'reichweite',base:1800},
+  {gruppe:'Blaupausen',id:'bombenkern',name:'Bombenkern',desc:'Macht die Bombe als Startmacht verfügbar.',icon:'bombe',base:1800,blueprint:['ability','bombe']},
+  {gruppe:'Blaupausen',id:'novakern',name:'Novakern',desc:'Macht die Machtblitz-Nova als Startmacht verfügbar.',icon:'nova',base:2400,blueprint:['ability','nova']},
+  {gruppe:'Blaupausen',id:'gravitationskern',name:'Gravitationskern',desc:'Macht den Sog als Startmacht verfügbar.',icon:'reichweite',base:3000,blueprint:['ability','sog']},
+  {gruppe:'Blaupausen',id:'leerenprotokoll',name:'Leerenprotokoll',desc:'Schaltet die Leerenklinge als Charakter frei.',icon:'boost',base:3000,blueprint:['figur','konstrukt']},
+  {gruppe:'Begleiter',id:'begleiter1',name:'Sammlerkern',desc:'Begleiter sammelt Fragmente und XP-Kugeln ein.',icon:'splitter',base:1400},
+  {gruppe:'Begleiter',id:'begleiter2',name:'Impulsauge',desc:'Begleiter feuert langsam auf nahe Gegner.',icon:'phaser',base:2300,req:'begleiter1'},
+  {gruppe:'Begleiter',id:'begleiter3',name:'Jägerlogik',desc:'Priorisiert gepanzerte Gegner und erhält mehr Reichweite.',icon:'schaden',base:3600,req:'begleiter2'},
+  {gruppe:'Begleiter',id:'begleiter4',name:'Schildprotokoll',desc:'Volle Fokusladung löst einen kleinen Schildpuls aus.',icon:'leben',base:5200,req:'begleiter3'},
+  {gruppe:'Begleiter',id:'begleiter5',name:'Bossüberladung',desc:'Bei Bossbeginn arbeitet der Begleiter 10 Sekunden schneller.',icon:'tempo',base:7500,req:'begleiter4'},
+  {gruppe:'Kosmetik',id:'farblabor',name:'Farblabor',desc:'Schaltet alle Klingenfarben in der Sammlung frei.',icon:'schneide',base:1200},
+  {gruppe:'Kosmetik',id:'spurenlabor',name:'Spurenlabor',desc:'Bewegungsspuren leuchten in deiner Klingenfarbe.',icon:'nachhall',base:2200},
+  {gruppe:'Kosmetik',id:'formarchiv',name:'Formarchiv',desc:'Schaltet alle Klingenformen in der Sammlung frei.',icon:'dreifach',base:3500},
+  {gruppe:'Kosmetik',id:'hangarprojektion',name:'Hangarprojektion',desc:'Projiziert einen feinen kosmetischen Orbit um deinen Träger.',icon:'kette',base:5000},
 ];
 
 function newPlayer(){
@@ -1285,17 +1290,17 @@ window.addEventListener('load',()=>{ player = newPlayer(); window.playerRef = pl
 function resetGame(){
   player=newPlayer(); window.playerRef = player; enemies=[]; stars=[]; particles=[]; floats=[]; shots=[]; orbs=[]; killCount=0; hpKillCount=0;
   wave=1; waveEnemiesToSpawn=0; waveSpawned=0; spawnTimer=0;
-  activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}; phaserCd=0; signaturCd=0; leerenmodusUntil=0; dmgBoostUntil=0; shieldUntil=0; moveBoostUntil=0; stossWaveT=0; wirbelT=0; spinHitTimer=0;
+  activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}; phaserCd=0; dmgBoostUntil=0; shieldUntil=0; moveBoostUntil=0; stossWaveT=0; wirbelT=0; spinHitTimer=0;
   bonuses={dmg:0, speed:0, range:0, fireRate:0, maxHp:0, blades:1, regen:0};
-  counterCd=0; shards=[]; bossActive=false; bossHitClean=true; flashUntil=0;
+  counterCd=0; shards=[]; bossActive=false; bossHitClean=true; flashUntil=0; helferOverdriveUntil=0;
   const vw=startMaechte();
   activeSlot1=vw.slot1; activeSlot2 = hasSlot2()? vw.slot2 : null;
-  runAbilities={}; runEvolutions={}; runTree={}; skillPoints=0; treeFlags={}; bombs=[]; pShots=[]; novaFx=0; novaEcho=0; barriere=0;
+  runAbilities={}; runEvolutions={}; runTree={}; skillPoints=0; treeFlags={}; treeUndo=null; bombs=[]; pShots=[]; novaFx=0; novaEcho=0; barriere=0;
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
   wiederaufBenutzt=false; nachhallZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false; setzeLaufziele();
   toasts=[]; banner=null;
   tutStep=0; tutT=0; unlockFx=0; setzeHelfer();
-  if(metaLevel('startimpuls')>0){ player.level=2; player.xpNeed=Math.round(CONFIG.xpBase+2*CONFIG.xpPerLevel); skillPoints=1; }
+  if(metaLevel('startimpuls')>0) skillPoints=1;
   shake=0; state='playing'; hideAll(); updateTreeButton(); updateHUD(true); startWave();
   // Beim allerersten Spiel übernimmt der Einstieg die Ansage
   if(save.tutorialDone) announce('Welle 1', 'Überlebe die Arena', '#7cc8ff');
@@ -1337,6 +1342,7 @@ function spawnBoss(){
   }
   enemies.push(e); waveSpawned=1;
   bossActive=true; bossHitClean=true;
+  if(begleiterStufe()>=5) helferOverdriveUntil=Date.now()+10000;
   if(sfx) sfx('boss');
 }
 // Boss-Fähigkeiten: je später die Welle, desto mehr Repertoire
@@ -1538,7 +1544,6 @@ window.addEventListener('keydown',e=>{
   keys[e.key.toLowerCase()]=true;
   if(e.key==='1') doActive(1);
   if(e.key==='2') doActive(2);
-  if(e.key==='3') doSignatur();
   if(e.key==='Escape' && state==='playing') pauseGame();
   if(e.key==='Escape' && state==='paused') resumeGame();
 });
@@ -1655,97 +1660,29 @@ function renderCodex(){
     kachel.classList.add('nurAnzeige');
     slotBox.appendChild(kachel);
   }
-  // Passive Slots — nur ansehen, Tausch ausschließlich beim Angebot einer vierten
+  // Genau eine Partnerfähigkeit gehört zur Hauptmacht. Kein Slot-Management und
+  // keine Liste irrelevanter Passives: Der Codex zeigt nur, was dieser Lauf nutzt.
   const pSlots=document.getElementById('codex-passivslots');
   const pHint=document.getElementById('passiv-hinweis');
   if(pSlots){
     pSlots.innerHTML='';
-    const getragen=PASSIVE_IDS.filter(isCarried);
-    for(let i=0;i<MAX_PASSIVE_SLOTS;i++){
-      const id=getragen[i];
-      const kachel=document.createElement('div');
-      if(!id){
-        kachel.className='slot-kachel leer';
-        kachel.innerHTML=`<span class="slot-nr">Slot ${i+1}</span><span class="slot-name">Frei</span>
-          <span class="slot-sub">Im Skill-Tree aktivieren</span>`;
-      } else {
-        const lv=runAbilities[id]||1;
-        kachel.className='slot-kachel';
-        kachel.innerHTML=`<span class="slot-nr">Slot ${i+1}</span>${svg(abilIcon(id))}
-          <span class="slot-name">${ABILITIES[id].name}</span>
-          <span class="slot-sub">Stufe ${lv} von ${MAX_ABIL_LEVEL}</span>${pipsHTML(lv)}
-          <span class="slot-next">${naechsteStufeText(id, lv)}</span>`;
-      }
-      pSlots.appendChild(kachel);
-    }
-    if(pHint) pHint.textContent = getragen.length>=MAX_PASSIVE_SLOTS
-      ? 'Alle Slots belegt — investiere jetzt in ihre Stufen oder eine Entwicklung.'
-      : 'Neue passive Mächte aktivierst du im Skill-Tree.';
+    const pair=Object.entries(EVOLUTIONS).find(([,e])=>e.base===activeSlot1), partner=pair[1].req;
+    const lv=runAbilities[partner]||0, kachel=document.createElement('div');
+    kachel.className='slot-kachel'+(lv?'':' leer');
+    kachel.innerHTML=`<span class="slot-nr">Partner</span>${svg(abilIcon(partner))}<span class="slot-name">${ABILITIES[partner].name}</span>
+      <span class="slot-sub">${lv?'Rang '+lv+' von 3':'Im Orbitbaum noch nicht aktiviert'}</span>${pipsHTML(lv)}`;
+    pSlots.appendChild(kachel);
+    if(pHint) pHint.textContent='Dieser Partner gehört fest zu '+ABILITIES[activeSlot1].name+' und entwickelt sich automatisch im Orbitbaum.';
   }
-  /* Gruppierung nach dem, was der Spieler wissen will — „trage ich das? kann ich es
-     kriegen? oder ist es noch zu?" — statt nach der internen Einteilung aktiv/passiv.
-     Genau daran ist das alte Menü gescheitert. */
-  const verfuegbarBox=document.getElementById('codex-verfuegbar');
-  const gesperrtBox=document.getElementById('codex-gesperrt');
-  if(verfuegbarBox) verfuegbarBox.innerHTML='';
-  if(gesperrtBox) gesperrtBox.innerHTML='';
-
-  const zeile=(id, zusatz, badge, klasse)=>{
-    const a=ABILITIES[id];
-    const row=document.createElement('div');
-    row.className='codex-row'+(klasse||'');
-    row.innerHTML=`${svg(abilIcon(id))}
-      <div class="info"><h3>${a.name}</h3><div class="desc">${a.desc}</div>
-      <div class="lv">${zusatz}</div></div>
-      <span class="slot-badge ${badge.cls||''}">${badge.text}</span>`;
-    return row;
-  };
-  const artText = id => ABILITIES[id].slot==='active' ? 'Aktiv · eigener Knopf' : 'Passiv · wirkt von allein';
-
-  for(const id of [...ACTIVE_IDS, ...PASSIVE_IDS]){
-    const a=ABILITIES[id], frei=abilUnlocked(id), lv=runAbilities[id]||0;
-    const imSlot = activeSlot1===id?1:(activeSlot2===id?2:0);
-    const traegt = a.slot==='active' ? imSlot>0 : lv>0;
-
-    if(traegt && getragenBox){
-      const stufe=Math.max(1,lv);
-      getragenBox.appendChild(zeile(id,
-        `${artText(id)} · Stufe ${stufe} von ${MAX_ABIL_LEVEL}${pipsHTML(stufe)}`,
-        {text: imSlot? 'Slot '+imSlot : 'Aktiv', cls:'in'}));
-    } else if(frei && verfuegbarBox){
-      const passivVoll = a.slot!=='active' && PASSIVE_IDS.filter(isCarried).length>=MAX_PASSIVE_SLOTS;
-      verfuegbarBox.appendChild(zeile(id,
-        artText(id)+' · '+(a.slot==='active'? 'oben in einen Slot legen'
-          : passivVoll? 'Slots voll — vorhandene Passives weiter stärken' : 'im Tree aktivierbar'),
-        {text:'Frei'}));
-    } else if(gesperrtBox){
-      gesperrtBox.appendChild(zeile(id,
-        unlockText(id)+(a.voll?' · Vollversion':''),
-        {text:'🔒'}, ' locked'));
-    }
-  }
-  // Leere Abschnitte nicht als Lücke stehen lassen
-  const leer=(box,text)=>{ if(box && !box.children.length){ const d=document.createElement('div'); d.className='codex-leer'; d.textContent=text; box.appendChild(d); } };
-  leer(getragenBox,'Noch nichts — investiere einen Punkt im Skill-Tree.');
-  leer(verfuegbarBox,'Alles Freigeschaltete trägst du bereits.');
-  leer(gesperrtBox,'Alles freigeschaltet.');
-  // Entwicklungen: bewusst offen dokumentiert, damit man gezielt darauf hinspielen kann
+  // Nur die eine relevante Super-Macht zeigen.
   const evoBox=document.getElementById('codex-evo');
   if(evoBox){
     evoBox.innerHTML='';
-    for(const evoId in EVOLUTIONS){
-      const e=EVOLUTIONS[evoId];
-      const fertig=runEvolutions[e.base]===evoId;
-      const basisOk=isCarried(e.base) && (runAbilities[e.base]||1)>=MAX_ABIL_LEVEL;
-      const reqOk=isCarried(e.req);
-      const row=document.createElement('div');
-      row.className='codex-row'+(fertig?' is-evo':(basisOk&&reqOk?'':' locked'));
-      row.innerHTML=`${svg(abilIcon(e.base))}
-        <div class="info"><h3>${e.name}</h3><div class="desc">${e.desc}</div>
-        <div class="lv">${ABILITIES[e.base].name} Stufe ${MAX_ABIL_LEVEL} ${basisOk?'✓':'✗'} &nbsp;+&nbsp; ${ABILITIES[e.req].name} ${reqOk?'✓':'✗'}</div></div>
-        <span class="slot-badge ${fertig?'in':''}">${fertig?'Fertig':'—'}</span>`;
-      evoBox.appendChild(row);
-    }
+    const pair=Object.entries(EVOLUTIONS).find(([,e])=>e.base===activeSlot1), evoId=pair[0], e=pair[1], fertig=runEvolutions[e.base]===evoId;
+    const row=document.createElement('div'); row.className='codex-row'+(fertig?' is-evo':' locked');
+    row.innerHTML=`${svg(abilIcon(e.base))}<div class="info"><h3>${e.name}</h3><div class="desc">${e.desc}</div>
+      <div class="lv">Im Orbitbaum nach Machtmeisterschaft und ${ABILITIES[e.req].name}</div></div><span class="slot-badge ${fertig?'in':''}">${fertig?'Aktiv':'Ziel'}</span>`;
+    evoBox.appendChild(row);
   }
 }
 document.getElementById('codex-btn').addEventListener('click',()=>openCodex('pause'));
@@ -1777,7 +1714,7 @@ function renderCharakterWahl(){
     b.className='wahl-karte'+(save.figur===id?' an':'')+(frei?'':' locked');
     const proz=v=>(v>1?'+':'')+Math.round((v-1)*100)+' %';
     b.innerHTML=`<div class="wahl-kopf"><h3>${f.name}</h3>
-        ${frei? (save.figur===id?'<span class="wahl-marke">gewählt</span>':'') : '<span class="wahl-marke aus">🔒 ab Welle '+(skinReqWave(id,'figur')||'?')+'</span>'}</div>
+        ${frei? (save.figur===id?'<span class="wahl-marke">gewählt</span>':'') : '<span class="wahl-marke aus">'+(isEarned('figur',id)?'◆ Werkstatt':'🔒 Blaupause Welle '+(skinReqWave(id,'figur')||'?'))+'</span>'}</div>
       <p class="wahl-fuer">${f.desc}</p>`;
     const farbe=currentSkin();
     const portrait=vorschauLeinwand(76,64,g=>{
@@ -1844,6 +1781,25 @@ function renderStartMaechte(){
       kachel.onclick=()=>openPick('vorwahl', n);
     }
     box.appendChild(kachel);
+  }
+  renderOrbitPresets();
+}
+function renderOrbitPresets(){
+  const box=document.getElementById('orbit-presets'); if(!box) return;
+  box.innerHTML=''; if(!metaLevel('orbitarchiv')) return;
+  if(!Array.isArray(save.presets)) save.presets=[null,null];
+  for(let i=0;i<2;i++){
+    const p=save.presets[i], card=document.createElement('div'); card.className='preset-card';
+    const text=p?`${(FIGUREN[p.figur]||FIGUREN.held).name} · ${(ABILITIES[p.slot1]||ABILITIES.wirbel).name}${p.slot2?' + '+(ABILITIES[p.slot2]||{}).name:''}`:'Noch nicht belegt';
+    card.innerHTML=`<span><b>Konfiguration ${i+1}</b><small>${text}</small></span><button class="preset-load" ${p?'':'disabled'}>Laden</button><button class="preset-save">Aktuelles Set speichern</button>`;
+    card.querySelector('.preset-load').onclick=()=>{
+      if(!p) return; save.figur=isAvailable('figur',p.figur)?p.figur:'held';
+      save.startMaechte={slot1:p.slot1,slot2:p.slot2}; startMaechte(); persist(); renderStartMaechte(); if(sfx)sfx('pick');
+    };
+    card.querySelector('.preset-save').onclick=()=>{
+      const vw=startMaechte(); save.presets[i]={figur:save.figur,slot1:vw.slot1,slot2:vw.slot2}; persist(); renderOrbitPresets(); if(sfx)sfx('pick');
+    };
+    box.appendChild(card);
   }
 }
 let startMaechteReturn='start';
@@ -2050,7 +2006,7 @@ function renderProgress(){
       const txt=document.createElement('div');
       const w=skinReqWave(id,'figur');
       txt.innerHTML=`<span class="kosm-name">${f.name}</span>`+
-        `<span class="kosm-desc">${avail? f.desc : '🔒 '+(w? 'ab Welle '+w : 'gesperrt')}</span>`;
+        `<span class="kosm-desc">${avail? f.desc : (isEarned('figur',id)?'◆ Projekt in der Werkstatt':'🔒 '+(w? 'Blaupause ab Welle '+w : 'gesperrt'))}</span>`;
       cell.appendChild(txt);
       if(avail) cell.onclick=()=>{ save.figur=id; persist(); if(sfx) sfx('pick'); renderProgress(); };
       fig.appendChild(cell);
@@ -2110,32 +2066,11 @@ function doActive(slot){
   else if(id==='bombe') executeBombe();
   else if(id==='nova') executeNova();
   else if(id==='sog') executeSog();
-}
-function doSignatur(){
-  if(state!=='playing' || signaturCd>0) return;
-  const f=figur(); signaturCd=signaturCdMax();
-  if(f.id==='held'){
-    let dx=moveVec.x, dy=moveVec.y;
-    if(Math.hypot(dx,dy)<0.1){ dx=Math.cos(player.face||swordAngle); dy=Math.sin(player.face||swordAngle); }
-    const len=Math.max(1,Math.hypot(dx,dy)); dx/=len; dy/=len;
-    const sx=player.x, sy=player.y, dist=155;
-    player.x+=dx*dist; player.y+=dy*dist; shieldUntil=Math.max(shieldUntil,Date.now()+420);
-    const dmg=Math.round(82*(treeFlags.sonnenpfad?0.72:1)*(1+bonuses.dmg)*(treeFlags.signaturDmgMult||1));
-    const breite=treeFlags.lichtspur?62:42;
-    for(const en of enemies){
-      const ex=en.x-sx, ey=en.y-sy, vor=ex*dx+ey*dy, seit=Math.abs(ex*dy-ey*dx);
-      if(vor>-en.radius && vor<dist+en.radius && seit<breite+en.radius){ en.hp-=dmg; if(treeFlags.lichtspur) en.hp-=Math.round(dmg*.22); en.stunT=Math.max(en.stunT||0,260); pushFloat(en.x,en.y-16,'-'+dmg,'#ffffff',1.15); }
-    }
-    spawnParticles(player.x,player.y,currentSkin().blade,20); announce('Lichtbahn','Die Klinge weist den Weg','#ffd257'); if(sfx) sfx('wirbel');
-  } else {
-    // Die Leerenklinge bezahlt ihre Macht mit Leben. Der Effekt verändert nur die
-    // Orbit-Klinge: mehr Bahnen, höheres Tempo und Lebensraub durch Klingen-Kills.
-    const opfer=Math.min(player.hp-1,player.maxHp*(treeFlags.leerenOpfer||0.14));
-    if(opfer>0){ player.hp-=opfer; pushFloat(player.x,player.y-26,'-'+Math.round(opfer)+' HP','#c77dff'); }
-    leerenmodusUntil=Date.now()+6000+(treeFlags.leerenDauer||0);
-    spawnParticles(player.x,player.y,'#c77dff',24); announce('Leerenüberladung','Die Orbit-Klinge hungert','#c77dff'); if(sfx) sfx('nova');
+  if(treeFlags.orbitResonanz){
+    const anderes=slot===1?activeSlot2:activeSlot1;
+    if(anderes) activeCd[anderes]=Math.max(0,(activeCd[anderes]||0)*.78);
+    else treeFlags.resonanzUntil=Date.now()+1300;
   }
-  updateSignaturButton();
 }
 function executeWirbel(){
   const lv=abilityLevel('wirbel');
@@ -2363,6 +2298,11 @@ function hurtPlayer(dmg){
   if(sfx) sfx('hurt');
   if(runAbilities.konterstoss && counterCd<=0) doCounter();
   if(player.hp<=0){
+    if(treeFlags.kernreserve && !treeFlags.kernreserveBenutzt){
+      treeFlags.kernreserveBenutzt=true; player.hp=Math.max(1,player.maxHp*.22); shieldUntil=Date.now()+1600;
+      announce('Kernreserve','Die Orbitkrone hält dich im Lauf','#ffd257'); spawnParticles(player.x,player.y,'#ffd257',24);
+      if(sfx)sfx('unlockBig'); updateHUD(); return false;
+    }
     // Wiederaufstehen (nur „Entdecker", einmal pro Lauf): der Lauf endet nicht am
     // ersten Fehler. Für ein Kind ist das der Unterschied zwischen Weiterspielen
     // und Aufgeben — und es sperrt nichts, der Sieg zählt genauso.
@@ -2402,10 +2342,8 @@ function doCounter(){
 function addBolt(x1,y1,x2,y2){ particles.push({bolt:true, x:x1,y:y1, x2, y2, life:0.16, max:0.16}); }
 btnWirbel.addEventListener('touchstart',e=>{e.preventDefault();doActive(1)});
 btnStoss.addEventListener('touchstart',e=>{e.preventDefault();doActive(2)});
-btnSignatur.addEventListener('touchstart',e=>{e.preventDefault();doSignatur()});
 btnWirbel.addEventListener('click',()=>doActive(1));
 btnStoss.addEventListener('click',()=>doActive(2));
-btnSignatur.addEventListener('click',doSignatur);
 
 // Fragmente, Partikel, Textzahlen
 // Fragmente fallen direkt — eine Währung, nichts verfällt
@@ -2424,13 +2362,11 @@ function einsammelnAmWellenende(){
 function killEnemy(en,i){
   dropStar(en.x,en.y, CONFIG.enemyTypes[en.type].star);
   player.xp+=laufXp(CONFIG.enemyTypes[en.type].xp);
-  if(leerenmodusAktiv() && player.hp<player.maxHp){
-    const heilung=player.maxHp*(treeFlags.leerenHeilung||0.01);
+  if(treeFlags.leerenHeilung && player.hp<player.maxHp){
+    const verwundet=1-player.hp/player.maxHp;
+    const heilung=player.maxHp*treeFlags.leerenHeilung*(treeFlags.satterAbgrund && verwundet>.45?1.8:1);
     player.hp=Math.min(player.maxHp,player.hp+heilung);
     pushFloat(player.x,player.y-24,'+'+Math.round(heilung)+' HP','#c77dff');
-  }
-  if(leerenmodusAktiv() && treeFlags.leerenKillDauer){
-    const maxEnd=Date.now()+10000; leerenmodusUntil=Math.min(maxEnd,leerenmodusUntil+220);
   }
   // Lebensregen (passiv): heilt pro Kill, höhere Stufe = mehr
   if(runAbilities.lebensregen){
@@ -2521,8 +2457,12 @@ function checkLevelUp(){
   }
 }
 function metaLevel(id){ return (save.meta&&save.meta[id])||0; }
-function metaValue(id){ const m=META_UPGRADES.find(u=>u.id===id); return m? metaLevel(id)*m.step : 0; }
-function metaPrice(id){ const m=META_UPGRADES.find(u=>u.id===id); return Math.round(m.base*Math.pow(m.grow, metaLevel(id))); }
+function metaValue(id){ return metaLevel(id); }
+function metaPrice(id){
+  const m=META_UPGRADES.find(u=>u.id===id); if(!m) return 0;
+  if(m.blueprint && isEarned(m.blueprint[0],m.blueprint[1])) return Math.ceil((m.base/3)/50)*50;
+  return m.base;
+}
 let metaShopReturn='start';
 function openMetaShop(from){
   metaShopReturn=from||'start';
@@ -2537,19 +2477,21 @@ function closeMetaShop(){
 function renderMetaShop(){
   document.getElementById('metashop-stars').textContent=save.stars;
   const grid=document.getElementById('metashop-grid'); grid.innerHTML='';
+  let gruppe='';
   for(const u of META_UPGRADES){
-    const lv=metaLevel(u.id), total=Math.round(u.cap/u.step), full=lv>=total;
-    const pct=Math.min(100, Math.round(lv/total*100));
+    if(u.gruppe!==gruppe){
+      gruppe=u.gruppe; const h=document.createElement('h3'); h.className='shop-gruppe'; h.textContent=gruppe; grid.appendChild(h);
+    }
+    const lv=metaLevel(u.id), full=lv>0, voraussetzung=!u.req||metaLevel(u.req)>0;
     const price=full? null : metaPrice(u.id);
+    const rabatt=u.blueprint&&isEarned(u.blueprint[0],u.blueprint[1])&&!full;
     const c=document.createElement('div'); c.className='shop-card';
     c.innerHTML=`<div class="shop-head">${svg(ICON[u.icon]||'')}<h3>${u.name}</h3></div>
-      <p>${u.desc}</p>
-      <div class="lv">Stufe ${lv} / ${total}</div>
-      <div class="meta-bar"><span style="width:${pct}%"></span></div>
-      <button ${(full||price>save.stars)?'disabled':''}>${full? 'Max.' : price+' ◆'}</button>`;
+      <p>${u.desc}${!voraussetzung?' <b>Vorheriges Projekt erforderlich.</b>':''}${rabatt?' <b class="blueprint-rabatt">Blaupause gefunden: 67 % Rabatt.</b>':''}</p>
+      <button ${(full||!voraussetzung||price>save.stars)?'disabled':''}>${full? '✓ Gebaut' : price+' ◆'}</button>`;
     c.querySelector('button').onclick=()=>{
-      if(full || price>save.stars) return;
-      save.meta[u.id]=lv+1; save.stars-=price; persist();
+      if(full || !voraussetzung || price>save.stars) return;
+      save.meta[u.id]=1; save.stars-=price; persist();
       if(sfx) sfx('buy'); renderMetaShop();
       // Guthaben kurz aufblitzen lassen, damit der Abzug sichtbar wird
       const gh=document.querySelector('#overlay-metashop .guthaben');
@@ -2682,10 +2624,8 @@ function update(dt){
   if(state!=='playing') return;
   // cooldowns (aktive Fähigkeiten) + Cooldown-Anzeige auf den Buttons
   for(const id of ACTIVE_IDS) if(activeCd[id]>0) activeCd[id]=Math.max(0, activeCd[id]-dt);
-  if(signaturCd>0) signaturCd=Math.max(0,signaturCd-dt);
   updateCooldownUI(btnWirbel, cdWirbel, activeCd[activeSlot1]||0, activeCdMax(activeSlot1), 'a');
   updateCooldownUI(btnStoss,  cdStoss,  activeCd[activeSlot2]||0, activeCdMax(activeSlot2), 'b');
-  updateCooldownUI(btnSignatur, cdSignatur, signaturCd, signaturCdMax(), 'signatur');
 
   // Bewegung – Spieler läuft frei durch die Welt, Kamera hält ihn zentriert
   const w=canvas.clientWidth || window.innerWidth, h=canvas.clientHeight || window.innerHeight;
@@ -2708,12 +2648,12 @@ function update(dt){
   player.bobPhase = moving ? (player.bobPhase||0)+dt*0.014 : 0;
   if(moving){
     player.trailT=(player.trailT||0)-dt;
-    if(player.trailT<=0){ player.trailT=75; particles.push({x:player.x-ix*24, y:player.y-iy*24, vx:(Math.random()-0.5)*40, vy:(Math.random()-0.5)*40, life:0.3, max:0.4, color:'rgba(110,200,255,0.5)', size:2}); }
+    if(player.trailT<=0){ player.trailT=75; particles.push({x:player.x-ix*24, y:player.y-iy*24, vx:(Math.random()-0.5)*40, vy:(Math.random()-0.5)*40, life:0.3, max:0.4, color:metaLevel('spurenlabor')?currentSkin().blade:'rgba(110,200,255,0.5)', size:2}); }
   }
   // Plasmaklinge rotiert permanent um den Spieler
   const fehlendesLeben=1-player.hp/player.maxHp;
   const leerenTempo=figur().id==='konstrukt' ? 1+fehlendesLeben*0.28 : 1;
-  swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * (leerenmodusAktiv()?1.38:1) * dt/1000;
+  swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * dt/1000;
   if(swordAngle>Math.PI*2) swordAngle-=Math.PI*2;
   player.face = swordAngle;
   // Effekt-Timer
@@ -2725,10 +2665,11 @@ function update(dt){
     spinHitTimer = CONFIG.spinHitInterval;
     const bladeLen = bladeLength();
     const boost = dmgBoostUntil>Date.now()?2:1;
-    const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost);
+    const resonanz=treeFlags.resonanzUntil>Date.now()?1.25:1;
+    const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz);
     const duellBonus=(figur().id==='held' && moving ? (0.22+(treeFlags.duellantBonus||0)) : 0);
-    const leerenBonus=figur().id==='konstrukt' ? fehlendesLeben*(0.32+(treeFlags.leerenRisikoBonus||0))+(leerenmodusAktiv()?0.32:0) : 0;
-    const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * (1+(treeFlags.sweetBonus||0)+duellBonus+leerenBonus));
+    const leerenBonus=figur().id==='konstrukt' ? fehlendesLeben*(0.32+(treeFlags.leerenRisikoBonus||0)) : 0;
+    const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+(treeFlags.sweetBonus||0)+duellBonus+leerenBonus));
     for(const en of enemies){
       const dx=en.x-player.x, dy=en.y-player.y;
       const d = Math.hypot(dx,dy);
@@ -2756,7 +2697,7 @@ function update(dt){
       en.hp -= dmg;
       if(treffer){
         fokusTreffer();
-        if(treeFlags.strahlenreiter) signaturCd=Math.max(0,signaturCd-90);
+        if(treeFlags.perfekterOrbit) fokusTreffer();
         if(treeFlags.klingentakt){
           treeFlags.klingentaktHits=(treeFlags.klingentaktHits||0)+1;
           if(treeFlags.klingentaktHits%3===0){ en.hp-=Math.round(dmg*.55); pushFloat(en.x,en.y-28,'TAKT','#ffd257'); if(treeFlags.perfekterOrbit) fokusTreffer(); }
@@ -2962,7 +2903,8 @@ function update(dt){
   // Begleiter: umkreist den Spieler, zieht Beute an und schießt — beides zugleich
   for(const hf of helfer){
     const W=begleiterWerte(hf.stufe);
-    hf.ang += 1.3 * dt/1000;
+    const ueberladen=helferOverdriveUntil>Date.now();
+    hf.ang += (ueberladen?2.1:1.3) * dt/1000;
     hf.x = player.x + Math.cos(hf.ang)*hf.r;
     hf.y = player.y + Math.sin(hf.ang)*hf.r;
     // zieht Fragmente und Kugeln in seiner Nähe zum Spieler
@@ -2972,14 +2914,17 @@ function update(dt){
     }};
     zieh(stars); zieh(orbs);
     hf.cd-=dt;
-    if(hf.cd<=0){
+    if(hf.stufe>=2 && hf.cd<=0){
       let best=null, bd=W.reichweite;
-      for(const en of enemies){ const pd=Math.hypot(en.x-hf.x,en.y-hf.y); if(pd<bd){ bd=pd; best=en; } }
+      for(const en of enemies){
+        const pd=Math.hypot(en.x-hf.x,en.y-hf.y), prioritaet=(hf.stufe>=3&&en.panzer) ? .62 : 1;
+        if(pd*prioritaet<bd){ bd=pd*prioritaet; best=en; }
+      }
       if(best){
         const dir=Math.atan2(best.y-hf.y, best.x-hf.x);
         pShots.push({x:hf.x, y:hf.y, vx:Math.cos(dir)*400, vy:Math.sin(dir)*400,
-          dmg:W.dmg, life:1.1});
-        hf.cd=CONFIG.helfer.rate;
+          dmg:W.dmg*(ueberladen?1.75:1), life:1.1});
+        hf.cd=CONFIG.helfer.rate*(ueberladen?.45:1);
       }
     }
   }
@@ -3855,7 +3800,12 @@ function draw(){
     ctx.fillStyle='rgba(124,200,255,'+(0.05+0.08*anteil).toFixed(2)+')';
     ctx.beginPath(); ctx.arc(0,0,player.radius+8,0,Math.PI*2); ctx.fill();
   }
-  if(leerenmodusAktiv()){
+  if(metaLevel('hangarprojektion')){
+    ctx.save(); ctx.setLineDash([3,6]); ctx.lineDashOffset=-now/140;
+    ctx.strokeStyle='rgba(110,200,255,.34)'; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.ellipse(0,0,player.radius+17,player.radius+8,now/1800,0,Math.PI*2); ctx.stroke(); ctx.restore();
+  }
+  if(figur().id==='konstrukt' && (treeFlags.leerenHeilung || treeFlags.leerenRisikoBonus) && player.hp/player.maxHp<.5){
     const puls=0.58+Math.sin(now/90)*0.10;
     ctx.strokeStyle='rgba(199,125,255,'+puls.toFixed(2)+')'; ctx.lineWidth=2.5;
     ctx.shadowColor='#c77dff'; sb(18);
