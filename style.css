@@ -1,0 +1,419 @@
+/* Orbitblade — schlicht · futuristisch · modern */
+:root{
+  --bg:#05070d; --panel:rgba(10,18,32,.72); --line:rgba(96,166,236,.22);
+  --text:#e6edf7; --muted:#8fa3bf; --accent:#6ec8ff; --gold:#ffd257;
+  --danger:#ff4d4d; --good:#4de0a0;
+  /* Mobile first: Größen wachsen fließend mit der Bildschirmbreite, statt an
+     festen Umbruchpunkten zu springen. Die Untergrenzen sind die Handy-Werte. */
+  --fs-xs:clamp(11px, 2.9vw, 12px);   /* Hilfszeilen, Tastenkürzel */
+  --fs-sm:clamp(13px, 3.4vw, 14px);   /* Beschreibungen */
+  --fs-md:clamp(15px, 3.9vw, 16px);   /* Fließtext, Knöpfe */
+  --fs-lg:clamp(17px, 4.6vw, 20px);   /* Karten-Titel */
+  --fs-xl:clamp(21px, 6vw, 28px);     /* Überschriften */
+  --tap:48px;                          /* Mindestgröße für Fingerziele */
+  --pad:clamp(12px, 3.5vw, 22px);      /* Innenabstand der Overlays */
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;touch-action:none}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);-webkit-tap-highlight-color:transparent}
+#game-wrap{position:relative;width:100vw;height:100vh;height:100dvh;overflow:hidden;background:var(--bg)}
+#game{display:block;width:100%;height:100%;background:var(--bg);touch-action:none}
+
+/* HUD */
+/* Sicherheitsabstand für Notch/abgerundete Ecken auf dem Handy */
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
+  padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left));
+  pointer-events:none;gap:10px;z-index:2}
+#hud-left{flex:1;min-width:0;max-width:min(60vw,400px)}
+#hud-right{display:flex;align-items:center;gap:8px;pointer-events:auto;flex:none}
+#health-wrap{position:relative;height:clamp(22px,5.6vw,26px);background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden;backdrop-filter:blur(8px)}
+#health-bar{height:100%;width:100%;background:linear-gradient(90deg,#c81e2c,#ff5a5a);box-shadow:0 0 14px rgba(255,77,77,.45);transition:width .15s}
+/* Barriere: eigenes Segment rechts auf der Leiste, klar als andere Sorte erkennbar */
+#barrier-bar{position:absolute;top:0;right:0;height:100%;width:0%;
+  background:repeating-linear-gradient(135deg,rgba(124,200,255,.85) 0 6px,rgba(60,140,220,.85) 6px 12px);
+  box-shadow:0 0 12px rgba(124,200,255,.55);transition:width .15s}
+#barrier-bar.an{border-left:1px solid rgba(220,245,255,.75)}
+#health-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:var(--fs-sm);font-weight:700;letter-spacing:.04em;text-shadow:0 1px 3px rgba(0,0,0,.9)}
+#xp-wrap{margin-top:5px;height:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+#xp-bar{height:100%;width:0%;background:linear-gradient(90deg,#3aa0e0,var(--accent));box-shadow:0 0 10px rgba(110,200,255,.5);transition:width .2s}
+#level-text{margin-top:5px;font-size:var(--fs-xs);font-weight:600;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#coin-text,#wave-text{font-size:var(--fs-sm);font-weight:700;background:var(--panel);border:1px solid var(--line);padding:7px 10px;border-radius:4px;letter-spacing:.03em;backdrop-filter:blur(8px);white-space:nowrap}
+#coin-text{color:var(--gold)}
+#pause-btn,#mute-btn{width:var(--tap);height:var(--tap);border-radius:4px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:19px;cursor:pointer;backdrop-filter:blur(8px);flex:none}
+#pause-btn:active,#mute-btn:active{transform:scale(.95)}
+
+/* Joystick */
+/* Unsichtbare Ziehfläche über dem Spielfeld. z-index 0 hält sie UNTER den
+   Bedienelementen (HUD, Spezial-Knöpfe, Overlays), damit die klickbar bleiben. */
+#joystick-zone{position:absolute;inset:0;pointer-events:auto;touch-action:none;z-index:0}
+
+/* Specials — runder Cooldown, eigene Farbe je Fähigkeit */
+#special-zone{position:absolute;
+  right:calc(14px + env(safe-area-inset-right));
+  bottom:calc(18px + env(safe-area-inset-bottom));
+  display:flex;gap:clamp(10px,3vw,14px);pointer-events:auto;z-index:2}
+/* Über die Einstellungen umstellbar: Seite und Anordnung der Fähigkeiten-Knöpfe.
+   Bei "gestapelt" liegt der erste Knopf unten — dort, wo der Daumen ohnehin ist. */
+#special-zone.links{right:auto;left:calc(14px + env(safe-area-inset-left))}
+#special-zone.gestapelt{flex-direction:column-reverse}
+.special-btn{
+  --c:#6ec8ff; --cRGB:110,200,255; --cd:0;
+  width:clamp(72px,19vw,92px);height:clamp(72px,19vw,92px);border-radius:50%;border:2px solid rgba(var(--cRGB),.55);
+  background:var(--panel);color:var(--c);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  cursor:pointer;position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;
+  backdrop-filter:blur(8px);transition:border-color .15s,box-shadow .15s,opacity .15s
+}
+.sp-wirbel{--c:#ffb340;--cRGB:255,179,64}
+.sp-stoss{--c:#6ec8ff;--cRGB:110,200,255}
+.special-btn:not(.on-cooldown){box-shadow:0 0 20px rgba(var(--cRGB),.28)}
+.special-btn:active{transform:scale(.95)}
+.special-btn:focus-visible{outline:3px solid var(--c);outline-offset:3px}
+/* Restlicher Cooldown verdunkelt den Kreis und laeuft im Uhrzeigersinn ab */
+.cd-sweep{position:absolute;inset:0;pointer-events:none;border-radius:50%;
+  background:conic-gradient(from -90deg, rgba(4,7,13,.74) calc(var(--cd)*1%), transparent 0)}
+.s-icon{width:clamp(24px,6.4vw,30px);height:clamp(24px,6.4vw,30px);color:var(--c);margin-bottom:2px}
+.s-label{font-size:clamp(10px,2.7vw,11px);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
+.s-key{font-size:9px;color:var(--muted);letter-spacing:.12em}
+/* Am PC zeigen die Ziffern 1/2 den Tastendruck — auf dem Handy nur verlorener Platz */
+@media (pointer:coarse){ .s-key{display:none} }
+.special-btn.on-cooldown{opacity:.6;border-color:rgba(120,140,170,.35);box-shadow:none}
+.special-btn.on-cooldown .s-icon{color:#7d8da3}
+/* Kurzer Puls genau im Moment der Bereitschaft — man schaut auf die Arena, nicht auf den Knopf */
+@keyframes readyPulse{
+  0%{box-shadow:0 0 0 0 rgba(var(--cRGB),.6);transform:scale(1)}
+  45%{box-shadow:0 0 0 14px rgba(var(--cRGB),0);transform:scale(1.09)}
+  100%{box-shadow:0 0 20px rgba(var(--cRGB),.28);transform:scale(1)}
+}
+.special-btn.just-ready{animation:readyPulse .5s ease-out}
+@media(prefers-reduced-motion:reduce){.special-btn.just-ready{animation:none}}
+
+/* Overlays */
+.overlay{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,rgba(14,28,52,.92),rgba(3,5,10,.96));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:calc(var(--pad) + env(safe-area-inset-top)) var(--pad) calc(var(--pad) + env(safe-area-inset-bottom));
+  text-align:center;overflow-y:auto;-webkit-overflow-scrolling:touch;backdrop-filter:blur(3px);z-index:5}
+.overlay.hidden{display:none}
+/* Wortzeichen: kreisende Klinge als Motiv über dem Namen — greift die Kernmechanik auf */
+.logo{position:relative;display:flex;flex-direction:column;align-items:center;margin-bottom:4px}
+.logo-orbit{position:relative;display:block;width:clamp(52px,14vw,74px);height:clamp(52px,14vw,74px);margin-bottom:clamp(8px,2.4vw,10px)}
+.logo-orbit::before,.logo-orbit::after{content:'';position:absolute;inset:0;border-radius:50%}
+.logo-orbit::before{border:1px solid rgba(110,200,255,.30);box-shadow:0 0 30px rgba(110,200,255,.18) inset}
+/* die Klinge selbst: leuchtender Bogen, der langsam kreist */
+.logo-orbit::after{
+  border:2px solid transparent;border-top-color:var(--accent);border-right-color:var(--accent);
+  filter:drop-shadow(0 0 8px rgba(110,200,255,.9));
+  animation:logoSpin 4.5s linear infinite;
+}
+@keyframes logoSpin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.logo-orbit::after{animation:none}}
+.overlay h1{
+  font-size:clamp(34px,9vw,58px);font-weight:200;letter-spacing:.20em;line-height:1;
+  margin-bottom:10px;text-transform:uppercase;
+  background:linear-gradient(180deg,#ffffff 0%,#cfe6ff 55%,#8ec4f5 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 28px rgba(110,200,255,.45));
+}
+.logo-accent{-webkit-text-fill-color:transparent;background:linear-gradient(180deg,#bfe6ff 0%,#6ec8ff 60%,#3f9fe0 100%);-webkit-background-clip:text;background-clip:text}
+.overlay h2{font-size:var(--fs-xl);font-weight:300;letter-spacing:.12em;margin-bottom:10px;text-transform:uppercase}
+.subtitle{color:var(--muted);margin-bottom:clamp(14px,4vw,22px);font-size:var(--fs-sm);letter-spacing:.07em}
+.hint{margin-top:clamp(14px,4vw,20px);max-width:540px;font-size:var(--fs-sm);line-height:1.6;color:var(--muted)}
+/* Knöpfe: volle Breite auf dem Handy, damit sie mit dem Daumen sicher zu treffen sind */
+.primary,.secondary{width:100%;max-width:340px;min-height:var(--tap)}
+.primary{margin-top:clamp(14px,4vw,18px);padding:15px 28px;border-radius:6px;border:1px solid var(--accent);background:rgba(110,200,255,.14);color:#fff;font-weight:600;font-size:var(--fs-md);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;box-shadow:0 0 26px rgba(110,200,255,.25);transition:background .18s,box-shadow .18s}
+.primary:hover{background:rgba(110,200,255,.24);box-shadow:0 0 36px rgba(110,200,255,.4)}
+.primary:active{transform:scale(.98)}
+.secondary{margin-top:10px;padding:12px 20px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;letter-spacing:.08em;text-transform:uppercase;font-size:var(--fs-sm)}
+.secondary:hover{color:var(--text);border-color:rgba(110,200,255,.4)}
+/* Aufgeben ist zurückgenommen und warnfarben — es soll nicht versehentlich getroffen
+   werden, aber auch nicht versteckt sein. */
+.secondary.gefahr{color:#d98b8b;border-color:rgba(255,90,90,.28);opacity:.85}
+.secondary.gefahr:hover{color:#ff8f8f;border-color:rgba(255,90,90,.55);opacity:1}
+#shop-timer-text,#shop-coin{color:var(--muted);font-size:var(--fs-sm);letter-spacing:.05em;margin-bottom:4px}
+#shop-coin{color:var(--gold);font-weight:700}
+/* minmax-Untergrenze klein genug, dass auf 360px-Handys eine saubere Spalte entsteht */
+#shop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:clamp(10px,3vw,12px);max-width:720px;width:100%;margin:clamp(12px,4vw,16px) 0}
+.shop-card{padding:clamp(12px,3.5vw,14px);border-radius:6px;border:1px solid var(--line);background:rgba(10,18,32,.6);text-align:left;transition:border-color .18s}
+.shop-card:hover{border-color:rgba(110,200,255,.4)}
+.shop-head{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.shop-card h3{font-size:var(--fs-md);font-weight:600;letter-spacing:.03em}
+.card-icon{width:clamp(20px,5.4vw,22px);height:clamp(20px,5.4vw,22px);flex:none;color:var(--accent)}
+.shop-card .card-icon{color:var(--gold)}
+.shop-card p{font-size:var(--fs-sm);color:var(--muted);min-height:0;line-height:1.45;margin-bottom:8px}
+.shop-card button{margin-top:10px;width:100%;min-height:var(--tap);padding:10px;border-radius:4px;border:1px solid rgba(255,210,87,.5);background:rgba(255,210,87,.12);color:var(--gold);font-weight:700;font-size:var(--fs-sm);letter-spacing:.04em;cursor:pointer;transition:background .15s}
+.shop-card button:hover:not(:disabled){background:rgba(255,210,87,.24)}
+.shop-card button:disabled{opacity:.3;cursor:not-allowed}
+/* Grid statt Flex: auf dem Handy eine Spalte, ab genug Breite drei nebeneinander */
+#levelup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));
+  gap:clamp(10px,3vw,16px);margin-top:clamp(14px,4vw,20px);width:100%;max-width:680px}
+.levelup-card{
+  --cc:var(--accent); --ccRGB:110,200,255;
+  position:relative;width:100%;padding:clamp(12px,3.2vw,15px) clamp(12px,3.4vw,15px) clamp(11px,3vw,13px);border-radius:12px;
+  border:1px solid var(--line);
+  background:linear-gradient(165deg,rgba(18,30,50,.92),rgba(8,14,26,.92));
+  cursor:pointer;text-align:center;color:var(--text);overflow:hidden;
+  transition:transform .18s cubic-bezier(.2,.8,.3,1),box-shadow .22s,border-color .22s;
+}
+/* farbige Lichtkante oben: sofort erkennbar, um welche Art Karte es sich handelt */
+.levelup-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(var(--ccRGB),.95),transparent);
+}
+/* weicher Farbschimmer hinter dem Icon */
+.levelup-card::after{
+  content:'';position:absolute;top:-40px;left:50%;transform:translateX(-50%);
+  width:150px;height:110px;border-radius:50%;
+  background:radial-gradient(circle,rgba(var(--ccRGB),.20),transparent 70%);
+  pointer-events:none;
+}
+.levelup-card:hover,.levelup-card:focus-visible{
+  transform:translateY(-5px);border-color:rgba(var(--ccRGB),.7);
+  box-shadow:0 12px 32px rgba(0,0,0,.5), 0 0 30px rgba(var(--ccRGB),.30);
+  outline:none;
+}
+.levelup-card:active{transform:translateY(-1px) scale(.985)}
+.levelup-card .card-icon{
+  position:relative;width:clamp(28px,7vw,34px);height:clamp(28px,7vw,34px);margin:0 auto clamp(7px,2vw,9px);
+  filter:drop-shadow(0 0 10px rgba(var(--ccRGB),.55));
+}
+.levelup-card h3{font-size:var(--fs-md);margin-bottom:4px;font-weight:600;letter-spacing:.02em;line-height:1.2}
+/* min-height nur, wenn nebeneinander gestapelt wird — einspaltig wäre es Leerraum */
+.levelup-card p{font-size:var(--fs-xs);color:var(--muted);line-height:1.35}
+.levelup-card .cap{
+  font-size:10px;margin-top:7px;padding-top:6px;letter-spacing:.06em;text-transform:uppercase;
+  color:rgba(var(--ccRGB),.9);border-top:1px solid rgba(255,255,255,.07);
+}
+/* Je Kartenart eine Leitfarbe — Rand, Icon-Glow, Lichtkante und Fußzeile ziehen sie automatisch */
+.card-damage  { --cc:#ff6b6b; --ccRGB:255,107,107 }
+.card-range   { --cc:#ffd257; --ccRGB:255,210,87 }
+.card-firerate{ --cc:#c77dff; --ccRGB:199,125,255 }
+.card-ability { --cc:#4de0a0; --ccRGB:77,224,160 }
+.card-damage .card-icon,.card-range .card-icon,.card-firerate .card-icon,
+.card-ability .card-icon,.card-unlock .card-icon{color:var(--cc)}
+/* Einmalige Freischaltung: hebt sich bewusst vom Rest ab */
+.card-unlock{
+  --cc:#6ec8ff; --ccRGB:110,200,255;
+  border-color:rgba(110,200,255,.75);
+  background:linear-gradient(165deg,rgba(26,52,84,.95),rgba(8,14,26,.95));
+  box-shadow:0 0 30px rgba(110,200,255,.26);
+}
+.card-unlock .cap{font-weight:700}
+
+/* Balken unter der Karten-Fußzeile: zeigt, wie nah man an der Obergrenze ist */
+.capbar{display:block;height:3px;margin-top:4px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
+.capbar i{display:block;height:100%;background:rgba(var(--rr,110,200,255),.9);border-radius:999px}
+
+/* Seltenheit: Rahmen und Leuchten zeigen den Wert der Karte, das Icon behält seine
+   Kategoriefarbe. So tragen beide Informationen gleichzeitig. */
+.rar-gewoehnlich{ --rr:150,166,190 }
+.rar-gut        { --rr:255,210,87  }
+.rar-selten     { --rr:255,90,90   }
+.rar-mythisch   { --rr:255,140,40  }
+.levelup-card[class*="rar-"]{ border-color:rgba(var(--rr),.75) }
+.levelup-card.rar-gut       { box-shadow:0 0 20px rgba(var(--rr),.18) }
+.levelup-card.rar-selten    { box-shadow:0 0 26px rgba(var(--rr),.26) }
+.levelup-card.rar-mythisch  { box-shadow:0 0 34px rgba(var(--rr),.40) }
+.levelup-card[class*="rar-"]:hover{ box-shadow:0 12px 32px rgba(0,0,0,.5), 0 0 38px rgba(var(--rr),.5) }
+/* Seltenheits-Streifen oben ersetzt die bisherige Kategorie-Lichtkante */
+.levelup-card[class*="rar-"]::before{
+  background:linear-gradient(90deg,transparent,rgba(var(--rr),.95),transparent);
+  height:3px;
+}
+.rar-mythisch::before{ height:4px }
+
+/* Entwicklung: der stärkste Moment im Lauf — bekommt Gold und darf auffallen */
+.card-evo{
+  --cc:#ffd257; --ccRGB:255,210,87;
+  border-color:rgba(255,210,87,.85);
+  background:linear-gradient(165deg,rgba(64,50,16,.95),rgba(14,12,6,.95));
+  box-shadow:0 0 34px rgba(255,210,87,.30);
+}
+.card-evo:hover{box-shadow:0 10px 30px rgba(0,0,0,.5),0 0 46px rgba(255,210,87,.5)}
+.card-evo .cap{font-weight:700}
+@keyframes evoGlow{
+  0%,100%{box-shadow:0 0 30px rgba(255,210,87,.28)}
+  50%    {box-shadow:0 0 46px rgba(255,210,87,.55)}
+}
+.levelup-card.is-evo{animation:evoGlow 1.6s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.levelup-card.is-evo{animation:none}}
+
+/* Abzeichen „Neu" / „Entwicklung" — hebt sich klar vom immer vorhandenen Farbring ab */
+.badge-neu,.badge-evo{
+  position:absolute;top:10px;right:10px;z-index:2;
+  font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 9px;border-radius:999px;line-height:1;
+}
+.badge-neu{background:var(--good);color:#04140c;box-shadow:0 0 14px rgba(77,224,160,.7)}
+.badge-evo{background:var(--gold);color:#241a00;box-shadow:0 0 16px rgba(255,210,87,.8)}
+@keyframes badgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.badge-neu,.badge-evo{animation:badgePulse 1.3s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.badge-neu,.badge-evo{animation:none}}
+#levelup-reroll{margin-top:14px}
+
+/* Pips: gefüllte Kreise = Fähigkeits-Stufe (max 10), direkt an der Karte/Zeile */
+.pips{display:inline-flex;gap:3px;margin-left:8px;vertical-align:middle}
+.pip{width:7px;height:7px;border-radius:50%;background:rgba(120,140,170,.25);display:inline-block}
+.pip.on{background:var(--accent);box-shadow:0 0 5px rgba(110,200,255,.7)}
+
+/* Meta-Shop (#11): dauerhafte Buffs nach dem Lauf */
+#metashop-scroll{width:100%;max-width:640px;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px}
+#metashop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:clamp(10px,3vw,12px);margin:14px 0}
+.shop-card .lv{font-size:var(--fs-xs);color:var(--muted);margin-top:4px}
+.meta-bar{height:5px;background:rgba(120,140,170,.2);border-radius:999px;overflow:hidden;margin:8px 0 4px}
+.meta-bar span{display:block;height:100%;background:linear-gradient(90deg,#3aa0e0,var(--accent));box-shadow:0 0 8px rgba(110,200,255,.6)}
+
+/* Codex (Pause → Fähigkeiten) */
+#codex-scroll{width:100%;max-width:560px;max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px;text-align:left}
+.codex-row{display:flex;align-items:center;gap:10px;padding:clamp(11px,3.2vw,13px);min-height:var(--tap);border:1px solid var(--line);border-radius:6px;background:rgba(10,18,32,.55);margin-bottom:8px}
+.codex-row .card-icon{width:26px;height:26px;flex:none;color:var(--accent)}
+.codex-row .info{flex:1;min-width:0}
+.codex-row h3{font-size:var(--fs-md);font-weight:600}
+.codex-row .desc{font-size:var(--fs-sm);color:var(--muted);line-height:1.4;margin-top:3px}
+.codex-row .lv{font-size:var(--fs-xs);color:var(--muted);margin-top:3px}
+.codex-row.locked{opacity:.5}
+.codex-slot-row{cursor:pointer;border-color:rgba(110,200,255,.4);transition:border-color .15s,box-shadow .15s}
+.codex-slot-row:active{border-color:var(--accent);box-shadow:0 0 18px rgba(110,200,255,.3)}
+.slot-badge{font-size:var(--fs-xs);font-weight:700;letter-spacing:.06em;padding:4px 9px;border-radius:4px;border:1px solid rgba(110,200,255,.5);color:var(--accent);flex:none;white-space:nowrap}
+.slot-badge.in{color:var(--good);border-color:rgba(77,224,160,.5)}
+
+/* Guthaben-Karte: das Fragment-Konto stand vorher als grauer Fließtext zwischen
+   Erklärsätzen und ging völlig unter. Jetzt eigenes, abgesetztes Feld. */
+.guthaben{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:10px clamp(16px,4vw,22px);margin-bottom:12px;
+  border:1px solid rgba(255,210,87,.45);border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,210,87,.14),rgba(255,210,87,.05));
+  box-shadow:0 0 24px rgba(255,210,87,.18);
+}
+.guthaben-sym{color:var(--gold);font-size:clamp(17px,4.4vw,20px);line-height:1;text-shadow:0 0 12px rgba(255,210,87,.8)}
+.guthaben-zahl{color:var(--gold);font-size:clamp(23px,6vw,30px);font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.guthaben-label{color:var(--muted);font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.12em}
+/* kurzes Aufblitzen, wenn Fragmente abgezogen wurden */
+@keyframes guthabenPuls{0%,100%{transform:scale(1)}40%{transform:scale(1.09)}}
+.guthaben.abgebucht{animation:guthabenPuls .32s ease-out}
+@media(prefers-reduced-motion:reduce){.guthaben.abgebucht{animation:none}}
+
+/* Info-Bildschirm: erklärt die Grundlagen, bewusst ruhig und gut lesbar */
+#info-scroll{width:100%;max-width:600px;max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px;text-align:left}
+.info-block{padding:14px 16px;margin-bottom:10px;border:1px solid var(--line);border-radius:8px;background:rgba(10,18,32,.55)}
+.info-block h3{font-size:var(--fs-md);font-weight:600;color:var(--accent);margin-bottom:8px;letter-spacing:.02em}
+.info-block p{font-size:var(--fs-sm);line-height:1.6;color:var(--text);margin-bottom:8px}
+.info-block p:last-child{margin-bottom:0}
+.info-block b{color:#fff}
+.info-liste{list-style:none;margin-top:6px}
+.info-liste li{font-size:var(--fs-sm);line-height:1.9;color:var(--muted);display:flex;align-items:center;gap:9px}
+.info-liste .dot{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
+/* Erklärzeilen im Codex */
+.codex-hinweis{font-size:var(--fs-sm);line-height:1.55;color:var(--muted);text-align:left;
+  padding:12px 14px;border-left:2px solid var(--accent);background:rgba(110,200,255,.07);border-radius:0 6px 6px 0;margin-bottom:6px}
+.sec-hinweis{font-size:var(--fs-xs);color:var(--muted);text-align:left;margin:-4px 0 9px;opacity:.85;line-height:1.45}
+.codex-leer{font-size:var(--fs-xs);color:var(--muted);opacity:.7;padding:10px 12px;text-align:left;font-style:italic}
+
+/* Ausblick auf die nächste Stufe direkt in der Slot-Kachel */
+.slot-next{display:block;margin-top:6px;font-size:var(--fs-xs);line-height:1.4;color:var(--muted);opacity:.9}
+
+/* Einstellungen: pro Thema ein Block mit zwei großen, klar markierten Schaltern */
+#settings-scroll{width:100%;max-width:560px;max-height:62vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px;text-align:left}
+.opt-block{padding:14px 16px;margin-bottom:10px;border:1px solid var(--line);border-radius:8px;background:rgba(10,18,32,.55)}
+.opt-block h3{font-size:var(--fs-md);font-weight:600;color:var(--accent);margin-bottom:6px;letter-spacing:.02em}
+.opt-reihe{display:flex;gap:8px;margin-top:4px}
+.opt-btn{flex:1;min-height:var(--tap);padding:10px 8px;border-radius:6px;cursor:pointer;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--muted);
+  font-size:var(--fs-sm);font-weight:600;letter-spacing:.02em;transition:border-color .12s,color .12s,background .12s}
+.opt-btn:active{transform:scale(.98)}
+.opt-btn.an{border-color:var(--accent);color:#fff;background:rgba(110,200,255,.16);box-shadow:0 0 14px rgba(110,200,255,.22)}
+
+/* Fortschritts-/Sammlungs-Screen */
+#progress-scroll{width:100%;max-width:640px;max-height:64vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px}
+.sec-title{font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.14em;color:var(--muted);text-align:left;margin:18px 0 10px;font-weight:600}
+.sec-title:first-child{margin-top:4px}
+#best-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,104px),1fr));gap:10px}
+.best-cell{display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid var(--line);border-radius:6px;background:rgba(10,18,32,.55)}
+.best-name{font-size:var(--fs-xs);color:var(--muted);letter-spacing:.04em}
+.best-val{font-size:var(--fs-lg);font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+#skin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,96px),1fr));gap:10px}
+.skin-cell{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 8px;min-height:var(--tap);border:1px solid var(--line);border-radius:6px;background:rgba(10,18,32,.55);color:var(--text);cursor:pointer;transition:border-color .15s}
+.skin-cell.active{border-color:var(--accent);box-shadow:0 0 18px rgba(110,200,255,.25)}
+.skin-cell.locked{opacity:.55;cursor:not-allowed}
+.skin-dot{width:26px;height:26px;border-radius:50%;box-shadow:0 0 12px currentColor}
+.skin-name{font-size:var(--fs-xs);font-weight:600}
+.skin-cell .lock{font-size:var(--fs-xs);color:var(--muted);line-height:1.2}
+/* Kosmetik mit gezeichneter Vorschau: Klingenformen und Figuren */
+#form-grid,#figur-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px}
+.kosm-cell{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 10px;min-height:var(--tap);
+  border:1px solid var(--line);border-radius:6px;background:rgba(4,8,16,.6);color:var(--text);cursor:pointer;
+  text-align:center;transition:border-color .15s,box-shadow .15s}
+.kosm-cell canvas{display:block;flex:none}
+.kosm-cell.active{border-color:var(--accent);box-shadow:0 0 18px rgba(110,200,255,.25)}
+.kosm-cell.locked{opacity:.55;cursor:not-allowed}
+.kosm-name{display:block;font-size:var(--fs-sm);font-weight:600}
+.kosm-desc{display:block;font-size:var(--fs-xs);color:var(--muted);line-height:1.35;margin-top:2px}
+
+#badge-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px}
+.badge-cell{display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px;padding:14px 10px;border:1px solid var(--line);border-radius:6px;background:rgba(10,18,32,.4);opacity:.5}
+.badge-cell.have{opacity:1;border-color:rgba(255,210,87,.45)}
+.badge-medal{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:15px;font-weight:800;border:2px solid var(--line);color:var(--muted);font-variant-numeric:tabular-nums}
+.badge-cell.have .badge-medal{border-color:var(--gold);color:var(--gold);box-shadow:0 0 16px rgba(255,210,87,.3)}
+.badge-name{font-size:var(--fs-sm);font-weight:600}
+.badge-desc{font-size:var(--fs-xs);color:var(--muted);line-height:1.35}
+
+/* Mobile first: die Grundregeln oben sind die Handy-Fassung. Ab hier nur noch
+   Zugaben für größere Schirme — nichts wird zurückgenommen. */
+@media (min-width:601px){
+  .levelup-card p{min-height:30px}       /* gleiche Kartenhöhe, wenn sie nebeneinander stehen */
+  .primary,.secondary{width:auto}         /* am PC keine vollbreiten Knöpfe nötig */
+  .primary{padding:15px 40px}
+  .secondary{padding:12px 26px}
+}
+/* Querformat auf dem Handy: sehr wenig Höhe — Overlays kompakter halten */
+@media (max-height:480px) and (orientation:landscape){
+  .logo-orbit{display:none}
+  .overlay{justify-content:flex-start;padding-top:12px}
+  .subtitle,.hint{display:none}
+  .overlay h1{font-size:clamp(24px,5vw,34px);margin-bottom:6px}
+  #levelup-grid{margin-top:8px}
+  .levelup-card{padding:12px 12px 10px}
+  .levelup-card .card-icon{width:30px;height:30px;margin-bottom:6px}
+}
+
+/* Slot-Kacheln: zeigen auf einen Blick, was belegt ist — statt Listenzeilen zum Durchtippen */
+.slot-reihe{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:10px;margin-bottom:4px}
+.slot-kachel{display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 10px;
+  border:1px solid var(--line);border-radius:8px;background:rgba(10,18,32,.6);color:var(--text);
+  cursor:pointer;text-align:center;min-height:var(--tap);transition:border-color .15s,box-shadow .15s}
+.slot-kachel:not(.gesperrt):not(.leer):hover{border-color:rgba(110,200,255,.6);box-shadow:0 0 18px rgba(110,200,255,.2)}
+.slot-kachel:active{transform:scale(.98)}
+.slot-kachel .card-icon{width:28px;height:28px;color:var(--accent);margin:2px 0}
+.slot-nr{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.slot-name{font-size:var(--fs-sm);font-weight:600}
+.slot-sub{font-size:10px;color:var(--muted);line-height:1.3}
+.slot-kachel.gesperrt,.slot-kachel.leer{opacity:.5;cursor:default}
+/* Reine Anzeige: voll lesbar, aber nicht antippbar (Aktive im laufenden Spiel) */
+.slot-kachel.nurAnzeige{cursor:default}
+.slot-kachel.nurAnzeige:active{transform:none}
+.slot-kachel.is-evo{border-color:rgba(255,210,87,.7);box-shadow:0 0 20px rgba(255,210,87,.22)}
+.slot-kachel.is-evo .card-icon{color:var(--gold)}
+
+/* Startmächte-Vorwahl */
+#startmaechte-scroll{width:100%;max-width:520px;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px;text-align:left}
+#startmaechte-slots{margin-top:12px}
+
+/* Auswahl-Dialog für einen Slot */
+#pick-liste{width:100%;max-width:520px;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px}
+.pick-karte{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--line);border-radius:8px;
+  background:rgba(10,18,32,.6);color:var(--text);cursor:pointer;text-align:left;min-height:var(--tap);
+  transition:border-color .15s,box-shadow .15s}
+.pick-karte:not(.locked):hover{border-color:rgba(110,200,255,.6);box-shadow:0 0 18px rgba(110,200,255,.2)}
+.pick-karte.locked{opacity:.45;cursor:not-allowed}
+.pick-karte .card-icon{width:26px;height:26px;flex:none;color:var(--accent)}
+.pick-info{flex:1;min-width:0}
+.pick-info h3{font-size:var(--fs-md);font-weight:600}
+.pick-info p{font-size:var(--fs-xs);color:var(--muted);line-height:1.4;margin-top:2px}
+.pick-lv{font-size:10px;color:var(--muted);margin-top:4px}
+
+/* Status auf der Level-Up-Karte: sagt, ob die Macht schon wirkt */
+.karte-status{position:absolute;top:10px;left:10px;z-index:2;font-size:9px;font-weight:800;
+  letter-spacing:.09em;text-transform:uppercase;padding:3px 7px;border-radius:999px;line-height:1}
+.karte-status.an{background:rgba(77,224,160,.22);color:var(--good);border:1px solid rgba(77,224,160,.5)}
+.karte-status.aus{background:rgba(150,166,190,.18);color:#b6c3d6;border:1px solid rgba(150,166,190,.4)}

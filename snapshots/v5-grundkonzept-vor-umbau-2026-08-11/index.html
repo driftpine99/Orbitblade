@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Orbitblade — Konzeptfassung</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game" width="960" height="540"></canvas>
+
+  <!-- Top HUD -->
+  <div id="hud">
+    <div id="hud-left">
+      <div id="health-wrap"><div id="health-bar"></div><div id="barrier-bar"></div><span id="health-text"></span></div>
+      <div id="xp-wrap"><div id="xp-bar"></div></div>
+      <div id="fokus-wrap"><div id="fokus-bar"></div><span id="fokus-text">Fokus</span></div>
+      <div id="level-text"></div>
+      <div id="ziel-liste"></div>
+    </div>
+    <div id="hud-right">
+      <div id="coin-text">💰 0</div>
+      <div id="wave-text">Welle 1</div>
+      <button id="mute-btn" aria-label="Ton an/aus">🔊</button>
+      <button id="pause-btn" aria-label="Pause">⏸</button>
+    </div>
+  </div>
+
+  <!-- Unsichtbare Ziehfläche: überall aufsetzen und ziehen, keine Anzeige -->
+  <div id="joystick-zone"></div>
+
+  <!-- Special Buttons -->
+  <div id="special-zone">
+    <button id="btn-wirbel" class="special-btn sp-wirbel" aria-label="Wirbelangriff">
+      <span class="cd-sweep" id="cd-wirbel"></span>
+      <svg class="s-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 4a8 8 0 1 1-6.9 4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M12 8.5a3.5 3.5 0 1 0 3 1.7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M4.4 5.2 5.1 9l3.8-.7z" fill="currentColor"/>
+      </svg>
+      <span class="s-label">Wirbel</span>
+      <span class="s-key">1</span>
+    </button>
+    <button id="btn-stoss" class="special-btn sp-stoss" aria-label="Schockwelle">
+      <span class="cd-sweep" id="cd-stoss"></span>
+      <svg class="s-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="2.6" fill="currentColor"/>
+        <path d="M12 5.8a6.2 6.2 0 0 1 0 12.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".85"/>
+        <path d="M12 5.8a6.2 6.2 0 0 0 0 12.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".85"/>
+        <path d="M12 2.2a9.8 9.8 0 0 1 0 19.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".4"/>
+        <path d="M12 2.2a9.8 9.8 0 0 0 0 19.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".4"/>
+      </svg>
+      <span class="s-label">Schock</span>
+      <span class="s-key">2</span>
+    </button>
+  </div>
+
+  <!-- Start Menu -->
+  <div id="overlay-start" class="overlay">
+    <div class="logo">
+      <span class="logo-orbit" aria-hidden="true"></span>
+      <h1>Orbit<span class="logo-accent">blade</span></h1>
+    <p class="subtitle" style="color:var(--gold);letter-spacing:.14em;font-size:var(--fs-xs);text-transform:uppercase">Konzeptfassung zum Testen</p>
+    </div>
+    <p class="subtitle">Deine Klinge kreist. Überlebe die Arena.</p>
+    <button id="start-btn" class="primary">Spiel starten</button>
+    <button id="info-btn" class="secondary">ℹ Wie funktioniert das Spiel?</button>
+    <button id="startmaechte-btn" class="secondary">Vor dem Lauf: Charakter &amp; Mächte</button>
+    <button id="metashop-menu-btn" class="secondary">Werkstatt</button>
+    <button id="progress-btn" class="secondary">Sammlung &amp; Bestmarken</button>
+    <button id="settings-btn" class="secondary">⚙ Einstellungen</button>
+    <p class="hint">Finger irgendwo auf den Bildschirm ziehen — die Klinge trifft von allein.<br><span style="opacity:.7">Am PC: WASD oder Pfeiltasten, 1 und 2 für die Spezialangriffe.</span></p>
+  </div>
+
+  <!-- Pause -->
+  <div id="overlay-pause" class="overlay hidden">
+    <h2>Pausiert</h2>
+    <button id="resume-btn" class="primary">Weiter</button>
+    <button id="codex-btn" class="secondary">Mächte &amp; Ausrüstung</button>
+    <button id="info-btn-pause" class="secondary">ℹ Wie funktioniert das Spiel?</button>
+    <button id="settings-btn-pause" class="secondary">⚙ Einstellungen</button>
+    <button id="beenden-btn" class="secondary gefahr">Lauf beenden</button>
+  </div>
+
+  <!-- Rückfrage vor dem Aufgeben: einmal, und nur wenn etwas auf dem Spiel steht -->
+  <div id="overlay-abbruch" class="overlay hidden">
+    <h2>Lauf beenden?</h2>
+    <p class="subtitle" id="abbruch-text"></p>
+    <button id="abbruch-nein" class="primary">Weiterspielen</button>
+    <button id="abbruch-ja" class="secondary gefahr">Ja, beenden</button>
+  </div>
+
+  <!-- Codex: alle Fähigkeiten ansehen + die 2 aktiven Slots umrüsten -->
+  <div id="overlay-codex" class="overlay hidden">
+    <h2>Mächte &amp; Ausrüstung</h2>
+    <div id="codex-scroll">
+      <p class="codex-hinweis">Neue Mächte bekommst du <b>nur über Level-Up-Karten im Lauf</b>.
+      Hier siehst du, was du trägst, was es noch gibt und was daraus entstehen kann.</p>
+
+      <h3 class="sec-title">Aktive Mächte — auf Knopfdruck</h3>
+      <p class="sec-hinweis">Im Lauf festgelegt. Womit du startest, wählst du vor dem
+      Spiel im Hauptmenü unter <b>„Startmächte"</b>.</p>
+      <div id="codex-slots" class="slot-reihe"></div>
+
+      <h3 class="sec-title">Passive Mächte — wirken von allein</h3>
+      <p class="sec-hinweis" id="passiv-hinweis"></p>
+      <div id="codex-passivslots" class="slot-reihe"></div>
+
+      <h3 class="sec-title">Entwicklungen — zwei Mächte verschmelzen</h3>
+      <p class="sec-hinweis">Aktive Macht auf Stufe 5 <b>plus</b> die passende passive Macht.</p>
+      <div id="codex-evo"></div>
+
+      <h3 class="sec-title">Noch nicht getragen</h3>
+      <p class="sec-hinweis">Diese Mächte können dir im Lauf als Karte angeboten werden.</p>
+      <div id="codex-verfuegbar"></div>
+
+      <h3 class="sec-title">Noch gesperrt</h3>
+      <p class="sec-hinweis">Erreiche die genannte Welle, um sie dauerhaft freizuschalten.</p>
+      <div id="codex-gesperrt"></div>
+    </div>
+    <button id="codex-back" class="primary">Zurück</button>
+  </div>
+
+  <!-- Startmächte: mit welchen aktiven Mächten jeder Lauf beginnt -->
+  <div id="overlay-startmaechte" class="overlay hidden">
+    <h2>Vor dem Lauf</h2>
+    <p class="subtitle">Charakter, Hilfe und Startmächte</p>
+    <div id="startmaechte-scroll">
+      <h3 class="sec-title">Charakter</h3>
+      <p class="sec-hinweis">Verändert Werte und bringt eine eigene Besonderheit mit.</p>
+      <div id="charakter-wahl"></div>
+
+      <h3 class="sec-title">Hilfe</h3>
+      <p class="sec-hinweis">Dasselbe Spiel, nur mit mehr oder weniger Rückenwind.
+      <b>Hilfen sperren nichts</b> — Freischaltungen, Abzeichen und der Sieg zählen auf
+      jeder Stufe. Nur die Bestmarke wird getrennt geführt.</p>
+      <div id="hilfe-wahl"></div>
+
+      <h3 class="sec-title">Startmächte</h3>
+      <p class="sec-hinweis">Tippe einen Slot an. <b>Passive Mächte kommen im Lauf</b> über
+      Level-Up-Karten — das ist der Teil, der jeden Lauf anders macht.</p>
+      <div id="startmaechte-slots" class="slot-reihe"></div>
+    </div>
+    <button id="startmaechte-back" class="primary">Zurück</button>
+  </div>
+
+  <!-- Auswahl für einen Slot: öffnet sich beim Antippen eines Slots -->
+  <div id="overlay-pick" class="overlay hidden">
+    <h2 id="pick-titel">Macht wählen</h2>
+    <p class="subtitle" id="pick-hinweis"></p>
+    <div id="pick-liste"></div>
+    <button id="pick-back" class="primary">Abbrechen</button>
+  </div>
+
+  <!-- Level Up -->
+  <div id="overlay-levelup" class="overlay hidden">
+    <h2>Level Aufstieg!</h2>
+    <p>Wähle eine Verstärkung</p>
+    <div id="levelup-grid"></div>
+    <button id="levelup-reroll" class="secondary" style="display:none">🎲 Neu würfeln</button>
+  </div>
+
+  <!-- Game Over -->
+  <div id="overlay-gameover" class="overlay hidden">
+    <h2>Besiegt</h2>
+    <p id="gameover-stats"></p>
+    <button id="wieder-btn" class="primary">Nochmal spielen</button>
+    <button id="metashop-btn" class="secondary">◆ Werkstatt</button>
+    <button id="restart-btn" class="secondary">Hauptmenü</button>
+  </div>
+
+  <!-- Sieg: der Moment, auf den ein ganzer Lauf zuläuft -->
+  <div id="overlay-sieg" class="overlay hidden">
+    <h2>Gewonnen</h2>
+    <p id="sieg-text"></p>
+    <button id="sieg-weiter" class="primary">Endlos weiterspielen</button>
+    <button id="sieg-menue" class="secondary">Hauptmenü</button>
+  </div>
+
+  <!-- Werkstatt: dauerhafte Verbesserungen nach dem Lauf, bezahlt mit Fragmenten -->
+  <div id="overlay-metashop" class="overlay hidden">
+    <h2>Werkstatt</h2>
+    <div class="guthaben">
+      <span class="guthaben-sym">◆</span>
+      <span class="guthaben-zahl" id="metashop-stars">0</span>
+      <span class="guthaben-label">Fragmente</span>
+    </div>
+    <p class="subtitle">Dauerhafte Verstärkung für jeden Lauf</p>
+    <div id="metashop-scroll">
+      <div id="metashop-grid"></div>
+    </div>
+    <button id="metashop-back" class="primary">Zurück</button>
+  </div>
+
+  <!-- Info: erklärt die Grundlagen, erreichbar aus Start- und Pausenmenü -->
+  <div id="overlay-info" class="overlay hidden">
+    <h2>So funktioniert es</h2>
+    <div id="info-scroll">
+      <div class="info-block">
+        <h3>Bewegen und Kämpfen</h3>
+        <p>Zieh mit dem Finger irgendwo über den Bildschirm — dein Held läuft in die
+        Richtung. Am PC: WASD oder Pfeiltasten.</p>
+        <p><b>Du greifst nicht selbst an.</b> Deine Klinge kreist automatisch und trifft
+        alles in ihrer Nähe. Wo die Klinge gerade wirklich ist, richtet sie
+        <b>dreimal so viel Schaden</b> an — das erkennst du am weißen Aufblitzen.
+        Deine Aufgabe ist Ausweichen und Positionieren.</p>
+      </div>
+      <div class="info-block">
+        <h3>Level-Ups: hier entsteht dein Aufbau</h3>
+        <p>Gegner geben Erfahrung. Bei jedem Aufstieg wählst du <b>eine von drei Karten</b>.
+        Das ist der einzige Weg, im Lauf stärker zu werden.</p>
+        <p>Die Farbe zeigt den Wert der Karte:</p>
+        <ul class="info-liste">
+          <li><span class="dot" style="background:#96a6be"></span> Grau — Werte wie Schaden oder Reichweite</li>
+          <li><span class="dot" style="background:#ffd257"></span> Gelb — verstärkt eine Macht, die du schon trägst</li>
+          <li><span class="dot" style="background:#ff5a5a"></span> Rot — eine neue Macht</li>
+          <li><span class="dot" style="background:#ff8c28"></span> Orange — Entwicklung oder zweite Klinge, das Stärkste</li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <h3>Mächte</h3>
+        <p><b>Aktive Mächte</b> löst du selbst über die runden Knöpfe aus (die Seite
+        stellst du in den Einstellungen ein). Du trägst eine, eine zweite kannst du in
+        der Werkstatt freischalten. Womit du <b>startest</b>, wählst du im Hauptmenü
+        unter „Startmächte" — das bleibt dann so. Mitten im Lauf umrüsten geht über
+        Pause → „Mächte &amp; Ausrüstung".</p>
+        <p>Welche aktiven Mächte du hast, steht mit dem Start <b>fest</b> — im Lauf
+        wechselst du sie nicht mehr. Dafür sind alle Karten, die du dann bekommst,
+        auch wirklich für deinen Aufbau.</p>
+        <p><b>Passive Mächte</b> wirken von allein und kommen nur über Level-Up-Karten.
+        Du kannst <b>höchstens drei</b> gleichzeitig tragen — bekommst du eine vierte
+        angeboten, musst du tauschen.</p>
+        <p><b>Entwicklungen</b> sind der stärkste Moment: Bringst du eine aktive Macht auf
+        Stufe 5 <b>und</b> trägst die passende passive Macht, verschmelzen beide zu etwas
+        Neuem. Welche Kombination wozu führt, steht unter „Mächte &amp; Ausrüstung".</p>
+      </div>
+      <div class="info-block">
+        <h3>Fragmente ◆ und die Werkstatt</h3>
+        <p>Besiegte Gegner lassen <b>Fragmente</b> fallen. Sie bleiben dir über den Tod
+        hinaus erhalten — nichts verfällt.</p>
+        <p>In der <b>Werkstatt</b> gibst du sie für dauerhafte Verbesserungen aus, die ab
+        dem nächsten Lauf gelten: mehr Schaden und Leben, ein zweiter Aktiv-Slot oder
+        einen <b>Begleiter</b>, der für dich einsammelt und schießt und über fünf Stufen
+        weiterwächst.</p>
+      </div>
+      <div class="info-block">
+        <h3>Wellen und Bosse</h3>
+        <p>Alle fünf Wellen kommt ein Boss. Jeder Boss-Typ hat eigene Angriffe — der Ring
+        am Boden warnt vor, bevor er zuschlägt. <b>Nach jedem Boss wirst du vollständig
+        geheilt</b>, und du schaltest etwas Neues frei.</p>
+        <p>Rote Kugeln mit Kreuz heilen dich, blaue geben Erfahrung. Sammelst du eine rote
+        Kugel bei <b>vollem Leben</b> ein, wird daraus eine <b>Barriere</b> — ein blaues
+        Segment am rechten Ende deiner Lebensleiste, das Schaden abfängt, bevor er an
+        deine Trefferpunkte geht.</p>
+      </div>
+    </div>
+    <button id="info-back" class="primary">Verstanden</button>
+  </div>
+
+  <!-- Einstellungen: Bedienung anpassen, erreichbar aus Start- und Pausenmenü -->
+  <div id="overlay-settings" class="overlay hidden">
+    <h2>Einstellungen</h2>
+    <div id="settings-scroll">
+      <div id="settings-liste"></div>
+    </div>
+    <button id="settings-back" class="primary">Zurück</button>
+  </div>
+
+  <!-- Fortschritt / Sammlung -->
+  <div id="overlay-progress" class="overlay hidden">
+    <h2>Sammlung</h2>
+    <div id="progress-scroll">
+      <h3 class="sec-title">Bestmarken</h3>
+      <div id="best-grid"></div>
+      <h3 class="sec-title">Klingenfarbe</h3>
+      <div id="skin-grid"></div>
+      <h3 class="sec-title">Klingenform</h3>
+      <p class="sec-hinweis">Form und Farbe lassen sich frei kombinieren. Rein optisch —
+      Reichweite und Schaden ändern sich nicht.</p>
+      <div id="form-grid"></div>
+      <h3 class="sec-title">Charaktere</h3>
+      <p class="sec-hinweis">Nicht mehr nur Optik — jeder Charakter hat eigene Werte und eine
+      Besonderheit. Die Werte siehst du bei <b>„Vor dem Lauf"</b> im Hauptmenü.</p>
+      <div id="figur-grid"></div>
+      <h3 class="sec-title">Abzeichen</h3>
+      <div id="badge-grid"></div>
+    </div>
+    <button id="progress-back" class="primary">Zurück</button>
+  </div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>

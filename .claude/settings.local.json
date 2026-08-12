@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check game.js)",
+      "Bash(node -e ' *)",
+      "Bash(node \"C:\\\\Users\\\\benle\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Saber-Game-Projekt\\\\615f8269-6b21-4bb9-8fc6-926f35eb026c\\\\scratchpad\\\\sim.js\")",
+      "Bash(node \"C:\\\\Users\\\\benle\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Saber-Game-Projekt\\\\615f8269-6b21-4bb9-8fc6-926f35eb026c\\\\scratchpad\\\\play2.js\")",
+      "Bash(node \"C:/Users/benle/AppData/Local/Temp/claude/C--Saber-Game-Projekt/615f8269-6b21-4bb9-8fc6-926f35eb026c/scratchpad/build.js\")",
+      "Bash(node --check extracted.js)",
+      "Bash(node \"C:/Users/benle/AppData/Local/Temp/claude/C--Saber-Game-Projekt/615f8269-6b21-4bb9-8fc6-926f35eb026c/scratchpad/upgrades.js\")",
+      "Bash(node \"C:/Users/benle/AppData/Local/Temp/claude/C--Saber-Game-Projekt/615f8269-6b21-4bb9-8fc6-926f35eb026c/scratchpad/sim.js\")",
+      "Bash(node \"C:/Users/benle/AppData/Local/Temp/claude/C--Saber-Game-Projekt/615f8269-6b21-4bb9-8fc6-926f35eb026c/scratchpad/play2.js\")",
+      "Bash(node orbitblade_sim9.js)",
+      "Bash(node orbitblade_sim9_combined.js)",
+      "Bash(node \"C:\\\\Users\\\\benle\\\\AppData\\\\Local\\\\Temp\\\\orbitblade_sim10.js\")",
+      "Bash(node \"C:\\\\Users\\\\benle\\\\AppData\\\\Local\\\\Temp\\\\orbitblade_sim10_combined.js\")",
+      "Bash(node --check \"C:\\\\Saber-Game-Projekt\\\\game.js\")",
+      "Bash(ipconfig)",
+      "Bash(py --version)",
+      "Bash(python -m http.server 8000)",
+      "Bash(curl *)",
+      "Bash(node \"C:\\\\Users\\\\benle\\\\AppData\\\\Local\\\\Temp\\\\orbitblade_loadtest.js\")",
+      "Bash(node \"C:\\\\Users\\\\benle\\\\AppData\\\\Local\\\\Temp\\\\orbitblade_loadtest_combined.js\")",
+      "Bash(node --check /c/Saber-Game-Projekt/game.js)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://127.0.0.1:8000/game.js\" -UseBasicParsing -TimeoutSec 5; \"Server laeuft - game.js lieferbar: $\\($r.StatusCode\\) \\($\\($r.Content.Length\\) Bytes\\)\" } catch { \"Server NICHT erreichbar: $\\($_.Exception.Message\\)\" })"
+    ]
+  }
+}
