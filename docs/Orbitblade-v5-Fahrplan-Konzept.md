@@ -300,3 +300,76 @@ Nicht enthalten:
 - Finale Zahlenbalance.
 - Tiefer Performancevergleich.
 
+## Planungsfortschreibung vom 13.08.2026
+
+Der erste schlanke Orbitpfad hat die beabsichtigte Lesbarkeit erreicht, seine
+Punktökonomie ist jedoch zu sicher: 15 erwartete Punkte bezahlen exakt 15 Investitionen.
+Der Spieler trifft drei A/B-Wahlen, muss danach aber auf nichts verzichten. Die neue
+Fassung behält deshalb die mobile, zusammenhängende Form und verändert nur Budget und
+Abhängigkeiten.
+
+### Zielbild Orbitpfad v2
+
+```text
+                      ORBITSTART
+                          |
+              Klingenführung A oder B
+                          |
+               Machtmutation A oder B
+                          |
+            Partner 1–3 ---- Klingenmodul 1–2
+                          |
+                 Charakterhaltung A/B
+                          |
+       Machtmeisterschaft 1–3 ---- Machtmodul 1–2
+                          |
+                 Synergie + Evolution
+                          |
+                 Orbitresonanz 1–3
+                          |
+              Evolution + 14 investiert
+                          |
+                    Orbitkrone
+```
+
+- 19 mögliche reguläre Investitionen, 15 reguläre Punkte.
+- `Startimpuls` ergänzt Punkt 16 und den zweiten Kronenrang, sodass weiterhin vier
+  Vertiefungen ausgelassen werden.
+- Partner, Meisterschaft und Resonanz öffnen ab Rang 1 den weiteren Weg; ihre höheren
+  Ränge konkurrieren mit Klingen- und Machtmodul.
+- Klingenmodul und Machtmodul besitzen je zwei kontextabhängige, mechanische Ränge.
+- Die Evolution ist eine verpflichtende späte Wegmarke. Die Krone ist mit Punkt 15
+  garantiert erreichbar und reagiert auf die vorherigen Entscheidungen.
+- Der Wert guter Entscheidungen liegt in Buildidentität und Kampfwirkung, nicht darin,
+  ob der Spieler nach rund 20 Minuten den Abschlussknoten sehen darf.
+
+### Zielbild Endlos
+
+```text
+                    ORBITKRONE
+                         |
+                  ENDLOSRESONANZ
+                    /         \
+            KLINGENECHO     MACHTECHO
+               1–3             1–3
+```
+
+- Der reguläre Build friert beim Eintritt in Endlos ein; ausgelassene Module bleiben
+  Teil seiner Identität und werden nicht nachgekauft.
+- Der Spieler wählt genau einen Endloskern. Klingenecho vertieft Klinge und Sweet Spot,
+  Machtecho Hauptmacht und Evolution.
+- Zielpacing sind Welle 31, Boss 35 und Boss 40; der dritte Rang darf nach Test auf
+  Boss 45 verschoben werden.
+- Nach Rang 3 entstehen weder tote Skillpunkte noch endlos stapelbare Prozentboni.
+  Weitere XP sollen einen kurzen, nicht stapelbaren Echoimpuls aufladen.
+
+### Korrigierte Reihenfolge
+
+1. Kontextmechaniken der beiden neuen Module für alle fünf Hauptmächte festlegen.
+2. Regulären Pfad, Budget, Kronenregel und Endlos-Freeze gemeinsam implementieren.
+3. Endlosresonanz implementieren.
+4. Vollständigen Standardlauf messen; erst danach XP und Zahlen justieren.
+5. Toten Hangar-Vorraum entfernen und Bestmarken klarer darstellen.
+6. Rein kosmetisches Hangarprestige später als Fragment-Senke ergänzen.
+7. Rangsystem, Performance-Feinarbeit und Monetarisierung getrennt und in dieser
+   Reihenfolge behandeln.

@@ -300,6 +300,89 @@ kann ihren vollständigen Laufpfad spielen.
 - Pro Testlauf werden Zeit bis zum ersten Punkt, Welle/Minute von Evolution und Krone,
   übrige Punkte, A/B-Kombination, Todesursache und stärkster Moment notiert.
 
+## Beschlossene Fortschreibung: Orbitpfad v2 (Planung vom 13.08.2026)
+
+Diese Fortschreibung ersetzt für die nächste Umsetzung die bisherige Punktökonomie,
+nicht aber die schlanke Form des Orbitpfads. Die aktuelle Fassung war bewusst eine
+Gegenbewegung zum alten überladenen Dreiast-Baum: wenige gleichzeitig sichtbare
+Entscheidungen, keine Sackgassen, kein Scrollen und ein sicher erreichbarer Abschluss.
+Diese Architektur bleibt. Korrigiert wird nur, dass derzeit 15 erwartete Punkte exakt
+15 Investitionen bezahlen und dadurch nach den A/B-Wahlen kein Verzicht entsteht.
+
+### Neue reguläre Punktökonomie
+
+- Ein Lauf bis zum Sieg vergibt höchstens 15 reguläre Levelpunkte.
+- `Startimpuls` ergänzt weiterhin einen 16. Startpunkt und den zweiten Kronenrang
+  `Kernreserve`; der Abstand zwischen Angebot und Budget bleibt dadurch gleich.
+- Der reguläre Pfad bietet 19 Investitionen, mit `Kernreserve` 20.
+- Ein fertiger Welle-30-Build lässt damit stets vier Vertiefungen aus.
+- Der Baum erhält nur zwei zusätzliche kompakte Knoten: `Klingenmodul` und
+  `Machtmodul`, jeweils mit zwei mechanischen Rängen. Ihre konkrete Wirkung passt
+  sich an gewählte Klingenform beziehungsweise Hauptmacht an.
+- Partner, Machtmeisterschaft und Orbitresonanz öffnen den Folgepfad bereits mit
+  Rang 1. Rang 2 und 3 werden freiwillige, deutlich sichtbare Vertiefungen.
+- Keine der neuen Investitionen ist ein bloßer Prozentfüller. Jeder Rang verändert
+  innerhalb von 30 Sekunden sichtbar Verhalten, Rhythmus oder Trefferbild.
+
+Geplante Kosten eines vollständig angebotenen Pfads:
+
+1. Klingenführung A/B – 1;
+2. Hauptmacht-Mutation A/B – 1;
+3. Partnerpassiv – 3;
+4. Klingenmodul – 2;
+5. Charakterhaltung A/B – 1;
+6. Machtmeisterschaft – 3;
+7. Machtmodul – 2;
+8. Klingensynergie – 1;
+9. Evolution – 1;
+10. Orbitresonanz – 3;
+11. Orbitkrone – 1.
+
+Summe: 19 mögliche Investitionen bei 15 regulären Punkten.
+
+### Garantierte Orbitkrone
+
+- Die Krone benötigt die Evolution und 14 bereits investierte Punkte; Punkt 15
+  kauft den Abschluss.
+- Späte Reihen werden so an die Evolution gebunden, dass sie nicht bis zum letzten
+  Punkt aufgeschoben und die Krone versehentlich verpasst werden kann.
+- Die Krone ist bewusst der verlässliche Höhepunkt eines vollständig ausgespielten
+  Laufs, kein Test auf optimale Vorplanung. Die Entscheidungen bestimmen Form,
+  Synergien und ausgelassene Vertiefungen, nicht den Zugang zum Abschlussmoment.
+
+### Endlosresonanz nach Welle 30
+
+- Beim Eintritt in Endlos wird der reguläre Build eingefroren. Ausgelassene reguläre
+  Module dürfen nicht nachgekauft werden, damit Builds nicht wieder konvergieren.
+- Vor dem Einfrieren erhält der Spieler einen klaren letzten Hinweis, noch vorhandene
+  reguläre Punkte auszugeben; nichts darf kommentarlos verloren gehen.
+- Unter der Krone erscheint eine kleine endlos-exklusive `Endlosresonanz` mit einer
+  exklusiven Wahl zwischen `Klingenecho` und `Machtecho`.
+- Der gewählte Endloskern besitzt drei endliche mechanische Ränge. Klingenecho vertieft
+  Sweet Spot, Klingenform und Klingensynergie; Machtecho vertieft Mutation, Hauptmacht
+  und Evolution.
+- Zielpacing: Rang 1 beim Eintritt in Welle 31, Rang 2 nach Boss 35 und Rang 3 nach
+  Boss 40. Diese Zeitpunkte werden im Endlostest geprüft und bei Bedarf Rang 3 auf
+  Boss 45 verschoben.
+- Nach Rang 3 erzeugen weitere XP keine permanent stapelbaren Prozentwerte und keine
+  toten Skillpunkte. Als schlanke Fortsetzung ist ein kurzer, nicht stapelbarer Impuls
+  des gewählten Echos vorgesehen; seine genaue Wirkung wird erst nach dem Endlostest
+  festgelegt.
+
+### Pacing, Hangar und Langzeitrahmen
+
+- Die XP-Formel wird nicht isoliert vor dem neuen Baum geändert. Zuerst werden in
+  einem vollständigen Standardlauf Punkt 1/5/10/14, Evolution, Krone und Sieg gemessen;
+  danach wird die späte Steigung bei möglichst gleicher Gesamtdauer feinjustiert.
+- Der aktuelle Hangar öffnet bereits direkt Werkstatt und Sammlung als Reiter. Es ist
+  kein neuer Hangar-Umbau geplant; nur das unerreichbare alte Zwischen-Overlay wird
+  bei Gelegenheit entfernt.
+- Nach Abschluss aller 16 Projekte folgt eine wiederholbare, rein kosmetische
+  Hangarprestige-Senke. Sie darf keine Kampfstärke und keinen Leistungsrang kaufen.
+- Rekorde zeigen könftig Entdecker, Standard und Meister gleichzeitig. Die höchste
+  Standard-Welle ist die primäre teilbare Leistungszahl; ein echter Rangmodus bleibt
+  eine spätere, getrennte Aufgabe.
+
 ## Umgesetzter Stand vom 12.08.2026
 
 - Der alte Dreiast-Baum wurde durch einen einzigen acht Stufen tiefen Orbitpfad ersetzt.
@@ -355,12 +438,20 @@ kann ihren vollständigen Laufpfad spielen.
 
 ## Nächste Arbeitsreihenfolge
 
-1. Den neuen Gesamtstand committen, auf GitHub Pages veröffentlichen und auf Pixel 9
-   sowie X1 Carbon testen.
-2. Pro Lauf Zeitpunkt von erstem Punkt, Super-Macht und Krone sowie Endlevel notieren.
-3. Danach XP-Kurve, Wirkungszahlen und Projektpreise mit echten Laufdaten feinbalancieren.
-4. Erst nach dem Gerätetest gezielte Performancearbeit beginnen.
-5. Monetarisierung erst behandeln, wenn Kernschleife und Wiederspielwert tragen.
+1. Für alle fünf Hauptmächte die zwei Ränge von Klingen- und Machtmodul konkret
+   ausformulieren; dabei die vorhandenen Mechaniken wiederverwenden.
+2. Orbitpfad v2 mit 19 Investitionen, regulärem Punktbudget, garantierter Krone und
+   eingefrorenem Welle-30-Build umsetzen.
+3. Endlosresonanz mit der exklusiven Wahl Klingenecho/Machtecho und drei Rängen bauen.
+4. Betroffene Klickwege lokal prüfen und anschließend einen vollständigen Standardlauf
+   mit Punkt-, Evolutions-, Kronen- und Siegzeit messen.
+5. Erst anhand dieses Laufs XP-Kurve und Wirkungszahlen feinbalancieren.
+6. Totes Hangar-Zwischen-Overlay entfernen, alle drei Bestmarken anzeigen und danach
+   das rein kosmetische Hangarprestige spezifizieren.
+7. Den neuen Gesamtstand auf Pixel 9 und X1 Carbon testen; erst danach gezielte
+   Performancearbeit beginnen.
+8. Einen standardisierten Rangmodus und Monetarisierung erst behandeln, wenn
+   Kernschleife und Wiederspielwert tragen.
 
 Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 Änderungen genügen derzeit proportionale Checks: mindestens
@@ -368,6 +459,9 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 
 ## Bekannte Baustellen
 
+- Orbitpfad v2 und Endlosresonanz sind beschlossen, aber noch nicht implementiert.
+- Die konkreten Klingen-/Machtmodule für alle fünf Hauptmächte sowie die drei Ränge
+  von Klingenecho und Machtecho brauchen vor dem Bau eine knappe Mechanikmatrix.
 - Wirkungszahlen der neuen Mechaniken sind Startwerte für die spätere Balancingrunde.
 - Lautstärke, Klangfarbe und Ereignisdichte des neuen Space-Audios müssen auf Pixel 9
   und X1 Carbon mit Lautsprechern sowie Kopfhörern subjektiv getestet werden.
