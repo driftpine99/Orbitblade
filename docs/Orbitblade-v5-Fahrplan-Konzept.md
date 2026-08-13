@@ -373,3 +373,32 @@ Abhängigkeiten.
 6. Rein kosmetisches Hangarprestige später als Fragment-Senke ergänzen.
 7. Rangsystem, Performance-Feinarbeit und Monetarisierung getrennt und in dieser
    Reihenfolge behandeln.
+
+## Umsetzungsnotiz vom 13.08.2026
+
+Orbitpfad v2 und Endlosresonanz sind umgesetzt. Das Zielbild blieb bewusst kompakt:
+14 reguläre Knoten passen weiterhin in acht Reihen; nur im Endlosmodus erscheint eine
+neunte Reihe mit der exklusiven Echowahl.
+
+- Der reguläre Pfad besitzt 19 mögliche Investitionen bei maximal 15 Levelpunkten.
+  `Startimpuls` bleibt ein separater Punkt 16 und kann den zweiten Kronenrang
+  `Kernreserve` kaufen.
+- Ein dynamischer Budgetschutz reserviert die noch fehlenden Hauptpfadschritte nur
+  dann, wenn eine optionale Vertiefung sonst die Krone verdrängen würde. Eine
+  vollständige Enumeration fand 2.298 gültige 15-Kauf-Builds, keine Sackgasse und
+  die Krone in jedem Fall exakt als Kauf 15.
+- Klingen- und Machtmodul haben für Wirbel, Schock, Bombe, Nova und Sog je zwei
+  eigenständige mechanische Wirkungen. Vorhandene Treffer-, Feld-, Bomben- und
+  Projektilsysteme werden wiederverwendet und mit harten Effektobergrenzen versehen.
+- Am Sieg können verbleibende Punkte zuerst im Pfad verteilt werden. Nach gebauter
+  Krone lässt sich ein Restpunkt ausdrücklich verwerfen; erst dann wird der reguläre
+  Build eingefroren.
+- Welle 31, Boss 35 und Boss 40 vergeben getrennte Echopunkte. Klingenecho oder
+  Machtecho besitzt genau drei mechanische Ränge; die Gegenwahl bleibt ausgeschlossen.
+- Nach Rang 3 ersetzt ein fünfsekündiger, nicht stapelbarer Echoimpuls weitere tote
+  Punkte. Es entstehen weder endlose Prozentstapel noch reguläre Nachkäufe.
+
+Die nächsten Schritte beginnen deshalb bei Messung statt weiterem Systembau: ein
+vollständiger Standardlauf, anschließend beide Endloswege bis mindestens Boss 40 und
+danach erst XP- sowie Wirkungsbalance. Hangarprestige, Rangsystem, Monetarisierung und
+Performance-Balance blieben in diesem Arbeitsblock unverändert.

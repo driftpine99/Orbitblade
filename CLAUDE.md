@@ -67,26 +67,29 @@ als Verwaltung.
 - Aktiv 2 ist eine optionale Unterstützungsmacht ohne zweiten vollständigen Baum.
 - Taste 3, `Lichtbahn` und `Leerenüberladung` als separate Signaturen entfallen vollständig.
 - Die Supermacht ist die Evolution von Aktiv 1 und benötigt keinen zusätzlichen Knopf.
-- Jedes Level gibt einen Orbitpunkt; der Spieler öffnet den Pfad freiwillig über den HUD-Knopf.
+- Die ersten 15 Levelaufstiege geben je einen Orbitpunkt; der Spieler öffnet den Pfad
+  freiwillig über den HUD-Knopf. Spätere Level erzeugen keine regulären Punkte mehr.
 
 ### Form und Punktökonomie
 
-Der Pfad zeigt zwölf reguläre Knoten in acht kompakten Reihen mit höchstens zwei Knoten pro Reihe.
+Der Pfad zeigt vierzehn reguläre Knoten in acht kompakten Reihen mit höchstens zwei Knoten pro Reihe.
 Er benötigt kein horizontales Scrollen, kein Zoomen und auf üblichen Mobilgeräten auch
 kein vertikales Scrollen. Drei Knoten sind exklusive A/B-Wahlen, drei Knoten besitzen
-jeweils drei große Rangsegmente.
+jeweils drei große Rangsegmente; Klingen- und Machtmodul besitzen je zwei Ränge.
 
-Ein vollständiger Standardlauf vergibt 15 reguläre Punkte:
+Der Pfad bietet 19 Investitionen bei höchstens 15 regulären Punkten:
 
 1. Klingenführung A/B – 1 Punkt;
 2. Hauptmacht A/B – 1 Punkt;
 3. Partnerpassiv – 3 mechanische Ränge;
-4. Charakterhaltung A/B – 1 Punkt;
-5. Machtmeisterschaft – 3 mechanische Ränge;
-6. Klingensynergie – 1 Punkt;
-7. Evolution – 1 Punkt;
-8. Orbitresonanz – 3 mechanische Ränge;
-9. Orbitkrone – 1 Punkt.
+4. Klingenmodul – 2 mechanische Ränge;
+5. Charakterhaltung A/B – 1 Punkt;
+6. Machtmeisterschaft – 3 mechanische Ränge;
+7. Machtmodul – 2 mechanische Ränge;
+8. Klingensynergie – 1 Punkt;
+9. Evolution – 1 Punkt;
+10. Orbitresonanz – 3 mechanische Ränge;
+11. Orbitkrone – 1 Punkt.
 
 Das Werkstattprojekt `Startimpuls` erzeugt einen 16. Punkt. Nur dann erscheint unter
 der Krone der optionale Knoten `Kernreserve`: +10 % maximales Leben und voller Fokus zu
@@ -292,7 +295,8 @@ kann ihren vollständigen Laufpfad spielen.
 
 ### Abnahmekriterien für den Spieltest
 
-- Nach einem Blick ist klar, welche höchstens zwei Knoten aktuell wählbar sind.
+- Nach einem Blick sind die höchstens zwei neu geöffneten Hauptpfadknoten erkennbar;
+  freiwillige Vertiefungen dürfen zusätzlich offen sein, leuchten aber ruhiger.
 - Jeder gekaufte Rang ist innerhalb von 30 Sekunden sichtbar oder spielerisch spürbar.
 - Ein Tester kann seinen fertigen Build in einem Satz beschreiben.
 - Lichthüter und Leerenklinge fühlen sich trotz derselben Klinge deutlich anders an.
@@ -300,9 +304,9 @@ kann ihren vollständigen Laufpfad spielen.
 - Pro Testlauf werden Zeit bis zum ersten Punkt, Welle/Minute von Evolution und Krone,
   übrige Punkte, A/B-Kombination, Todesursache und stärkster Moment notiert.
 
-## Beschlossene Fortschreibung: Orbitpfad v2 (Planung vom 13.08.2026)
+## Umgesetzte Fortschreibung: Orbitpfad v2 (13.08.2026)
 
-Diese Fortschreibung ersetzt für die nächste Umsetzung die bisherige Punktökonomie,
+Diese Fortschreibung ersetzt die bisherige Punktökonomie,
 nicht aber die schlanke Form des Orbitpfads. Die aktuelle Fassung war bewusst eine
 Gegenbewegung zum alten überladenen Dreiast-Baum: wenige gleichzeitig sichtbare
 Entscheidungen, keine Sackgassen, kein Scrollen und ein sicher erreichbarer Abschluss.
@@ -324,7 +328,7 @@ Diese Architektur bleibt. Korrigiert wird nur, dass derzeit 15 erwartete Punkte 
 - Keine der neuen Investitionen ist ein bloßer Prozentfüller. Jeder Rang verändert
   innerhalb von 30 Sekunden sichtbar Verhalten, Rhythmus oder Trefferbild.
 
-Geplante Kosten eines vollständig angebotenen Pfads:
+Kosten eines vollständig angebotenen Pfads:
 
 1. Klingenführung A/B – 1;
 2. Hauptmacht-Mutation A/B – 1;
@@ -365,9 +369,9 @@ Summe: 19 mögliche Investitionen bei 15 regulären Punkten.
   Boss 40. Diese Zeitpunkte werden im Endlostest geprüft und bei Bedarf Rang 3 auf
   Boss 45 verschoben.
 - Nach Rang 3 erzeugen weitere XP keine permanent stapelbaren Prozentwerte und keine
-  toten Skillpunkte. Als schlanke Fortsetzung ist ein kurzer, nicht stapelbarer Impuls
-  des gewählten Echos vorgesehen; seine genaue Wirkung wird erst nach dem Endlostest
-  festgelegt.
+  Skillpunkte. Klingenecho gibt fünf Sekunden eine zusätzliche sichtbare Schattenklinge;
+  Machtecho lädt für fünf Sekunden genau einen fokussierten Hauptmachteinsatz. Timer und
+  Ladung werden nur erneuert, nie gestapelt.
 
 ### Pacing, Hangar und Langzeitrahmen
 
@@ -382,6 +386,43 @@ Summe: 19 mögliche Investitionen bei 15 regulären Punkten.
 - Rekorde zeigen könftig Entdecker, Standard und Meister gleichzeitig. Die höchste
   Standard-Welle ist die primäre teilbare Leistungszahl; ein echter Rangmodus bleibt
   eine spätere, getrennte Aufgabe.
+
+## Umgesetzter Stand vom 13.08.2026
+
+- Orbitpfad v2 besitzt 14 sichtbare reguläre Knoten, 19 mögliche Investitionen und
+  maximal 15 reguläre Levelpunkte. `Startimpuls` bleibt ein separater Punkt 16.
+- Partner, Haltung, Meisterschaft, Synergie, Evolution und Resonanz öffnen den
+  Hauptpfad jeweils ab Rang 1. Ein dynamischer Budgetschutz reserviert nur dann die
+  noch nötigen Hauptkäufe, wenn eine Vertiefung die Krone gefährden würde. Eine
+  vollständige Enumeration ergab 2.298 gültige 15-Kauf-Builds, null Sackgassen und
+  die Orbitkrone immer exakt als Kauf 15.
+- Klingenmodul und Machtmodul passen Namen, Kurzzeile und Wirkung an die fünf
+  Hauptmächte an. Wirbel nutzt Zugkerben/Nachlauffelder, Schock Leitmarken/Rückleiter,
+  Bombe Zündkerben/Folgeladungen, Nova Klingensalven/Geschossfänger und Sog
+  Kernlenkung/Gravumlauf. Kein Modulrang ist ein bloßer Prozentkauf.
+- Kaufbare Knoten werden direkt per Tap gekauft. Der letzte Kauf kann einschließlich
+  Punkten, Laufzielen, Abzeichen, Leben und Barriere bis zum Schließen rückgängig
+  gemacht werden. Optionale Vertiefungen leuchten ruhiger als neue Hauptpfadknoten.
+- Welle 30 füllt nur im Kalibrierungsfall fehlende reguläre Punkte bis 15 sichtbar als
+  `Finale-Punkte` auf. Vor Endlos öffnet der Siegknopf den Pfad für die letzte
+  Verteilung; nach gebauter Krone kann ein Restpunkt auch ausdrücklich verworfen werden.
+- Beim Eintritt in Welle 31 friert der reguläre Build ein. Reguläre Knoten sind danach
+  sowohl in der Anzeige als auch im Kaufpfad gesperrt. Endlospunkte sind eine getrennte,
+  nicht gespeicherte Laufwährung.
+- Endlosresonanz ist die exklusive Wahl `Klingenecho` oder `Machtecho`. Die drei Ränge
+  kommen bei Welle 31, nach Boss 35 und nach Boss 40. Klingenecho erzeugt begrenzte
+  formabhängige Schattenprojektile und einen Kronensturm; Machtecho wiederholt die
+  Hauptmacht, übernimmt ab Rang 2 die gewählte Mutation und verdoppelt fokussierte
+  Einsätze auf Rang 3.
+- Nach Endlosrang 3 erzeugt ein Levelaufstieg statt eines toten Punkts einen kurzen,
+  nicht stapelbaren Echoimpuls. Klingenecho erhält fünf Sekunden eine Schattenklinge,
+  Machtecho fünf Sekunden eine gedeckelte Fokusladung.
+- `Kernreserve` entspricht der Konzeptquelle: +10 Prozent maximales Leben und voller
+  Fokus zu Beginn jedes Bosskampfs; die alte einmalige Todesrettung wurde entfernt.
+- Browser-Smoke: Start, direkter Knotenkauf, A/B-Ausschluss, Undo und reguläres
+  Pixel-9-Layout wurden lokal geprüft. Bei 393 × 873 gab es keinen horizontalen und
+  keinen regulären vertikalen Baumüberlauf. Syntax, DOM-Referenzen, fünf Machtpfade,
+  Punktcap, Startimpuls und Endlosmeilensteine wurden zusätzlich plausibilisiert.
 
 ## Umgesetzter Stand vom 12.08.2026
 
@@ -438,19 +479,16 @@ Summe: 19 mögliche Investitionen bei 15 regulären Punkten.
 
 ## Nächste Arbeitsreihenfolge
 
-1. Für alle fünf Hauptmächte die zwei Ränge von Klingen- und Machtmodul konkret
-   ausformulieren; dabei die vorhandenen Mechaniken wiederverwenden.
-2. Orbitpfad v2 mit 19 Investitionen, regulärem Punktbudget, garantierter Krone und
-   eingefrorenem Welle-30-Build umsetzen.
-3. Endlosresonanz mit der exklusiven Wahl Klingenecho/Machtecho und drei Rängen bauen.
-4. Betroffene Klickwege lokal prüfen und anschließend einen vollständigen Standardlauf
+1. Einen vollständigen Standardlauf
    mit Punkt-, Evolutions-, Kronen- und Siegzeit messen.
-5. Erst anhand dieses Laufs XP-Kurve und Wirkungszahlen feinbalancieren.
-6. Totes Hangar-Zwischen-Overlay entfernen, alle drei Bestmarken anzeigen und danach
+2. Anschließend Klingenecho und Machtecho jeweils bis mindestens Boss 40 spielen und
+   Lesbarkeit, Effektlast sowie tatsächliche Stärke der drei Ränge vergleichen.
+3. Erst anhand dieser Läufe XP-Kurve und Wirkungszahlen feinbalancieren.
+4. Totes Hangar-Zwischen-Overlay entfernen, alle drei Bestmarken anzeigen und danach
    das rein kosmetische Hangarprestige spezifizieren.
-7. Den neuen Gesamtstand auf Pixel 9 und X1 Carbon testen; erst danach gezielte
+5. Den neuen Gesamtstand auf Pixel 9 und X1 Carbon testen; erst danach gezielte
    Performancearbeit beginnen.
-8. Einen standardisierten Rangmodus und Monetarisierung erst behandeln, wenn
+6. Einen standardisierten Rangmodus und Monetarisierung erst behandeln, wenn
    Kernschleife und Wiederspielwert tragen.
 
 Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
@@ -459,10 +497,9 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 
 ## Bekannte Baustellen
 
-- Orbitpfad v2 und Endlosresonanz sind beschlossen, aber noch nicht implementiert.
-- Die konkreten Klingen-/Machtmodule für alle fünf Hauptmächte sowie die drei Ränge
-  von Klingenecho und Machtecho brauchen vor dem Bau eine knappe Mechanikmatrix.
 - Wirkungszahlen der neuen Mechaniken sind Startwerte für die spätere Balancingrunde.
+- Klingen-/Machtmodule und beide Endlosechos sind technisch plausibilisiert, aber ihre
+  Stärke und ihr subjektiver Spaß brauchen echte Läufe mit allen fünf Hauptmächten.
 - Lautstärke, Klangfarbe und Ereignisdichte des neuen Space-Audios müssen auf Pixel 9
   und X1 Carbon mit Lautsprechern sowie Kopfhörern subjektiv getestet werden.
 - Rammbockschaden, 550-ms-Erholung und 1,8-Prozent-Drohnenrückschlag sind bewusst
@@ -471,10 +508,10 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
   (`xpBase 1000`, `xpPerLevel 300`), ist aber noch nicht in einem vollständigen Lauf
   bestätigt. Der erste Browser-Smoke-Test der Zwischenkurve war zu schnell und führte
   gezielt zu dieser Korrektur.
-- Die zwölf Knoten, Kauf, Ausschluss und Rückgängig sowie Vorbereitung, Codex,
-  Spielstart und alle 16 Werkstattkarten wurden lokal im Browser geprüft. Vollständige
-  Pfade für alle fünf Hauptmächte brauchen noch echte Testläufe.
-- Echte Mobil- und Layouttests erfolgen nach Veröffentlichung über GitHub Pages.
+- Die 14 regulären Knoten, direkter Kauf, Ausschluss, Rückgängig und reguläres
+  Pixel-9-Layout wurden lokal im Browser geprüft. Der vollständige Siegdialog und die
+  neunte Endlosreihe brauchen zusätzlich einen echten Durchlauf über GitHub Pages.
+- Echte Geräte- und Touchtests erfolgen nach Veröffentlichung über GitHub Pages.
 - Gerätemessung der Performance ist auf den neuen Gesamtstand verschoben.
 
 ## Charakterdarstellung vom 12.08.2026
