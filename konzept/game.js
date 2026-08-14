@@ -502,7 +502,7 @@ function checkMilestones(){
 const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=8;
 // opts: Bedien-Einstellungen (Seite und Anordnung der Fähigkeiten-Knöpfe)
 // best ist jetzt je Hilfsstufe getrennt — sonst wäre die Bestmarke nicht vergleichbar
-const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin', muted:false, bossKills:0, stars:0, meta:{}, tutorialDone:false, tutorialVersion:0,
+const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin', muted:false, bossKills:0, stars:0, meta:{}, tutorialDone:false, tutorialVersion:0, focusTutorialSeen:false,
   hilfe:'standard', gewonnen:false, endlosFrei:false,
   opts:{ seite:'rechts', anordnung:'nebeneinander' },
   // Mit welchen aktiven Mächten jeder Lauf beginnt. Vorher war das fest verdrahtet,
@@ -761,6 +761,7 @@ const SFX={
   boom:    ()=>{tone(70,0.35,'sawtooth',0.18,0,40);tone(50,0.4,'sine',0.14,0.05,30);},
   bombe:   ()=>{tone(210,0.12,'sine',0.09,0,560);noiseBurst(0.08,0.025,0.02,900);},
   nova:    ()=>{orbitPulse(82);tone(980,0.38,'sine',0.08,0.02,440);tone(1470,0.30,'sine',0.05,0.04,740);},
+  focus:   ()=>{tone(360,.16,'sine',.08,0,720);tone(1080,.22,'triangle',.065,.04,1620);tone(2160,.12,'sine',.035,.1,1320);},
 };
 const SFX_LIMIT={bladeHit:75,sweet:90,armor:160,laserPlayer:70,laserEnemy:90,kill:45}, sfxLast={};
 function sfx(name){
@@ -779,11 +780,11 @@ const healthBar=document.getElementById('health-bar'), healthText=document.getEl
 const barrierBar=document.getElementById('barrier-bar');
 const xpBar=document.getElementById('xp-bar'), xpText=document.getElementById('xp-text');
 const coinText=document.getElementById('coin-text'), waveText=document.getElementById('wave-text');
-const fokusWrap=document.getElementById('fokus-wrap'), fokusBar=document.getElementById('fokus-bar'), fokusText=document.getElementById('fokus-text');
-const zielListe=document.getElementById('ziel-liste');
+const healthWrap=document.getElementById('health-wrap');
 const overlayStart=document.getElementById('overlay-start'), overlayPause=document.getElementById('overlay-pause');
 const overlayOver=document.getElementById('overlay-gameover');
 const treeBtn=document.getElementById('tree-btn'), overlayTree=document.getElementById('overlay-tree');
+const combatResume=document.getElementById('combat-resume');
 const treePunkte=document.getElementById('tree-punkte'), treeBranches=document.getElementById('tree-branches');
 const btnWirbel=document.getElementById('btn-wirbel'), btnStoss=document.getElementById('btn-stoss');
 let cdWirbel=document.getElementById('cd-wirbel'), cdStoss=document.getElementById('cd-stoss');
@@ -932,22 +933,38 @@ let fokus=0, fokusBereit=false, fokusAktiv=false;
 function fokusFaktor(){ return fokusAktiv? CONFIG.fokusBonus+(treeFlags.fokusMachtBonus||0) : 1; }
 // Wie viele Sweet-Spot-Treffer die Leiste braucht — der Charakter verschiebt das
 function fokusZiel(){ return Math.max(4, Math.round(CONFIG.fokusZiel*figur().fokusZiel)-(treeFlags.fokusRabatt||0)); }
+function pruefeVolleBarriere(){ if(barriere>=barriereMax()-0.01) zielZaehl('barriere'); }
+function fokusVoll(quelle){
+  if(fokusBereit) return false;
+  fokus=fokusZiel(); fokusBereit=true;
+  if(figur().id==='held'){
+    const anteil=(treeFlags.leuchtfeuer?0.14:0.05)+(treeFlags.fokusBarriereBonus||0);
+    barriere=Math.min(barriereMax(),barriere+player.maxHp*anteil*figur().barriereMal);
+    if(treeFlags.waechter) enemies.forEach(en=>{if(Math.hypot(en.x-player.x,en.y-player.y)<150) en.stunT=Math.max(en.stunT||0,260);});
+  }
+  if(begleiterStufe()>=4){
+    barriere=Math.min(barriereMax(),barriere+player.maxHp*.05);
+    particles.push({ring:true,x:player.x,y:player.y,color:'#4de0a0',life:.32,max:.32});
+  }
+  pruefeVolleBarriere();
+  pushFloat(player.x,player.y-38,quelle==='kernreserve'?'KERNRESERVE: FOKUS':'FOKUS BEREIT','#dcb5ff',1.3);
+  particles.push({ring:true,x:player.x,y:player.y,color:'#c77dff',life:.48,max:.48});
+  if(!save.focusTutorialSeen){
+    save.focusTutorialSeen=true; persist();
+    announce('FOKUS VOLL','Sweet Hits laden ihn – Taste 1 ist jetzt '+CONFIG.fokusBonus.toFixed(1)+'× stärker','#dcb5ff');
+  }
+  if(sfx) sfx('focus');
+  return true;
+}
+function synchronisiereFokus(){
+  const ziel=fokusZiel();
+  fokus=Math.min(fokus,ziel);
+  if(!fokusBereit && fokus>=ziel) fokusVoll('ziel');
+}
 function fokusTreffer(){
   if(fokusBereit) return;
-  if(++fokus>=fokusZiel()){
-    fokus=fokusZiel(); fokusBereit=true;
-    if(figur().id==='held'){
-      const anteil=(treeFlags.leuchtfeuer?0.14:0.05)+(treeFlags.fokusBarriereBonus||0);
-      barriere=Math.min(barriereMax(),barriere+player.maxHp*anteil*figur().barriereMal);
-      if(treeFlags.waechter) enemies.forEach(en=>{if(Math.hypot(en.x-player.x,en.y-player.y)<150) en.stunT=Math.max(en.stunT||0,260);});
-    }
-    if(begleiterStufe()>=4){
-      barriere=Math.min(barriereMax(),barriere+player.maxHp*.05);
-      particles.push({ring:true,x:player.x,y:player.y,color:'#4de0a0',life:.32,max:.32});
-    }
-    pushFloat(player.x, player.y-38, 'FOKUS!', '#ffffff', 1.3);
-    if(sfx) sfx('unlock');
-  }
+  fokus++;
+  if(fokus>=fokusZiel()) fokusVoll('treffer');
 }
 
 function currentSkin(){ const s=SKINS[save.skin]; return isAvailable('skin',save.skin)? s : SKINS.rubin; }
@@ -1186,23 +1203,26 @@ function activeBtnHTML(key,keyLabel){
   const id = key==='a'? activeSlot1 : activeSlot2;
   const m=ABILITIES[id];
   return `<span class="cd-sweep" id="cd-${key}"></span>
+    ${key==='a'?'<span class="focus-ring" aria-hidden="true"></span>':''}
     <svg class="s-icon" viewBox="0 0 24 24" aria-hidden="true">${abilIcon(id)}</svg>
     <span class="s-label">${m.name}</span>
-    <span class="s-key">${keyLabel}</span>`;
+    ${key==='a'?'<span class="focus-value">1 · F 0/'+fokusZiel()+'</span>':'<span class="s-key">'+keyLabel+'</span>'}`;
 }
 function updateActiveButtons(){
   const c1=ACTIVE_COLORS[activeSlot1]||['#6ec8ff','110,200,255'];
   btnWirbel.innerHTML=activeBtnHTML('a','1');
   cdWirbel=document.getElementById('cd-a');
   btnWirbel.style.setProperty('--c', c1[0]); btnWirbel.style.setProperty('--cRGB', c1[1]);
+  btnWirbel.setAttribute('aria-label',(ABILITIES[activeSlot1]?.name||'Hauptmacht')+' · Taste 1');
   updateCooldownUI(btnWirbel, cdWirbel, activeCd[activeSlot1]||0, activeCdMax(activeSlot1), 'a');
   // Zweiter Knopf erscheint erst, wenn der Slot freigeschaltet und belegt ist
-  if(!activeSlot2){ btnStoss.style.display='none'; return; }
+  if(!activeSlot2){ btnStoss.style.display='none'; btnStoss.setAttribute('aria-label','Keine zweite Macht ausgerüstet'); return; }
   btnStoss.style.display='';
   const c2=ACTIVE_COLORS[activeSlot2]||['#6ec8ff','110,200,255'];
   btnStoss.innerHTML=activeBtnHTML('b','2');
   cdStoss=document.getElementById('cd-b');
   btnStoss.style.setProperty('--c', c2[0]);  btnStoss.style.setProperty('--cRGB', c2[1]);
+  btnStoss.setAttribute('aria-label',(ABILITIES[activeSlot2]?.name||'Zweite Macht')+' · Taste 2');
   updateCooldownUI(btnStoss, cdStoss, activeCd[activeSlot2]||0, activeCdMax(activeSlot2), 'b');
 }
 
@@ -1352,14 +1372,40 @@ function openSkillTree(){
   if(state==='sieg') document.getElementById('overlay-sieg').classList.add('hidden');
   state='tree'; setMusicLevel(); overlayTree.classList.remove('hidden'); updateTreeButton(); renderSkillTree();
 }
+let combatResumeUntil=0, combatResumeStep='';
+function finishCombatResume(){
+  if(state!=='countdown') return;
+  state='playing'; combatResumeUntil=0; combatResumeStep='';
+  if(combatResume) combatResume.classList.add('hidden');
+  lastTime=performance.now(); setMusicLevel(); updateTreeButton();
+}
+function skipCombatResume(){ if(state==='countdown') finishCombatResume(); }
+function startCombatResume(name){
+  state='countdown'; combatResumeUntil=performance.now()+2000; combatResumeStep='';
+  if(combatResume){
+    const sub=combatResume.querySelector('span'); if(sub) sub.textContent=name||'Orbit stabilisiert';
+    combatResume.classList.remove('hidden');
+  }
+  setMusicLevel(); updateTreeButton(); lastTime=performance.now();
+}
+function tickCombatResume(now){
+  if(state!=='countdown') return;
+  const rest=combatResumeUntil-now;
+  if(rest<=0){ finishCombatResume(); return; }
+  const step=rest>1000?'2':rest>220?'1':'LOS';
+  if(step!==combatResumeStep && combatResume){
+    combatResumeStep=step; const n=combatResume.querySelector('strong'); if(n) n.textContent=step;
+    if(step==='LOS' && sfx) sfx('pick');
+  }
+}
 function closeSkillTree(){
   if(state!=='tree') return;
   const neu=treeFlags.lastUpgrade; treeFlags.lastUpgrade=''; treeUndo=null;
   overlayTree.classList.add('hidden'); state=treeReturnState||'playing'; treeReturnState='playing'; setMusicLevel();
-  if(state==='playing') lastTime=performance.now();
+  if(state==='playing'&&neu) startCombatResume(neu);
+  else if(state==='playing') lastTime=performance.now();
   if(state==='sieg'){ document.getElementById('overlay-sieg').classList.remove('hidden'); updateSiegEndlosButton(); }
   updateTreeButton();
-  if(neu&&state==='playing') announce(neu,'Dein Orbit ist spürbar stärker','#4de0a0');
 }
 treeBtn.addEventListener('click',openSkillTree);
 document.getElementById('tree-back').addEventListener('click',closeSkillTree);
@@ -1430,7 +1476,7 @@ function resetGame(){
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
   wiederaufBenutzt=false; nachhallZaehler=0; splitterSweetZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false; setzeLaufziele();
   toasts=[]; banner=null;
-  tutStep=0; tutT=0; tutorialCircleUntil=0; tutorialBladeUntil=0; unlockFx=0; setzeHelfer();
+  tutStep=0; tutT=0; tutorialCircleUntil=0; tutorialBladeUntil=0; unlockFx=0; combatResumeUntil=0; combatResumeStep=''; setzeHelfer();
   if(metaLevel('startimpuls')>0) skillPoints=1;
   shake=0; state='playing'; setMusicLevel(); hideAll(); updateTreeButton(); updateHUD(true); startWave();
   // Beim allerersten Spiel übernimmt der Einstieg die Ansage
@@ -1440,6 +1486,7 @@ function hideAll(){
   overlayStart.classList.add('hidden'); overlayPause.classList.add('hidden');
   overlayOver.classList.add('hidden'); overlayTree.classList.add('hidden');
   document.getElementById('overlay-hangar').classList.add('hidden');
+  if(combatResume) combatResume.classList.add('hidden');
 }
 function startWave(){
   const d=curDiff();
@@ -1474,11 +1521,13 @@ function spawnBoss(){
   enemies.push(e); waveSpawned=1;
   bossActive=true; bossHitClean=true;
   if(treeFlags.kernreserve){
-    fokus=fokusZiel(); fokusBereit=true;
-    pushFloat(player.x,player.y-36,'KERNRESERVE: FOKUS','#ffd257',1.0);
+    fokusVoll('kernreserve');
     spawnParticles(player.x,player.y,'#ffd257',10); updateHUD(true);
   }
-  if(begleiterStufe()>=5) helferOverdriveUntil=Date.now()+10000;
+  if(begleiterStufe()>=5){
+    helferOverdriveUntil=Date.now()+10000;
+    const hf=helfer[0]; if(hf) pushFloat(hf.x||player.x,(hf.y||player.y)-24,'ÜBERLADUNG','#ffd257',1.25);
+  }
   if(sfx) sfx('boss');
 }
 // Boss-Fähigkeiten: je später die Welle, desto mehr Repertoire
@@ -1635,6 +1684,7 @@ function stickMoveTo(cx,cy){
   let dx=cx-stickOrigin.x, dy=cy-stickOrigin.y;
   const len=Math.hypot(dx,dy);
   if(len<=S.deadZone){ setJoystick(0,0); return; }     // Totzone: ruhiger Finger = Stillstand
+  if(state==='countdown') skipCombatResume();
   if(len>S.maxRadius){
     if(S.followEdge){                                   // Ursprung nachziehen (Kernfix)
       stickOrigin.x=cx-dx/len*S.maxRadius;
@@ -1651,7 +1701,7 @@ function stickStart(cx,cy){ stickOrigin={x:cx,y:cy}; setJoystick(0,0); }
 function stickEnd(){ stickOrigin=null; joystickTouchId=null; setJoystick(0,0); }
 
 function handleJoystickTouch(e){
-  if(state!=='playing'){ stickEnd(); return; }
+  if(state!=='playing'&&state!=='countdown'){ stickEnd(); return; }
   if(e.type==='touchstart'){
     if(joystickTouchId!==null) return;                  // schon ein Finger am Steuern
     const t=e.changedTouches[0];
@@ -1677,13 +1727,14 @@ joystickZone.addEventListener('touchcancel',handleJoystickTouch,{passive:false})
 // Maus-Ersatz am PC: gleiche Mechanik, überall ziehen (WASD bleibt der Hauptweg)
 let mouseDown=false;
 joystickZone.addEventListener('mousedown',e=>{
-  if(state!=='playing' || onControl(e.target)) return;
+  if((state!=='playing'&&state!=='countdown') || onControl(e.target)) return;
   mouseDown=true; stickStart(e.clientX,e.clientY);
 });
 window.addEventListener('mousemove',e=>{ if(mouseDown) stickMoveTo(e.clientX,e.clientY); });
 window.addEventListener('mouseup',()=>{ if(mouseDown){ mouseDown=false; stickEnd(); } });
 window.addEventListener('keydown',e=>{
   keys[e.key.toLowerCase()]=true;
+  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) skipCombatResume();
   if(e.key==='1') doActive(1);
   if(e.key==='2') doActive(2);
   if(e.key==='Escape' && state==='playing') pauseGame();
@@ -1697,7 +1748,11 @@ canvas.addEventListener('touchstart',e=>{
 },{passive:false});
 
 // Pause
-function pauseGame(){ if(state!=='playing') return; state='paused'; setMusicLevel(); updateTreeButton(); refreshMenuVisibility(); overlayPause.classList.remove('hidden'); }
+function renderPauseGoals(){
+  const box=document.getElementById('pause-goals'); if(!box) return;
+  box.innerHTML=laufziele.map(z=>'<div class="pause-goal '+(z.fertig?'done':'')+'"><span>'+(z.fertig?'✓ ':'')+zielText(z.def)+'</span><b>'+Math.min(z.wert,z.def.ziel)+' / '+z.def.ziel+'</b></div>').join('');
+}
+function pauseGame(){ if(state!=='playing') return; state='paused'; setMusicLevel(); updateTreeButton(); refreshMenuVisibility(); renderPauseGoals(); overlayPause.classList.remove('hidden'); }
 function resumeGame(){ if(state!=='paused') return; state='playing'; setMusicLevel(); overlayPause.classList.add('hidden'); lastTime=performance.now(); updateTreeButton(); }
 document.getElementById('pause-btn').addEventListener('click',pauseGame);
 document.getElementById('resume-btn').addEventListener('click',resumeGame);
@@ -2183,7 +2238,7 @@ document.querySelectorAll('[data-collection]').forEach(b=>b.addEventListener('cl
 document.getElementById('collection-workshop-tab').addEventListener('click',()=>{
   document.getElementById('overlay-progress').classList.add('hidden'); openMetaShop('start');
 });
-document.getElementById('mute-btn').addEventListener('click',toggleMute);
+const muteBtn=document.getElementById('mute-btn'); if(muteBtn) muteBtn.addEventListener('click',toggleMute);
 updateMuteBtn();
 refreshMenuVisibility();   // beim allerersten Start bleiben Meta-Shop, Sammlung und Codex verborgen
 
@@ -2362,15 +2417,18 @@ function doActive(slot){
   }
   if(state!=='playing' || !id || activeCd[id]>0) return;
   activeCd[id]=activeCdMax(id);
-  // Volle Fokus-Leiste wird beim nächsten Einsatz verbraucht und verstärkt ihn
-  const natuerlicherFokus=fokusBereit;
+  // Fokus gehört zur Hauptmacht: Das Werkzeug auf Taste 2 kann die Ladung nicht stehlen.
+  const natuerlicherFokus=slot===1&&fokusBereit;
   const echoLadung=slot===1&&treeFlags.echoPowerCharge>0&&treeFlags.echoPowerChargeUntil>Date.now();
   if(slot===1&&treeFlags.echoPowerCharge&& !echoLadung) treeFlags.echoPowerCharge=0;
   fokusAktiv = natuerlicherFokus||echoLadung;
   if(natuerlicherFokus){
     fokusBereit=false; fokus=0;
-    spawnParticles(player.x,player.y,'#ffffff',16);
-    shake=Math.max(shake,7);
+    spawnParticles(player.x,player.y,'#dcb5ff',24);
+    particles.push({ring:true,x:player.x,y:player.y,color:'#ffffff',life:.62,max:.62});
+    pushFloat(player.x,player.y-42,'FOKUS ×'+fokusFaktor().toFixed(1),'#f2e5ff',1.15);
+    shake=Math.max(shake,9);
+    if(sfx) sfx('focus');
     zielZaehl('fokus');
   } else if(echoLadung){
     treeFlags.echoPowerCharge=0;
@@ -2894,9 +2952,14 @@ document.getElementById('workshop-collection-tab').addEventListener('click',()=>
 // Cooldown-Kreis + kurzer Puls im Moment der Bereitschaft
 const wasReady={};
 function updateCooldownUI(btn, sweep, cd, max, key){
-  const rest=Math.max(0, Math.min(1, cd/max));
-  sweep.style.setProperty('--cd', (rest*100).toFixed(1));
-  const ready = cd<=0;
+  if(!btn||!sweep||!max||max<=0){
+    if(btn) btn.classList.remove('on-cooldown');
+    if(sweep) sweep.style.setProperty('--cd-ready','100');
+    wasReady[key]=true; return;
+  }
+  const rest=Math.max(0,Math.min(1,cd/max)), fortschritt=(1-rest)*100;
+  sweep.style.setProperty('--cd-ready',fortschritt.toFixed(1));
+  const ready=cd<=0;
   btn.classList.toggle('on-cooldown', !ready);
   if(ready && wasReady[key]===false){
     btn.classList.remove('just-ready');
@@ -2914,7 +2977,9 @@ function updateHUD(force=false){
   if(!force && jetzt<naechstesHudUpdate) return;
   naechstesHudUpdate=jetzt+CONFIG.render.hudIntervall;
   const pct=Math.max(0, player.hp/player.maxHp*100);
+  synchronisiereFokus();
   healthBar.style.width=pct+'%';
+  if(healthWrap) healthWrap.classList.toggle('leerenklinge',figur().id==='konstrukt');
   // Barriere liegt als eigenes Segment rechts auf der Leiste — sichtbar getrennt
   // von den Trefferpunkten, weil sie sich anders verhält.
   if(barrierBar){
@@ -2926,26 +2991,14 @@ function updateHUD(force=false){
   xpBar.style.width=(player.xp/player.xpNeed*100)+'%';
   xpText.textContent='Level '+player.level+' · '+player.xp+' / '+player.xpNeed+' XP';
   coinText.textContent='◆ '+player.stars;
-  // Fokus-Leiste
-  if(fokusWrap && fokusBar){
-    fokusBar.style.width=Math.min(100, fokus/fokusZiel()*100)+'%';
-    fokusWrap.classList.toggle('bereit', fokusBereit);
-    fokusText.textContent=fokusBereit?'FOKUS BEREIT':'Fokus '+Math.floor(fokus)+' / '+fokusZiel();
-  }
-  // Laufziele — nur neu bauen, wenn sich etwas geändert hat, sonst flackert es
-  if(zielListe){
-    const stand=laufziele.map(z=>z.def.id+':'+z.wert+':'+(z.fertig?1:0)).join('|');
-    if(zielListe.dataset.stand!==stand){
-      zielListe.dataset.stand=stand;
-      zielListe.innerHTML='';
-      for(const z of laufziele){
-        const d=document.createElement('div');
-        d.className='ziel'+(z.fertig?' fertig':'');
-        const fort = z.def.ziel>1 && !z.fertig ? '<span class="fort">'+z.wert+'/'+z.def.ziel+'</span>' : '';
-        d.innerHTML=(z.fertig? '<span class="haken">✓</span>' : '')+'<span>'+zielText(z.def)+'</span>'+fort;
-        zielListe.appendChild(d);
-      }
-    }
+  // Fokus sitzt an der Hauptmacht statt als vierter Balken im linken HUD.
+  if(btnWirbel){
+    const ziel=fokusZiel(), wert=fokusBereit?ziel:Math.floor(fokus), prozent=Math.min(100,wert/ziel*100);
+    btnWirbel.style.setProperty('--focus',prozent.toFixed(1));
+    btnWirbel.classList.toggle('focus-ready',fokusBereit);
+    const f=btnWirbel.querySelector('.focus-value'); if(f) f.textContent=fokusBereit?'1 · FOKUS':'1 · F '+wert+'/'+ziel;
+    const macht=ABILITIES[activeSlot1]?.name||'Hauptmacht';
+    btnWirbel.setAttribute('aria-label',macht+' · Taste 1 · '+(fokusBereit?'Fokus bereit':'Fokus '+wert+' von '+ziel));
   }
 }
 
@@ -4354,6 +4407,14 @@ function draw(){
     ctx.fillStyle='rgba(124,200,255,'+(0.05+0.08*anteil).toFixed(2)+')';
     ctx.beginPath(); ctx.arc(0,0,player.radius+8,0,Math.PI*2); ctx.fill();
   }
+  // Voller Fokus bleibt bis zum Einsatz direkt am Spieler sichtbar. Das verbindet
+  // den violetten Button-Ring mit dem Geschehen in der Arena, ohne neue HUD-Zeile.
+  if(fokusBereit){
+    const fp=.55+.18*Math.sin(now/150);
+    ctx.strokeStyle='rgba(220,181,255,'+fp.toFixed(2)+')'; ctx.lineWidth=2.4;
+    ctx.shadowColor='#c77dff'; sb(14);
+    ctx.beginPath(); ctx.arc(0,0,player.radius+16+Math.sin(now/240)*1.5,0,Math.PI*2); ctx.stroke(); sb(0);
+  }
   if(metaLevel('hangarprojektion')){
     ctx.save(); ctx.setLineDash([3,6]); ctx.lineDashOffset=-now/140;
     ctx.strokeStyle='rgba(110,200,255,.34)'; ctx.lineWidth=1.2;
@@ -4382,13 +4443,17 @@ function draw(){
   for(const hf of helfer){
     if(hf.x===undefined) continue;
     ctx.save(); ctx.translate(hf.x,hf.y);
-    const puls=1+0.12*Math.sin(Date.now()/220 + hf.ang);
+    const puls=1+0.12*Math.sin(Date.now()/220 + hf.ang), ueberladen=helferOverdriveUntil>Date.now();
+    if(ueberladen){
+      ctx.strokeStyle='rgba(255,210,87,.82)';ctx.lineWidth=2.3;ctx.shadowColor='#ffd257';sb(16);
+      ctx.beginPath();ctx.arc(0,0,14+Math.sin(now/90)*1.5,0,Math.PI*2);ctx.stroke();sb(0);
+    }
     // Sammelaura
     ctx.strokeStyle='rgba(77,224,160,0.30)'; ctx.lineWidth=1;
     ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.stroke();
     // Rumpf, dreht sich in Blickrichtung
     ctx.rotate(hf.ang*1.6);
-    ctx.shadowColor='#9ad0ff'; sb(12); ctx.fillStyle='#0d1a2c';
+    ctx.shadowColor=ueberladen?'#ffd257':'#9ad0ff'; sb(ueberladen?18:12); ctx.fillStyle='#0d1a2c';
     ctx.beginPath(); ctx.roundRect(-6,-5,12,10,3); ctx.fill();
     ctx.strokeStyle='#9ad0ff'; ctx.lineWidth=1.6; ctx.stroke();
     sb(0);
@@ -4546,6 +4611,7 @@ function loop(t){
   if(!lastTime) lastTime=t;
   const dt=Math.min(50, t-lastTime); lastTime=t;
   messeBildrate(t);            // erkennt schwache Geräte und spart dauerhaft Effekte
+  if(state==='countdown') tickCombatResume(t);
   const updateStart=performance.now();
   if(state==='playing') update(dt);
   perf.update=performance.now()-updateStart;

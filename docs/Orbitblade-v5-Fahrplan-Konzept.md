@@ -402,3 +402,107 @@ Die nächsten Schritte beginnen deshalb bei Messung statt weiterem Systembau: ei
 vollständiger Standardlauf, anschließend beide Endloswege bis mindestens Boss 40 und
 danach erst XP- sowie Wirkungsbalance. Hangarprestige, Rangsystem, Monetarisierung und
 Performance-Balance blieben in diesem Arbeitsblock unverändert.
+
+## Ergänzung vom 13.08.2026: Fokus, HUD, Aufgaben und Rückkehrgrund
+
+**Umsetzungsstand 14.08.2026:** Die Punkte 1–5 des Zielbilds sind gebaut: Fokus ist an
+Aktiv 1 gebunden und als violetter Ring sichtbar, der Cooldown besitzt einen stärkeren
+Außenring, der Wiedereinstieg zählt pausiert `2`, `1`, `LOS`, und das Kampf-HUD ist
+reduziert sowie mobil neu angeordnet. Die bisherigen drei Laufziele bleiben vorerst im
+Pausenfenster, für Belohnung und Ergebnis aktiv; Punkt 6, der persistente Orbitauftrag, bleibt
+der nächste eigene Systemblock. Fokuszahlen wurden noch nicht verändert.
+
+### Befund am veröffentlichten Stand
+
+- Fokus ist mechanisch wertvoll, aber kommunikativ schwach: Sweet Hits laden ungefähr
+  einen 1,9-fach verstärkten Machteinsatz, doch der Zusammenhang ist weder im Einstieg
+  erklärt noch im Kampf dauerhaft am Hauptmachtknopf sichtbar. Aktiv 2 kann die Ladung
+  derzeit ebenfalls verbrauchen und damit die eigentlich geplante Hauptmacht-Kombo
+  stehlen.
+- Der Cooldown-Kreis funktioniert, ist mit seiner dunklen Restfläche aber zu unauffällig.
+  Ein kurzer Bereitschaftspuls allein reicht nicht, weil der Blick des Spielers meist auf
+  der Arena liegt.
+- Leben, XP, Fokus und drei Aufgaben bilden links einen hohen Textblock. Gleichzeitig
+  kann der feste rechte HUD-Block ihn auf schmalen Geräten stark zusammendrücken.
+- Die drei Laufziele zahlen zwar Fragmente, ändern das Spielverhalten aber selten. Zwei
+  Ziele sind derselbe Evolutionskauf, mehrere andere werden durch normales Weiterspielen
+  automatisch erfüllt. Die permanente Anzeige ist daher größer als ihr Nutzen.
+
+### Zielbild für den nächsten UI-Block
+
+1. Oben links bleiben Leben/Barriere und XP/Level.
+2. Fokus wandert als violett-weißer segmentierter Ring samt kleinem Wert an Aktiv 1.
+   Voll geladen bleibt der Knopf sichtbar `BEREIT`; nur Aktiv 1 verbraucht die Ladung.
+3. Der Cooldown nutzt einen deutlich breiteren Außenring, eine ruhige Spur und einen
+   dauerhaft hellen Bereitschaftszustand. Eine Sekundenzahl ist standardmäßig nicht
+   nötig.
+4. Nach einer behaltenen Investition zählt der Rückweg in den Kampf zwei Sekunden
+   `2`, `1`, `LOS`. Die Arena bleibt dabei eingefroren; eine bewusste Bewegung über
+   Tastatur oder Joystick-Totzone überspringt den Rest sofort. Reines Anschauen,
+   vollständiges Rückgängigmachen und der Rückweg zum Sieg lösen keinen Countdown aus.
+5. Welle und Fragmente werden kompakter; Ton wandert in Pause/Einstellungen. Lokale
+   Charakter- und Begleitereffekte ersetzen zusätzliche Statuszeilen.
+6. Die drei Aufgaben werden durch einen einzigen, nicht verfallenden Orbitauftrag
+   ersetzt. Er bleibt über Läufe erhalten, nutzt nur vorhandene Mechaniken, zahlt
+   vorhandene Fragmente und verschwindet nach Abschluss aus dem Kampf-HUD.
+
+### Recherchebasis für tägliche Motivation
+
+Erfolgreiche Vorbilder nutzen tägliche Inhalte dann gut, wenn sie einen interessanten
+Anlass statt Anwesenheit belohnen:
+
+- `Slay the Spire` gibt allen Spielern im Daily Climb denselben Seed. Nach Feedback
+  reduzierte das Team die Zahl der Modifikatoren von vier auf drei und richtete sie auf
+  interessante Situationen statt bloßer Erschwernis aus. Das spricht für ein sehr
+  kleines, verständliches Tagesthema.
+  Quelle: https://store.steampowered.com/news/posts/?appids=646570&enddate=1521157929
+- `Deep Rock Galactic` lässt die meisten Herausforderungen beim normalen Spielen
+  entstehen und begrenzt die gleichzeitig aktiven Ziele. Nicht abgeholte Saisonkosmetik
+  verschwindet später nicht, sondern kehrt in reguläre Belohnungspools zurück. Das
+  bestätigt Aufgaben ohne erzwungenen Sonderlauf und ohne Verlustdruck.
+  Quellen: https://www.deeprockgalactic.com/season-01 und
+  https://www.deeprockgalactic.com/season01-faq
+- `Vampire Survivors Adventures` remixiert bekannte Inhalte mit begrenztem Arsenal und
+  eigenen Siegbedingungen, ohne Hauptspielfortschritt zu löschen. Das bestätigt einen
+  freiwilligen, isolierten Herausforderungsrahmen statt täglicher Machtbelohnungen.
+  Quelle: https://poncle.games/adventures-faq
+
+Für Orbitblade folgt daraus ein zweistufiges Modell:
+
+- **Zunächst im Kernspiel:** genau ein persistenter Orbitauftrag als Grund für den
+  nächsten Lauf; kein Ablaufdatum, keine Serie, keine neue Währung.
+- **Nach stabiler Balance und Seed-Technik:** ein optionales `Tagessignal` mit gemeinsamem
+  Datums-Seed, festem Charakter und Hauptmacht sowie genau einem positiven Twist und
+  einer Einschränkung. Persönliche Bestmarke und teilbarer Ergebniscode reichen zunächst;
+  ohne Server gibt es keine behauptete globale Bestenliste. Die letzten sieben Signale
+  bleiben spielbar, und verpassbare exklusive Belohnungen sind ausgeschlossen.
+
+Login-Streaks, tägliche Truhen, mehrere Aufgaben-Tabs, Pflichtläufe und permanente
+Kampfstärke aus Tagesaufgaben bleiben bewusste Ausschlüsse.
+
+## Testnotiz vom 13.08.2026: Welle 26 und Performance
+
+Ein Spieltest erreichte Welle 26. Das Spiel funktionierte grundsätzlich gut; besonders
+der neue Orbitpfad wurde als wesentliche Verbesserung bestätigt. Gleichzeitig entstand
+der klare Eindruck eines Performanceproblems in den späten Wellen.
+
+Der Zeitpunkt ist technisch plausibel: Die konfigurierte Gesamtgegnerzahl steigt von
+78 in Welle 20 auf 115 in Welle 26 und 136 in Welle 29. Zwar begrenzen DPR, Culling,
+Partikelcap und deaktiviertes Leuchten bereits die Darstellung, doch die Simulation
+aktualisiert alle Gegner weiter. Mehrere neue mechanische Trefferfolgen durchsuchen die
+Gegnerliste zusätzlich, und Spielerprojektile prüfen ihre Kollisionen jeweils gegen alle
+Gegner. Auf der Grafikseite werden einige große Hintergrundverläufe weiterhin pro Bild
+erzeugt.
+
+Vor weiteren Inhalts- oder Balanceänderungen folgt deshalb eine kurze Performancephase:
+
+1. Welle 26 auf dem betroffenen Gerät mit `?perf=1` 60–90 Sekunden messen;
+2. Durchschnitt, P95/Maximum, Update und Draw sowie alle relevanten Objektzahlen erfassen;
+3. Update-bound und Draw-bound unterscheiden;
+4. zuerst balance-neutrale Hotspots und unnötige Allokationen entfernen;
+5. anschließend Welle 30 und beide Endloswege testen und auf Pixel 9 sowie X1 Carbon
+   kalt und nach längerer Laufzeit gegenmessen.
+
+Die Gegnerzahl wird nicht vorschnell reduziert. Sie wird erst angepasst, wenn Messung
+und Spielgefühl zeigen, dass die gewünschte Massendichte selbst – nicht nur ihre
+Implementierung – das Problem verursacht.

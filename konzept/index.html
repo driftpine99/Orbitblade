@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Orbitblade — Konzeptfassung</title>
-<link rel="stylesheet" href="style.css?v=20260813-orbit-v2">
+<link rel="stylesheet" href="style.css?v=20260814-focus-hud">
 </head>
 <body>
 <div id="game-wrap">
@@ -13,19 +13,16 @@
   <!-- Top HUD -->
   <div id="hud">
     <div id="hud-left">
-      <div id="health-wrap"><div id="health-bar"></div><div id="barrier-bar"></div><span id="health-text"></span></div>
+      <div id="health-wrap"><div id="health-bar"></div><div id="health-risk"></div><div id="barrier-bar"></div><span id="health-text"></span></div>
       <div id="xp-wrap"><div id="xp-bar"></div><span id="xp-text">Level 1 · 0 / 10 XP</span></div>
-      <div id="fokus-wrap"><div id="fokus-bar"></div><span id="fokus-text">Fokus</span></div>
-      <div id="ziel-liste"></div>
     </div>
     <div id="hud-right">
-      <div id="coin-text">💰 0</div>
-      <div id="wave-text">Welle 1</div>
-      <button id="tree-btn" class="tree-btn hidden" aria-label="Skill-Tree öffnen">✦ <span>0</span></button>
-      <button id="mute-btn" aria-label="Ton an/aus">🔊</button>
-      <button id="pause-btn" aria-label="Pause">⏸</button>
+      <div id="run-status"><div id="wave-text">Welle 1</div><div id="coin-text">◆ 0</div></div>
+      <div id="run-actions"><button id="tree-btn" class="tree-btn hidden" aria-label="Orbitpfad öffnen">✦ <span>0</span></button><button id="pause-btn" aria-label="Pause">⏸</button></div>
     </div>
   </div>
+
+  <div id="combat-resume" class="hidden" aria-live="assertive"><strong>2</strong><span>Orbit stabilisiert</span></div>
 
   <!-- Unsichtbare Ziehfläche: überall aufsetzen und ziehen, keine Anzeige -->
   <div id="joystick-zone"></div>
@@ -75,6 +72,7 @@
   <!-- Pause -->
   <div id="overlay-pause" class="overlay hidden">
     <h2>Pausiert</h2>
+    <div id="pause-goals" aria-label="Laufziele"></div>
     <button id="resume-btn" class="primary">Weiter</button>
     <button id="codex-btn" class="secondary">Mächte &amp; Ausrüstung</button>
     <button id="info-btn-pause" class="secondary">ℹ Wie funktioniert das Spiel?</button>
@@ -224,6 +222,9 @@
         unter „Vorbereitung" — das bleibt dann für den gesamten Lauf so.</p>
         <p>Nur deine <b>Hauptmacht auf Taste 1</b> wird im Orbitbaum zur Super-Macht.
         Taste 2 bleibt ein nützliches Werkzeug und erzeugt keinen zweiten Parallelbaum.</p>
+        <p><b>Sweet-Spot-Treffer laden Fokus:</b> Der violette Ring um deine Hauptmacht
+        füllt sich. Ist er voll, verstärkt Fokus genau den nächsten Einsatz dieser
+        Hauptmacht. Der helle Außenring zeigt unabhängig davon den Cooldown.</p>
         <p>Jede Hauptmacht bringt genau eine passende <b>Partnerfähigkeit</b> mit. Sie wirkt
         automatisch und wächst auf dem Weg zur Super-Macht in drei Rängen.</p>
       </div>
@@ -276,6 +277,6 @@
     </div>
   </div>
 </div>
-<script src="game.js?v=20260813-orbit-v2"></script>
+<script src="game.js?v=20260814-focus-hud"></script>
 </body>
 </html>

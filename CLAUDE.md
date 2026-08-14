@@ -477,18 +477,197 @@ Summe: 19 mögliche Investitionen bei 15 regulären Punkten.
   wiederverwendet.
 - Monetarisierung wurde ausdrücklich nicht bearbeitet.
 
+## Kampflesbarkeit, HUD und Rückkehrmotivation (umgesetzt 14.08.2026)
+
+Der gemeinsame UI-Block ist im Spielcode umgesetzt. Zahlenbalance des Fokus bleibt bis
+zur Performance- und Laufmessung bewusst unverändert.
+
+### Fokus und Machtbereitschaft
+
+- Fokus wird durch Sweet-Spot-Treffer aufgebaut und verstärkt derzeit den nächsten
+  aktiven Einsatz ungefähr um Faktor 1,9. Dieser Zusammenhang wird im Spiel nicht
+  ausreichend erklärt oder sichtbar inszeniert.
+- Fokus soll künftig ausschließlich von der Hauptmacht auf Taste 1 verbraucht werden.
+  Die Unterstützungsmacht auf Taste 2 darf die Ladung nicht versehentlich stehlen.
+- Die bisherige weiße Fokusleiste wird nicht als vierter gleichwertiger Balken oben
+  links weitergeführt. Der Ladestand wandert als violett-weißer, klar segmentierter
+  Ring an den Hauptmachtknopf. Ein kleiner Wert bleibt erhalten; voll geladen steht
+  dort dauerhaft `BEREIT`.
+- Volle Ladung markiert den Hauptmachtknopf dauerhaft, nicht nur durch einen kurzen
+  Puls. Beim Verbrauch verbinden ein heller Ring am Spieler, eine stärkere Fassung des
+  vorhandenen Machteffekts und ein eigener Klang sichtbar Sweet Spot und Machteinsatz.
+- Der erste Fokusaufbau erhält einen knappen Lernhinweis: `Sweet Hits laden Fokus –
+  volle Ladung verstärkt deine Hauptmacht.` Keine zusätzliche Fokus-Taste und kein
+  weiteres Untermenü.
+- Vor einer Zahlenänderung wird gemessen, wie schnell Fokus gegen Einzelziele und
+  Gegnergruppen lädt. Falls Gruppen Fokus in einem Angriffstick vollständig füllen,
+  wird die Ladung pro Tick gedeckelt statt das Ziel pauschal zu erhöhen.
+- Beim Bau werden zugleich die bekannten Zustandsfehler behoben: Kernreserve muss
+  dieselben Voll-Fokus-Auslöser verwenden, eine durch einen kleineren Zielwert bereits
+  volle Leiste muss sofort bereit werden und volle Barriere muss unabhängig von ihrer
+  Quelle erkannt werden.
+
+**Umgesetzt:** Fokus wird nur von Aktiv 1 verbraucht, sitzt als violetter Innenring mit
+Wert am Hauptmachtknopf und besitzt einen dauerhaften Bereitzustand. Der helle Effekt
+am Spieler, eigener Klang und `FOKUS ×…` verbinden Ladung und verstärkten Einsatz. Der
+erste volle Fokus erklärt die Mechanik einmalig. Kernreserve und Zielwertänderungen
+laufen über denselben Voll-Fokus-Auslöser; volle Fokusbarriere zählt als Barriereziel.
+
+### Cooldown-Anzeige
+
+- Der vorhandene Kreis bleibt; eine standardmäßig eingeblendete Sekundenzahl ist nicht
+  nötig. Das aktuelle dunkle `conic-gradient` ist jedoch während des Kampfs zu schwach.
+- Zielbild ist ein breiter, kontrastreicher Außenring mit ruhiger Hintergrundspur und
+  eindeutig fortschreitendem Farbbogen. Während des Cooldowns ist das Symbol gedämpft,
+  bei Bereitschaft sind Ring und Symbol dauerhaft hell; ein kurzer Puls markiert nur
+  den Übergang.
+- Die Anzeige muss auch dann eindeutig sein, wenn der Bereitschaftspuls außerhalb des
+  Blickfelds passiert. Farbe ist Zusatzsignal, nicht das einzige Signal.
+- Beim Bau werden außerdem dynamische `aria-label`-Texte, ein fehlender-Slot-Guard und
+  die Darstellung nach einer Cooldown-Änderung im Orbitpfad gehärtet.
+
+**Umgesetzt:** Der Cooldown läuft als breiter, kontrastreicher Außenring von leer zu
+voll; Symbol und Ring bleiben nach Ablauf hell. Fehlender Slot und dynamische Namen
+sind abgesichert.
+
+### Wiedereinstieg nach dem Orbitpfad
+
+- Wird der Orbitpfad nach mindestens einer tatsächlich behaltenen Investition zurück
+  in den laufenden Kampf geschlossen, bleibt die Arena noch zwei Sekunden eingefroren.
+  Eine große, ruhige Anzeige zählt `2`, `1`, `LOS` und gibt Zeit, Gegnerposition,
+  Klingenbahn und neue Wirkung wieder zu erfassen.
+- Jede bewusste Bewegung überspringt den Rest sofort: WASD/Pfeiltaste am Desktop oder
+  ein Joystickzug über die Totzone auf Touch. Ein bloßes Antippen löst den Kampf nicht
+  versehentlich aus.
+- Der Countdown erscheint nicht, wenn der Baum nur angesehen oder der letzte Kauf
+  vollständig rückgängig gemacht wurde. Er erscheint ebenfalls nicht beim Rückweg in
+  das Siegfenster oder bei anderen nicht laufenden Zuständen.
+- Während der zwei Sekunden bleiben Gegner, Projektile, Cooldowns und Wellentimer
+  vollständig pausiert. Beim Start des Kampfs wird die Framezeit neu gesetzt, damit
+  kein Zeitsprung entsteht.
+- Dafür wird eine kleine allgemeine Wiedereinstiegsfunktion gebaut; entfernter
+  Kartenwahl-Code wird nicht wiederhergestellt.
+
+**Umgesetzt:** Nur ein nach dem letzten Rückgängig verbleibender Kauf startet die
+zweisekündige Pause. Tastatur- oder Joystickbewegung über der Totzone setzt den Kampf
+sofort fort; Simulation, Cooldowns und Framezeit bleiben bis dahin eingefroren.
+
+### Schlankeres Kampf-HUD
+
+- Oben links bleiben dauerhaft nur Leben/Barriere und XP samt Level. Fokus gehört
+  funktional zur Hauptmacht und wandert deshalb an deren Knopf.
+- Die drei dauerhaften Aufgabenzeilen entfallen. Ein späterer einzelner Orbitauftrag
+  erscheint im Kampf nur als kompakte Zeile oder Symbol mit Kurzfortschritt und
+  verschwindet nach Abschluss.
+- Welle und Fragmente werden rechts kompakter gruppiert. Ton wird in Pause/Einstellungen
+  verlagert; der Pausenknopf und ausreichend große Touchflächen bleiben bestehen.
+- Das HUD erhält eine echte schmale Mobilanordnung. Der rechte Block darf Leben, XP und
+  Fokusinformation auf 360–393 Pixel breiten Geräten nicht mehr auf wenige Zeichen
+  zusammendrücken.
+- Die versprochene violette Risikozone der Leerenklinge wird als Markierung im
+  Lebensbalken sichtbar, nicht als zusätzliche Textzeile. Die Boss-Überladung des
+  Begleiters erhält einen lokalen Glow und einen kurzen Hinweis am Begleiter statt
+  eines weiteren HUD-Balkens.
+
+**Umgesetzt:** Links stehen nur Leben/Barriere und XP/Level. Die alten Laufziele laufen
+bis zu ihrem späteren Ersatz intern weiter und sind im Pausenfenster einsehbar, belegen
+aber keine Dauerfläche mehr. Welle
+und Fragmente sind kompakt gruppiert, Ton liegt nur noch in den Einstellungen, die
+Leerenzone ist im Lebensbalken markiert und Boss-Überladung leuchtet am Begleiter.
+
+### Nutzen und Ersatz der aktuellen Laufziele
+
+Die aktuelle Fassung wählt drei von neun Laufzielen und zahlt im Mittel ungefähr
+190 Fragmente. Ihr Mehrwert ist zu klein für die dauerhaft belegte Fläche:
+
+- Welle, Kills und Fragmente quittieren überwiegend normales Weiterspielen;
+- `Macht auf Stufe 5` und `Entwickle eine Macht` werden durch denselben, für die Krone
+  ohnehin notwendigen Evolutionskauf erfüllt;
+- das Barriereziel berücksichtigt nicht alle Barrierequellen und passt schlecht zur
+  Leerenklinge;
+- erledigte Ziele bleiben durchgestrichen im HUD; der Laufstand überlebt kein Neuladen.
+
+Die drei Zufallsziele werden deshalb nicht nur ausgeblendet, sondern später durch genau
+einen **Orbitauftrag** ersetzt:
+
+- ein aktiver, nicht verfallender Auftrag, dessen Fortschritt über Läufe erhalten bleibt;
+- passend zu gewähltem Charakter und verfügbaren Mechaniken, nie zu gesperrtem Inhalt;
+- 150–200 vorhandene Fragmente als Belohnung, keine neue Währung und kein Abholknopf;
+- vollständige Karte vor dem Lauf und in Pause/Ergebnis, im Kampf nur Kurzfortschritt;
+- nach Abschluss aus dem Kampf-HUD entfernen; ein neuer Auftrag folgt ohne Loginserie;
+- höchstens ein kostenloser Tausch pro Kalendertag, damit ein unpassender Auftrag nicht
+  blockiert, aber kein Aufgaben-Reroll-Spiel entsteht.
+
+Geeigneter Startpool: fokussierte Hauptmächte einsetzen, einen Boss ohne
+Rammbock-Treffer besiegen, eine Sweet-Hit-Serie halten, Panzer per Sweet Spot brechen
+und charaktergerechte Licht-/Leerenaktionen ausführen. Reine Wellen-, Kill-,
+Fragment- und Evolutions-Checklisten entfallen.
+
+### Spätere tägliche Motivation
+
+Orbitblade soll täglich einen interessanten Lauf anbieten, aber keinen Login erzwingen.
+Die Reihenfolge ist bewusst klein:
+
+1. Der nicht verfallende Orbitauftrag liefert zunächst jederzeit einen konkreten Grund
+   für den nächsten normalen Lauf.
+2. Erst nach stabiler Laufbalance und deterministischem Zufall folgt das optionale
+   **Tagessignal**: gleicher Datums-Seed für alle, festgelegter Charakter und Hauptmacht,
+   genau ein positiver Twist und eine Einschränkung, normaler Welle-30-Kernlauf.
+3. Gewertet werden persönliche Bestmarke und ein kurzer teilbarer Ergebniscode. Ohne
+   Server wird keine manipulationssichere globale Rangliste behauptet. Die letzten
+   sieben Signale bleiben zum Nachspielen verfügbar.
+4. Die erste Beendigung gibt eine kleine Fragmentbelohnung; exklusive Tageskosmetik,
+   Login-Streaks, verfallende Belohnungen und tägliche Pflichtläufe sind ausgeschlossen.
+5. Später können wenige dauerhafte Charakter- und Machtmeisterschaften rein kosmetische
+   Spuren, Rahmen oder Hangarprojektionen vergeben. Sie ersetzen keine Werkstattkraft.
+
+### Spieltest bis Welle 26 und neue Performance-Priorität
+
+Der veröffentlichte Stand wurde am 13.08.2026 bis Welle 26 gespielt. Die Kernschleife
+lief grundsätzlich gut und der Orbitpfad wurde als deutliche Verbesserung bewertet.
+Der Lauf lieferte jedoch einen glaubhaften Hinweis auf nachlassende Performance in den
+späten Wellen. Gerät, konkrete Bildrate und gewählter Build wurden bei diesem Lauf noch
+nicht mitprotokolliert; der Befund ist deshalb ein klarer Diagnoseauftrag, noch keine
+fertige Ursachenmessung.
+
+- Welle 20 plant rechnerisch 78 Gegner, Welle 26 bereits 115 und Welle 29 136. Welle 26
+  ist direkt nach dem Boss bei Welle 25 der erste große Massensprung und damit ein
+  plausibler Punkt für sichtbare Einbrüche. Die Zahl beschreibt die ganze Welle, nicht
+  zwingend gleichzeitig lebende Gegner.
+- Draw-Culling, Partikelobergrenze, Abschalten von `shadowBlur`, DPR-Limit und
+  `sparmodus` sind bereits vorhanden. Die globale Simulation bearbeitet trotzdem alle
+  Gegner, Projektile, Beuteobjekte und Machtfelder.
+- Besonders zu prüfen sind mehrfach verschachtelte Gegnerabfragen bei Sweet Hits,
+  Nachhall/Gravitationskern/Ketteneffekten, die Kollision jedes Spielerprojektils gegen
+  alle Gegner sowie Felder, die ihre eigene Gegnerprüfung ausführen.
+- Auch die Grafik bleibt verdächtig: Nebel- und Rasterverläufe werden weiterhin pro
+  Bild erzeugt; der Sparmodus reduziert hauptsächlich DPR und Leuchten, nicht die
+  Hintergrundebenen oder deren Aktualisierungsrate.
+- Das vorhandene `?perf=1` zeigt nur momentane FPS-, Update- und Draw-Zeiten sowie
+  Gegner und Partikel. Für eine belastbare Diagnose braucht die nächste Messfassung
+  über 60–90 Sekunden Durchschnitt und P95/Maximum, getrennte Update-/Draw-Zeit,
+  Gegner sichtbar/gesamt, Projektile, Felder, Beute, Partikel sowie den Zustand von
+  DPR, Sparmodus und Effekten.
+- Zuerst werden datenbasiert offensichtliche Rechen- und Zeichenlasten entfernt. Die
+  Gegnerdichte oder Wirkungsbalance wird nur verändert, wenn Messung und Spielgefühl
+  zeigen, dass nicht allein die Implementierung das Problem ist.
+
 ## Nächste Arbeitsreihenfolge
 
-1. Einen vollständigen Standardlauf
-   mit Punkt-, Evolutions-, Kronen- und Siegzeit messen.
-2. Anschließend Klingenecho und Machtecho jeweils bis mindestens Boss 40 spielen und
-   Lesbarkeit, Effektlast sowie tatsächliche Stärke der drei Ränge vergleichen.
-3. Erst anhand dieser Läufe XP-Kurve und Wirkungszahlen feinbalancieren.
-4. Totes Hangar-Zwischen-Overlay entfernen, alle drei Bestmarken anzeigen und danach
-   das rein kosmetische Hangarprestige spezifizieren.
-5. Den neuen Gesamtstand auf Pixel 9 und X1 Carbon testen; erst danach gezielte
-   Performancearbeit beginnen.
-6. Einen standardisierten Rangmodus und Monetarisierung erst behandeln, wenn
+1. Den Performanceeinbruch um Welle 26 reproduzierbar messen und zunächst die
+   offensichtlichen, balance-neutralen Update- und Draw-Hotspots optimieren.
+2. Danach den Test des veröffentlichten Orbitpfads fortsetzen: Standardlauf bis Welle
+   30 sowie Klingenecho und Machtecho jeweils bis mindestens Boss 40; Punkt-,
+   Evolutions-, Kronen- und Siegzeit sowie Effektlast notieren.
+3. Die drei alten Laufziele durch einen einzelnen persistenten Orbitauftrag ersetzen.
+4. Erst anhand der vollständigen Läufe XP-Kurve und Wirkungszahlen feinbalancieren.
+5. Totes Hangar-Zwischen-Overlay entfernen, alle drei Bestmarken anzeigen und das rein
+   kosmetische Hangarprestige als Fragment-Senke spezifizieren.
+6. Den optimierten Gesamtstand auf Pixel 9 und X1 Carbon kalt und nach längerer Laufzeit
+   gegenmessen; verbleibende thermische oder gerätespezifische Probleme bearbeiten.
+7. Deterministischen Lauf-Seed und danach das optionale Tagessignal konzipieren und
+   umsetzen. Charakter-/Machtmeisterschaften folgen erst aus echten Nutzungsdaten.
+8. Einen standardisierten Rangmodus und Monetarisierung erst behandeln, wenn
    Kernschleife und Wiederspielwert tragen.
 
 Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
@@ -513,6 +692,13 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
   neunte Endlosreihe brauchen zusätzlich einen echten Durchlauf über GitHub Pages.
 - Echte Geräte- und Touchtests erfolgen nach Veröffentlichung über GitHub Pages.
 - Gerätemessung der Performance ist auf den neuen Gesamtstand verschoben.
+- Die unveränderte Fokus-Ladegeschwindigkeit schwankt vermutlich stark mit der
+  Gegnerdichte und muss zusammen mit der Welle-26-Performance gemessen werden.
+- Die drei aktuellen Laufziele liefern überwiegend automatische oder doppelte
+  Fortschritte und sollen durch einen einzelnen Orbitauftrag ersetzt werden.
+- Ein realer Lauf bis Welle 26 lief spielerisch gut und bestätigte den besseren
+  Orbitpfad, zeigte aber einen noch ungemessenen Performanceeinbruch in den späten
+  Wellen. Diagnose und balance-neutrale Optimierung sind deshalb vorgezogen.
 
 ## Charakterdarstellung vom 12.08.2026
 

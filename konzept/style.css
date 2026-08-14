@@ -24,10 +24,16 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;
   padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left));
   pointer-events:none;gap:10px;z-index:2}
-#hud-left{flex:1;min-width:0;max-width:min(60vw,400px)}
-#hud-right{display:flex;align-items:center;gap:8px;pointer-events:auto;flex:none}
+#hud-left{flex:1;min-width:128px;max-width:min(52vw,360px)}
+#hud-right{display:grid;grid-template-columns:auto auto;align-items:start;gap:5px;pointer-events:auto;flex:none}
+#run-status,#run-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px}
+#run-status{flex-direction:column;align-items:stretch}
 #health-wrap{position:relative;height:clamp(22px,5.6vw,26px);background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden;backdrop-filter:blur(8px)}
 #health-bar{height:100%;width:100%;background:linear-gradient(90deg,#c81e2c,#ff5a5a);box-shadow:0 0 14px rgba(255,77,77,.45);transition:width .15s}
+#health-risk{display:none;position:absolute;inset:0 auto 0 0;width:50%;pointer-events:none;
+  border-right:2px solid rgba(199,125,255,.8);background:linear-gradient(90deg,rgba(94,32,128,.38),rgba(199,125,255,.08));
+  box-shadow:inset -8px 0 12px rgba(199,125,255,.12)}
+#health-wrap.leerenklinge #health-risk{display:block}
 /* Barriere: eigenes Segment rechts auf der Leiste, klar als andere Sorte erkennbar */
 #barrier-bar{position:absolute;top:0;right:0;height:100%;width:0%;
   background:repeating-linear-gradient(135deg,rgba(124,200,255,.85) 0 6px,rgba(60,140,220,.85) 6px 12px);
@@ -37,29 +43,10 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 #xp-wrap{position:relative;margin-top:5px;height:16px;background:var(--panel);border:1px solid var(--line);border-radius:999px;overflow:hidden}
 #xp-bar{height:100%;width:0%;background:linear-gradient(90deg,#3aa0e0,var(--accent));box-shadow:0 0 10px rgba(110,200,255,.5);transition:width .2s}
 #xp-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:.05em;color:#eef8ff;text-shadow:0 1px 3px #07101d;font-variant-numeric:tabular-nums}
-/* Fokus: füllt sich mit Sweet-Spot-Treffern, leuchtet wenn bereit */
-#fokus-wrap{position:relative;margin-top:5px;height:16px;background:var(--panel);border:1px solid var(--line);border-radius:999px;overflow:hidden}
-#fokus-bar{height:100%;width:0%;background:linear-gradient(90deg,#d9e6f5,#ffffff);transition:width .12s}
-#fokus-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#eef8ff;text-shadow:0 1px 3px #07101d;opacity:1;transition:color .2s}
-#fokus-wrap.bereit{border-color:#fff;box-shadow:0 0 14px rgba(255,255,255,.7)}
-#fokus-wrap.bereit #fokus-bar{background:#fff}
-#fokus-wrap.bereit #fokus-text{opacity:1;color:#16203a}
-
-/* Laufziele: kompakte Zeilen, erledigte verblassen */
-#ziel-liste{margin-top:6px;display:flex;flex-direction:column;gap:3px}
-.ziel{display:flex;align-items:center;gap:6px;font-size:var(--fs-xs);color:var(--muted);
-  background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:3px 7px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;backdrop-filter:blur(8px)}
-.ziel .haken{color:var(--good);font-weight:800}
-.ziel .fort{color:var(--accent);font-variant-numeric:tabular-nums;font-weight:700;flex:none}
-.ziel.fertig{opacity:.45;text-decoration:line-through}
-@media (max-height:480px) and (orientation:landscape){ #ziel-liste{display:none} }
-
 #coin-text,#wave-text{font-size:var(--fs-sm);font-weight:700;background:var(--panel);border:1px solid var(--line);padding:7px 10px;border-radius:4px;letter-spacing:.03em;backdrop-filter:blur(8px);white-space:nowrap}
 #coin-text{color:var(--gold)}
-#pause-btn,#mute-btn{width:var(--tap);height:var(--tap);border-radius:4px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:19px;cursor:pointer;backdrop-filter:blur(8px);flex:none}
-#pause-btn:active,#mute-btn:active{transform:scale(.95)}
+#pause-btn{width:var(--tap);height:var(--tap);border-radius:4px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:19px;cursor:pointer;backdrop-filter:blur(8px);flex:none}
+#pause-btn:active{transform:scale(.95)}
 .tree-btn{min-width:var(--tap);height:var(--tap);padding:0 10px;border-radius:4px;border:1px solid rgba(255,210,87,.65);background:rgba(255,210,87,.16);color:var(--gold);font-weight:850;font-size:15px;cursor:pointer;box-shadow:0 0 16px rgba(255,210,87,.18);font-variant-numeric:tabular-nums}
 .tree-btn span{margin-left:3px}.tree-btn:active{transform:scale(.95)}
 .tree-btn.hidden{display:none}
@@ -79,11 +66,11 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 #special-zone.links{right:auto;left:calc(14px + env(safe-area-inset-left))}
 #special-zone.gestapelt{flex-direction:column-reverse}
 .special-btn{
-  --c:#6ec8ff; --cRGB:110,200,255; --cd:0;
+  --c:#6ec8ff; --cRGB:110,200,255; --cd-ready:100; --focus:0;
   width:clamp(72px,19vw,92px);height:clamp(72px,19vw,92px);border-radius:50%;border:2px solid rgba(var(--cRGB),.55);
   background:var(--panel);color:var(--c);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-  cursor:pointer;position:relative;overflow:hidden;user-select:none;-webkit-user-select:none;
+  cursor:pointer;position:relative;overflow:visible;user-select:none;-webkit-user-select:none;
   backdrop-filter:blur(8px);transition:border-color .15s,box-shadow .15s,opacity .15s
 }
 .sp-wirbel{--c:#ffb340;--cRGB:255,179,64}
@@ -92,9 +79,19 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .special-btn:not(.on-cooldown){box-shadow:0 0 20px rgba(var(--cRGB),.28)}
 .special-btn:active{transform:scale(.95)}
 .special-btn:focus-visible{outline:3px solid var(--c);outline-offset:3px}
-/* Restlicher Cooldown verdunkelt den Kreis und laeuft im Uhrzeigersinn ab */
-.cd-sweep{position:absolute;inset:0;pointer-events:none;border-radius:50%;
-  background:conic-gradient(from -90deg, rgba(4,7,13,.74) calc(var(--cd)*1%), transparent 0)}
+/* Außen: klarer Cooldown-Fortschritt. Innen: violette Fokusladung nur an Hauptmacht. */
+.cd-sweep{position:absolute;inset:-4px;pointer-events:none;border-radius:50%;
+  background:conic-gradient(from -90deg,var(--c) calc(var(--cd-ready)*1%),rgba(55,68,88,.7) 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 0);mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 0);
+  filter:drop-shadow(0 0 4px rgba(var(--cRGB),.6));transition:background .08s linear}
+.focus-ring{position:absolute;inset:5px;pointer-events:none;border-radius:50%;
+  background:conic-gradient(from -90deg,#dcb5ff calc(var(--focus)*1%),rgba(113,62,150,.22) 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 0);mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 0);
+  filter:drop-shadow(0 0 5px rgba(199,125,255,.7));transition:background .1s linear}
+.focus-value{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font-size:8px;font-weight:850;letter-spacing:.08em;color:#dcb5ff;white-space:nowrap;text-shadow:0 1px 3px #05070d}
+.special-btn.focus-ready{border-color:#e8d1ff;box-shadow:0 0 0 3px rgba(199,125,255,.28),0 0 28px rgba(199,125,255,.65)}
+.special-btn.focus-ready .focus-ring{background:#f2e5ff;filter:drop-shadow(0 0 8px #c77dff)}
+.special-btn.focus-ready .focus-value{color:#fff}
 .s-icon{width:clamp(24px,6.4vw,30px);height:clamp(24px,6.4vw,30px);color:var(--c);margin-bottom:2px}
 .s-label{font-size:clamp(10px,2.7vw,11px);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
 .s-key{font-size:9px;color:var(--muted);letter-spacing:.12em}
@@ -102,6 +99,7 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 @media (pointer:coarse){ .s-key{display:none} }
 .special-btn.on-cooldown{opacity:.6;border-color:rgba(120,140,170,.35);box-shadow:none}
 .special-btn.on-cooldown .s-icon{color:#7d8da3}
+.special-btn.on-cooldown .cd-sweep{filter:none}
 /* Kurzer Puls genau im Moment der Bereitschaft — man schaut auf die Arena, nicht auf den Knopf */
 @keyframes readyPulse{
   0%{box-shadow:0 0 0 0 rgba(var(--cRGB),.6);transform:scale(1)}
@@ -110,6 +108,27 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 }
 .special-btn.just-ready{animation:readyPulse .5s ease-out}
 @media(prefers-reduced-motion:reduce){.special-btn.just-ready{animation:none}}
+
+#combat-resume{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;
+  background:radial-gradient(circle,rgba(5,11,22,.42),transparent 48%);text-shadow:0 2px 14px #000}
+#combat-resume.hidden{display:none}
+#combat-resume strong{font-size:clamp(58px,18vw,104px);font-weight:250;line-height:1;color:#fff;filter:drop-shadow(0 0 18px rgba(110,200,255,.8))}
+#combat-resume span{margin-top:8px;font-size:var(--fs-sm);font-weight:750;letter-spacing:.15em;text-transform:uppercase;color:#a9c9e8}
+#pause-goals{width:100%;max-width:340px;display:grid;gap:4px;margin:0 auto 2px}
+#pause-goals:empty{display:none}
+#pause-goals .pause-goal{display:flex;justify-content:space-between;gap:10px;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:rgba(10,18,32,.55);font-size:11px;color:var(--muted);text-align:left}
+#pause-goals .pause-goal.done{opacity:.48}#pause-goals b{color:var(--accent);white-space:nowrap}
+
+@media(max-width:520px){
+  #hud{gap:6px;padding-left:calc(8px + env(safe-area-inset-left));padding-right:calc(8px + env(safe-area-inset-right))}
+  #hud-left{max-width:none}
+  #hud-right{grid-template-columns:auto;gap:4px}
+  #run-status{flex-direction:row;gap:4px}
+  #run-actions{gap:4px}
+  #coin-text,#wave-text{padding:4px 6px;font-size:10px;min-height:24px;display:flex;align-items:center;justify-content:center}
+  .tree-btn{height:44px;min-width:44px;padding:0 7px}
+  #pause-btn{width:44px;height:44px}
+}
 
 /* Overlays */
 .overlay{position:absolute;inset:0;background:radial-gradient(circle at 50% 45%,rgba(14,28,52,.92),rgba(3,5,10,.96));
