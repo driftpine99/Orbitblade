@@ -842,7 +842,12 @@ const PERF_BG   = PERF_DEBUG && /(?:\?|&)bg=voll(?:&|$)/.test(location.search||'
 const messlauf  = PERF_WAVE>0 || PERF_PTS>0 || PERF_GOD;
 messlaufSchutz  = messlauf;
 
-const PERF_CAP=5400;                        // ~90 s bei 60 fps
+/* Der Ringpuffer trug bisher 5400 Bilder (~90 s), die Verteilung zählte dagegen alle.
+   Bei einem 5818-Bilder-Lauf meldete die Statistik deshalb `max 17,2 ms`, während die
+   Verteilung gleichzeitig 57 Bilder über 25 ms auswies — beides stimmte, betraf aber
+   verschiedene Zeiträume. Der Puffer fasst jetzt ~5,5 Minuten; wird er doch voll,
+   weist `gekappt` es aus, statt den Widerspruch stillschweigend zu erzeugen. */
+const PERF_CAP=20000;
 const PERF_SPRUNG=500;                      // größere Lücken sind Zustandswechsel, keine Bildrate
 const perf={ frame:16.7, update:0, draw:0, fps:60 };
 const perfRing={ frame:new Float32Array(PERF_CAP), update:new Float32Array(PERF_CAP), draw:new Float32Array(PERF_CAP) };
@@ -948,6 +953,8 @@ function perfBericht(){
   const ebenenAus=EBENEN_TASTEN.filter(k=>!zeichenEbenen[k]);
   return {
     fensterSek:Math.round(dauer*10)/10, bilder:perfFrames,
+    // Perzentile decken nur den Ringpuffer ab, Verteilung und Mengen alle Bilder.
+    statistikUeber:perfLen, gekappt:perfFrames>PERF_CAP,
     // Echte Bildrate aus der reinen Kampfzeit. Bilder durch Wanduhrzeit zu teilen war
     // falsch: Orbitpfad- und Pausenzeit zählt zur Uhr, aber nicht zu den Bildern.
     fps:perfFrames&&perfKampfMs>0 ? Math.round(1000/(perfKampfMs/n)*10)/10 : 0,
@@ -1658,6 +1665,7 @@ function resetGame(){
      wäre Welle 26 nur mit einem 20-Minuten-Lauf erreichbar und damit nicht wiederholbar. */
   if(PERF_WAVE>1) wave=PERF_WAVE;
   if(PERF_PTS>0){ const p=Math.min(PERF_PTS, REGULAR_POINT_CAP); skillPoints+=p; regularPointsEarned+=p; }
+  sparmodusNeuerLauf();
   shake=0; state='playing'; setMusicLevel(); hideAll(); updateTreeButton(); updateHUD(true); startWave();
   // Beim allerersten Spiel übernimmt der Einstieg die Ansage
   if(save.tutorialDone) announce('Welle 1', 'Überlebe die Arena', '#7cc8ff');
@@ -3953,13 +3961,22 @@ function bestimmeEffektstufe(){
    ihn wieder brauchen, und ein springendes Bild ist schlimmer als ein weicheres. */
 const SPAR_AN_MS=18.5, SPAR_AUS_MS=16.9;
 const SPAR_FENSTER=90;                 // ~1,5 s bei 60 fps
-let fpsProbe=[], fpsLetzte=0, sparSchlecht=0, sparGut=0, sparEinschaltungen=0;
+/* Aufwärmen ausklammern: Die ersten Sekunden eines Laufs ruckeln immer — erste
+   Zuweisung der Hintergrundleinwand, GPU-Texturupload, JIT. Gemessen auf dem
+   X1 Carbon waren es 57 verspätete Bilder am Laufbeginn, danach 90 Sekunden ohne
+   einen einzigen Ausreißer. Ohne diese Sperre holte sich der Sparmodus genau daraus
+   seine zwei Einschaltungen, rastete dauerhaft ein und senkte die Auflösung eines
+   Geräts, das längst sauber lief. */
+const SPAR_AUFWAERM=180;               // ~3 s Kampfbilder
+let fpsProbe=[], fpsLetzte=0, sparSchlecht=0, sparGut=0, sparEinschaltungen=0, sparAufwaerm=0;
+function sparmodusNeuerLauf(){ sparAufwaerm=0; sparSchlecht=0; sparGut=0; fpsProbe.length=0; }
 function messeBildrate(t){
   const d=fpsLetzte? t-fpsLetzte : 0;
   fpsLetzte=t;
   // Nur Kampfbilder, und keine Zustandssprünge aus Menü oder Orbitpfad: eine einzelne
   // Pause von zwei Sekunden würde den Schnitt sonst über jede Schwelle heben.
   if(state!=='playing' || !(d>0) || d>100) return;
+  if(sparAufwaerm<SPAR_AUFWAERM){ sparAufwaerm++; return; }
   fpsProbe.push(d);
   if(fpsProbe.length<SPAR_FENSTER) return;
   let summe=0; for(const v of fpsProbe) summe+=v;
@@ -3994,7 +4011,8 @@ function zeichnePerfOverlay(w,h){
   const b=perfStat, m=b.mengen, z=b.zustand;
   const ms=(o)=>'Ø'+o.avg.toFixed(1)+'  p95 '+o.p95.toFixed(1)+'  max '+o.max.toFixed(1);
   const zeilen=[
-    'FENSTER '+b.fensterSek+'s · '+b.bilder+' Bilder · '+b.fps+' fps · Kampf '+Math.round(b.kampfAnteil*100)+'%',
+    'FENSTER '+b.fensterSek+'s · '+b.bilder+' Bilder · '+b.fps+' fps · Kampf '+Math.round(b.kampfAnteil*100)+'%'
+      +(b.gekappt? '  !Stat nur '+b.statistikUeber : ''),
     'Frame  '+ms(b.frame),
     'Update '+ms(b.update),
     'Draw   '+ms(b.draw),

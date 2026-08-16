@@ -613,19 +613,39 @@ Die Sparmodus-Schwelle trägt damit den größeren Teil, der halbe Hintergrund r
 Rest ab. Dass der Sparmodus über 91 s stabil eingeschaltet blieb, bestätigt die
 Pendelsperre.
 
-Offen und bewusst nicht weiterverfolgt: Da der halbe Hintergrund allein schon 60 fps
-trägt, ist die zusätzliche DPR-Senkung des Sparmodus auf diesem Gerät womöglich nicht
-mehr nötig. Ein Lauf mit halbem Hintergrund bei DPR 1,5 (`&dpr=150`) würde zeigen, ob
-sich die schärfere Darstellung zurückholen lässt.
+**Nachtest bei DPR 1,5 mit halbem Hintergrund** (`&dpr=150`), 97,9 s, 5818 Bilder:
+Frame Ø 16,7 ms, p95 16,8, max 17,2 — im eingeschwungenen Zustand makellos. Die
+Verteilung wies 57 verspätete Bilder aus, die zwangsläufig alle in den ersten
+418 Bildern lagen (siehe Werkzeuggrenze unten): reines Aufwärmen.
+
+Damit ist die DPR-Senkung des Sparmodus auf diesem Gerät überflüssig. Sie ist die
+teuerste der beiden Maßnahmen, weil sie das **ganze** Bild weichzeichnet — Spielfigur,
+Gegner, Klinge und Schadenszahlen —, während der halbe Hintergrund nur den Hintergrund
+betrifft.
+
+Ursache der unnötigen Einschaltung war ein Entwurfsfehler: Der Sparmodus holte sich
+seine zwei Einschaltungen aus den Aufwärmrucklern am Laufbeginn und rastete dauerhaft
+ein. Behoben — die ersten 180 Kampfbilder (~3 s) eines Laufs sind jetzt von der
+Bewertung ausgenommen und werden bei jedem neuen Lauf zurückgesetzt. Geprüft: 200
+Aufwärmbilder à 45 ms lösen nichts mehr aus, 400 echte Bilder à 25 ms danach schon.
+
+Nebeneffekt, falls der Sparmodus ausbleibt: Er schaltet auch das Leuchten ab. Ohne ihn
+kehrt bei wenigen Gegnern der Auren-Glow zurück — schöner, aber wieder etwas teurer.
 
 Ebenfalls offen: Beide Läufe hatten nur 11–12 Gegner im Schnitt. Ein Lauf mit hoher
 gleichzeitiger Gegnerzahl fehlt weiterhin — er ist nach dieser Diagnose aber
 zweitrangig, weil die Füllrate gegnerunabhängig ist.
 
-Grenze der Messfassung: Im Mitschnitt der schlechtesten Bilder ist die Angabe der
-teuersten Phase wenig aussagekräftig, solange alle Phasen im Bereich unter einer
-Millisekunde liegen — im Voll-Lauf wies sie `spieler` aus, obwohl die Zeit
-nachweislich außerhalb des Skripts lag.
+Grenzen der Messfassung:
+
+- Im Mitschnitt der schlechtesten Bilder ist die Angabe der teuersten Phase wenig
+  aussagekräftig, solange alle Phasen unter einer Millisekunde liegen — im Voll-Lauf
+  wies sie `spieler` aus, obwohl die Zeit nachweislich außerhalb des Skripts lag.
+- Der Ringpuffer fasste nur 5400 Bilder, die Verteilung zählte dagegen alle. Ein
+  5818-Bilder-Lauf meldete deshalb gleichzeitig `max 17,2 ms` und 57 Bilder über
+  25 ms — beides richtig, aber über verschiedene Zeiträume. Der Puffer fasst jetzt
+  20.000 Bilder (~5,5 min, 234 KB); läuft er doch über, weist das Overlay es als
+  `!Stat nur N` aus, statt den Widerspruch stillschweigend zu erzeugen.
 
 ### Sparmodus greift jetzt früh genug
 
