@@ -507,6 +507,55 @@ Update, Draw, teuerster Phase, Welle, Gegner- und Partikelzahl, Bossflagge und
 Effektstufe. Ein Schnitt sagt nur, DASS es hakt; erst der Mitschnitt sagt, WOBEI.
 Beides steht im Overlay und vollständig in `perfDump()`.
 
+### Ursache gefunden: Füllrate (X1 Carbon, am Netzteil, 16.08.2026)
+
+Zwei unabhängige Messungen zeigen dasselbe. Der Laptop hing dabei am Strom, ein
+heruntergetakteter Energiesparplan scheidet als Erklärung aus.
+
+**Verteilungslauf bei DPR 1,5** über 121,9 s, Welle 27, im Schnitt 13 Gegner:
+
+| Klasse | ≤17 ms | ≤20 | ≤25 | ≤34 ms | ≤50 | >50 |
+|---|---|---|---|---|---|---|
+| Bilder | 3520 | 5 | 0 | 1378 | 18 | 7 |
+
+Die Verteilung ist zweigipflig: 71 % pünktlich, 28 % exakt einen Vsync-Takt zu spät,
+dazwischen praktisch nichts. Kein allmähliches Zuviel, sondern ein hartes Verfehlen
+der Bildfrist. Das schlechteste Bild mit 66,6 ms enthielt nur 3,8 ms JavaScript.
+
+**Test A — DPR erzwungen auf 1,0** (`&dpr=100`), 82,8 s, im Schnitt 11 Gegner:
+
+| | DPR 1,5 | DPR 1,0 |
+|---|---|---|
+| pünktlich (≤17 ms) | 3520 (71 %) | 3561 (97 %) |
+| zu spät (≤34 ms) | 1378 (28 %) | 122 (3,3 %) |
+| Frame Ø | 21,5 ms | 17,2 ms |
+| fps | 46,5 | 58,1 |
+
+45 % weniger Pixel bei identischem Code senken die verfehlten Bilder um Faktor 8,5.
+Der Vergleich ist sogar konservativ: Der DPR-1,0-Lauf lief mit `FX an`, also dem
+teureren Zeichenpfad mit Auren-Gradient je Gegner, bei gleicher mittlerer Gegnerzahl.
+
+**Test B — erzwungener GPU-Leerlauf** (`&gpu=1`): `gpuSync` dominiert mit Abstand,
+`zHintergrund` folgt weit dahinter, alle übrigen Phasen liegen unter 0,25 ms. Das
+Spiel wartet fast ausschließlich auf die Grafikkarte. Die Absolutwerte sind in diesem
+Modus wertlos, weil die erzwungene Synchronisation das Pipelining zerstört und das
+Spiel unspielbar macht — aussagekräftig ist allein die Zuordnung.
+
+**Damit ist die Ursache die Füllrate, nicht die Rechenlast und nicht die Gegnerzahl.**
+Der Hintergrund füllt den Bildschirm pro Bild acht- bis zehnmal vollständig:
+Grundfarbe, Glow-Verlauf, bis zu zehn große Nebelkreise mit additivem Blending, drei
+Sternenlagen, Raster über eine zweite Vollbild-Leinwand, Staub, Vignette. Diese Last
+ist konstant und gegnerunabhängig; sie liegt knapp unter der Bildfrist und kippt schon
+bei geringem Zittern darüber. Das erklärt, warum der Einbruch spät auffiel, obwohl die
+Gegner-Skalierung harmlos misst.
+
+Nebenbefund: Der vorhandene Sparmodus greift erst unter 38 fps (`schnitt>26`). Ein
+Gerät, das dauerhaft bei 46 fps liegt, erhält deshalb nie Hilfe. Diese Lücke ist offen.
+
+Korrigiert: Die Phasenschnitte summierten in jedem Bild mit, auch im Orbitpfad und in
+Menüs, wurden aber nur durch die Kampfbilder geteilt. Bei 60 % Kampfanteil ergab das
+Phasenwerte oberhalb der gesamten Bildzeit.
+
 ### Ebenen einzeln abschaltbar
 
 Mit `?perf=1` schalten `Shift+1..8` die Zeichenebenen einzeln ab: Nebel, Sterne, Deko,
@@ -522,13 +571,21 @@ statt sie zu erraten.
   (gemessen 36 ms bei 7 ms Phasensumme). Belastbar sind nur die isolierten Funktions-
   messungen und die Update-Seite. Pixel 9 und X1 Carbon müssen über GitHub Pages
   mit `?perf=1&wave=26&pts=15&god=1` gegengemessen werden.
-- Sprite-Vorrendern der Gegner ist nach der X1-Carbon-Messung **zurückgestellt**: Es
-  spart Pfadoperationen, aber keine Pixel, und der Engpass ist dort die Füllrate. Es
-  wäre zudem nicht darstellungsneutral, weil pulsierende Kerne, Augen und Flossen
-  zeitabhängig animiert sind und einfrieren würden.
-- Der nächste Schritt ist die Bisektion über `Shift+1..8`: Erst wenn feststeht, welche
-  Hintergrundebene die Füllrate frisst, wird entschieden, ob Ebenen zusammengelegt,
-  in niedrigerer Auflösung gerendert oder seltener aktualisiert werden.
+- Sprite-Vorrendern der Gegner ist **endgültig zurückgestellt**: Es spart
+  Pfadoperationen, aber keine Pixel, und der Engpass ist die Füllrate. Es wäre zudem
+  nicht darstellungsneutral, weil pulsierende Kerne, Augen und Flossen zeitabhängig
+  animiert sind und einfrieren würden.
+- Die eigentliche Abhilfe steht noch aus. Vorgeschlagen ist, den Hintergrund in halber
+  Auflösung in eine Zwischenleinwand zu zeichnen und hochskaliert einzublenden, während
+  das Spielgeschehen in voller Auflösung bleibt. Das viertelt die teuersten Pixel und
+  trifft ausgerechnet den Teil, der aus weichen Verläufen besteht. Es ist jedoch
+  **nicht darstellungsneutral** — Sternenpunkte würden minimal weicher — und braucht
+  deshalb eine ausdrückliche Entscheidung sowie einen Umschalter zum Vergleich.
+  Alternativen: DPR-Obergrenze pauschal senken (billiger, trifft aber auch scharfe
+  Elemente) oder nur die Nebelschwaden seltener aktualisieren (kleinerer Gewinn,
+  risikolos).
+- Die Schwelle des Sparmodus muss so nachgezogen werden, dass sie ein dauerhaft bei
+  46 fps laufendes Gerät überhaupt erreicht.
 - `separieren` bleibt mit 0,33 ms die teuerste Update-Phase. Eine Halbierung der
   Nachbarzellen wäre möglich, ändert aber die Reihenfolge der Positionskorrekturen und
   damit das Ergebnis — deshalb zurückgestellt.

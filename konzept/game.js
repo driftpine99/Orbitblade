@@ -868,8 +868,13 @@ const zeichenEbenen={ nebel:true, sterne:true, deko:true, raster:true,
   staub:true, verlaeufe:true, gegner:true, partikel:true };
 const EBENEN_TASTEN=['nebel','sterne','deko','raster','staub','verlaeufe','gegner','partikel'];
 // Grenzstein zwischen zwei Phasen. Die Zeit seit der letzten Marke geht auf `name`.
+/* `perfSammeln` schließt Nicht-Kampfbilder aus. Die Phasen liefen bisher in jedem Bild
+   mit — auch im Orbitpfad und in Menüs, wo `draw()` weiterläuft —, geteilt wurde aber
+   nur durch die Kampfbilder. Bei 60 % Kampfanteil ergab das Phasenschnitte oberhalb der
+   gesamten Bildzeit, was sichtbar unmöglich war. */
+let perfSammeln=false;
 function perfMark(name){
-  if(!PERF_DEBUG) return;
+  if(!PERF_DEBUG || !perfSammeln) return;
   const n=performance.now(), d=n-perfPhaseUhr;
   perfPhasen[name]=(perfPhasen[name]||0)+d;
   perfPhasenBild[name]=(perfPhasenBild[name]||0)+d;   // für den Mitschnitt schlechter Bilder
@@ -4881,6 +4886,7 @@ function loop(t){
   messeBildrate(t);            // erkennt schwache Geräte und spart dauerhaft Effekte
   if(state==='countdown') tickCombatResume(t);
   const spielt=state==='playing';
+  perfSammeln=spielt;              // Phasen nur aus Kampfbildern, passend zum Teiler
   const updateStart=performance.now();
   perfPhaseUhr=updateStart;
   if(spielt) update(dt);
