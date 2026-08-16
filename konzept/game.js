@@ -830,6 +830,7 @@ const perfZahl=(k)=>{
 const PERF_WAVE = PERF_DEBUG ? perfZahl('wave') : 0;
 const PERF_PTS  = PERF_DEBUG ? perfZahl('pts')  : 0;
 const PERF_GOD  = PERF_DEBUG && /(?:\?|&)god=1(?:&|$)/.test(location.search||'');
+const PERF_DPR  = PERF_DEBUG ? perfZahl('dpr') : 0;   // in Hundertstel, z. B. dpr=100 -> 1,00
 const messlauf  = PERF_WAVE>0 || PERF_PTS>0 || PERF_GOD;
 messlaufSchutz  = messlauf;
 
@@ -945,8 +946,8 @@ function perfBericht(){
     verteilung:PERF_KLASSEN_NAME.reduce((o,name,i)=>{ o[name+' ms']=perfKlassen[i]; return o; },{}),
     schlimmsteBilder:perfSchlimmste,
     welle:wave, mengen,
-    zustand:{ dpr:Math.round(renderDpr*100)/100, sparmodus, effekte:fxAn, messlauf,
-      ebenenAus:ebenenAus.length? ebenenAus : 'keine' }
+    zustand:{ dpr:Math.round(renderDpr*100)/100, dprErzwungen:PERF_DPR>0,
+      sparmodus, effekte:fxAn, messlauf, ebenenAus:ebenenAus.length? ebenenAus : 'keine' }
   };
 }
 if(PERF_DEBUG && typeof window!=='undefined'){
@@ -1568,6 +1569,10 @@ function resize(){
   const rawDpr=window.devicePixelRatio||1;
   const dprLimit=IS_TOUCH ? CONFIG.render.touchDpr : CONFIG.render.desktopDpr;
   renderDpr=Math.min(rawDpr, dprLimit)*(sparmodus?CONFIG.render.sparDprFaktor:1);
+  /* Messschalter: `?perf=1&dpr=100` erzwingt DPR 1,00 (Wert in Hundertstel).
+     Der unabhängige Gegentest zur Ebenen-Bisektion — sinkt die Bildzeit allein durch
+     weniger Pixel, ist die Füllrate der Engpass und nicht die Zahl der Zeichenbefehle. */
+  if(PERF_DPR>0) renderDpr=PERF_DPR/100;
   // Sichtbarer Viewport (Android-URL-Leiste ein/aus): visualViewport ist die
   // zuverlässige Größe, innerHeight enthält die Leiste und verzerrt das Spiel.
   const vv=window.visualViewport;
@@ -3934,7 +3939,7 @@ function zeichnePerfOverlay(w,h){
   // sagte damit nichts über die belasteten Bilder aus.
   zeilen.push('max Gegner '+m.sichtbar.max+'/'+m.gegner.max+' (Ø '+m.gegner.schnitt+') · Felder '+m.felder.max);
   zeilen.push('max Partikel '+m.partikel.max+' · Zahlen '+m.zahlen.max+' · Schuss '+m.schuesse.max+'/'+m.eigeneSchuesse.max);
-  zeilen.push('Welle '+b.welle+' · DPR '+z.dpr+' · Spar '+(z.sparmodus?'AN':'aus')+' · FX '+(z.effekte?'an':'AUS')+(z.messlauf?' · MESSLAUF':''));
+  zeilen.push('Welle '+b.welle+' · DPR '+z.dpr+(z.dprErzwungen?'!':'')+' · Spar '+(z.sparmodus?'AN':'aus')+' · FX '+(z.effekte?'an':'AUS')+(z.messlauf?' · MESSLAUF':''));
   zeilen.push('aus: '+(Array.isArray(z.ebenenAus)? z.ebenenAus.join(' ') : 'keine')+'   [Shift+1..8]');
   const zh=13, hoehe=zeilen.length*zh+14, oben=h-hoehe-8;
   ctx.save();
