@@ -588,10 +588,44 @@ Ergebnis des Vergleichs:
 - Kein Fehler in allen vier Kombinationen aus halber/voller Auflösung und
   Sparmodus an/aus.
 
-Nicht bestätigt: **die tatsächliche Bildratenverbesserung auf dem X1 Carbon.** Die
-verborgene Browser-Pane kompositiert nicht, dort ist der GPU-Anteil grundsätzlich
-nicht messbar. Belegt sind Pixelmenge, Darstellungsqualität und Fehlerfreiheit; die
-Wirkung auf die Bildzeit muss ein Lauf auf dem Gerät zeigen.
+### Gerätebestätigung X1 Carbon (16.08.2026)
+
+Zwei Läufe über je rund 90 s, Welle 27 bzw. 28, im Schnitt 11–12 Gegner, beide mit
+aktivem Sparmodus bei DPR 1,2:
+
+| | Hintergrund voll | Hintergrund halb |
+|---|---|---|
+| Frame Ø | 17,0 ms | 16,7 ms |
+| Frame max | 50,2 ms | 17,9 ms |
+| Bilder über 20 ms | 100 von 4947 (2,0 %) | 0 von 4667 |
+| fps | 58,8 | 60,0 |
+
+**Mit halber Hintergrundauflösung verfehlt kein einziges Bild die Vsync-Frist.** Der
+schlechteste Wert liegt bei 17,9 ms; es gibt keinen Ausreißer.
+
+Die Wirkung verteilt sich auf beide Änderungen:
+
+- Ausgangslage bei DPR 1,5, alter Sparmodus griff nie: 28 % verfehlte Bilder.
+- Neue Sparmodus-Schwelle senkt auf DPR 1,2: 2,0 %.
+- Halber Hintergrund zusätzlich: 0 %.
+
+Die Sparmodus-Schwelle trägt damit den größeren Teil, der halbe Hintergrund räumt den
+Rest ab. Dass der Sparmodus über 91 s stabil eingeschaltet blieb, bestätigt die
+Pendelsperre.
+
+Offen und bewusst nicht weiterverfolgt: Da der halbe Hintergrund allein schon 60 fps
+trägt, ist die zusätzliche DPR-Senkung des Sparmodus auf diesem Gerät womöglich nicht
+mehr nötig. Ein Lauf mit halbem Hintergrund bei DPR 1,5 (`&dpr=150`) würde zeigen, ob
+sich die schärfere Darstellung zurückholen lässt.
+
+Ebenfalls offen: Beide Läufe hatten nur 11–12 Gegner im Schnitt. Ein Lauf mit hoher
+gleichzeitiger Gegnerzahl fehlt weiterhin — er ist nach dieser Diagnose aber
+zweitrangig, weil die Füllrate gegnerunabhängig ist.
+
+Grenze der Messfassung: Im Mitschnitt der schlechtesten Bilder ist die Angabe der
+teuersten Phase wenig aussagekräftig, solange alle Phasen im Bereich unter einer
+Millisekunde liegen — im Voll-Lauf wies sie `spieler` aus, obwohl die Zeit
+nachweislich außerhalb des Skripts lag.
 
 ### Sparmodus greift jetzt früh genug
 
@@ -627,12 +661,11 @@ statt sie zu erraten.
   Pfadoperationen, aber keine Pixel, und der Engpass ist die Füllrate. Es wäre zudem
   nicht darstellungsneutral, weil pulsierende Kerne, Augen und Flossen zeitabhängig
   animiert sind und einfrieren würden.
-- Die Abhilfe ist umgesetzt (halber Hintergrund, Sparmodus-Schwelle), ihre Wirkung auf
-  die Bildzeit aber noch nicht auf echter Hardware bestätigt. Ein Lauf auf dem
-  X1 Carbon mit `Shift+H` im Wechsel ist der offene Schritt.
-- Bleibt die Verbesserung hinter den Erwartungen zurück, sind die nächsten Kandidaten
-  die pauschale Senkung der DPR-Obergrenze (trifft dann auch scharfe Elemente) und
-  eine seltenere Aktualisierung der Nebelschwaden.
+- Die Abhilfe ist umgesetzt und auf dem X1 Carbon bestätigt: null verfehlte Bilder bei
+  60 fps. Der Performancebefund gilt damit als abgeschlossen.
+- Offen bleibt die Messung auf dem Pixel 9 sowie ein Lauf mit hoher gleichzeitiger
+  Gegnerzahl. Beides ist nach der Diagnose zweitrangig, weil die Füllrate
+  gegnerunabhängig ist.
 - `separieren` bleibt mit 0,33 ms die teuerste Update-Phase. Eine Halbierung der
   Nachbarzellen wäre möglich, ändert aber die Reihenfolge der Positionskorrekturen und
   damit das Ergebnis — deshalb zurückgestellt.
