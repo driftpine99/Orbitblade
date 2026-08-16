@@ -837,6 +837,8 @@ const PERF_DPR  = PERF_DEBUG ? perfZahl('dpr') : 0;   // in Hundertstel, z. B. d
    Synchronisation kostet selbst etwas und verfälscht die absolute Bildzeit. Aussagekräftig
    ist allein, ob `gpuSync` gross oder klein ist. Nur für die Diagnose, nie im Normalbetrieb. */
 const PERF_GPU  = PERF_DEBUG && /(?:\?|&)gpu=1(?:&|$)/.test(location.search||'');
+// `?perf=1&bg=voll` startet mit voller Hintergrundauflösung; Shift+H schaltet live um.
+const PERF_BG   = PERF_DEBUG && /(?:\?|&)bg=voll(?:&|$)/.test(location.search||'');
 const messlauf  = PERF_WAVE>0 || PERF_PTS>0 || PERF_GOD;
 messlaufSchutz  = messlauf;
 
@@ -958,6 +960,7 @@ function perfBericht(){
     schlimmsteBilder:perfSchlimmste,
     welle:wave, mengen,
     zustand:{ dpr:Math.round(renderDpr*100)/100, dprErzwungen:PERF_DPR>0,
+      hintergrund:hintergrundHalb?'halb':'voll',
       sparmodus, effekte:fxAn, messlauf, ebenenAus:ebenenAus.length? ebenenAus : 'keine' }
   };
 }
@@ -970,6 +973,8 @@ if(PERF_DEBUG && typeof window!=='undefined'){
   window.addEventListener('keydown',(e)=>{
     if(!e.shiftKey) return;
     if(e.code==='KeyP'){ perfReset(); return; }
+    // A/B-Vergleich der Hintergrundauflösung im laufenden Spiel
+    if(e.code==='KeyH'){ hintergrundHalb=!hintergrundHalb; perfReset(); return; }
     const m=/^Digit([1-8])$/.exec(e.code||'');
     if(!m) return;
     const k=EBENEN_TASTEN[+m[1]-1];
@@ -3877,10 +3882,15 @@ function floatFontFor(scale){
 /* Bildschirmgroße Gradienten einmal bauen statt 60× pro Sekunde.
    Sie hängen nur von Größe und Biome ab. */
 let glowCache=null, glowKey='', vigCache=null, vigKey='';
-function holeGlow(w,h,biome){
-  const key=w+'x'+h+'|'+biome.glow;
+/* Die Verläufe werden von dem Kontext erzeugt, der sie später benutzt. Seit der
+   Hintergrund wahlweise auf einer eigenen Zwischenleinwand entsteht, gibt es zwei
+   mögliche Kontexte — der Cache muss sie unterscheiden, sonst gehörte ein Verlauf
+   nach dem Umschalten zur falschen Zeichenfläche. */
+function ctxKuerzel(g){ return g===ctx ? 'M' : 'B'; }
+function holeGlow(g2,w,h,biome){
+  const key=ctxKuerzel(g2)+w+'x'+h+'|'+biome.glow;
   if(key!==glowKey){
-    const g=ctx.createRadialGradient(w/2,h/2,0,w/2,h/2,Math.max(w,h)*0.7);
+    const g=g2.createRadialGradient(w/2,h/2,0,w/2,h/2,Math.max(w,h)*0.7);
     g.addColorStop(0,'rgba('+biome.glow+',0.38)');
     g.addColorStop(0.5,'rgba('+biome.glow+',0.15)');
     g.addColorStop(1,'rgba(5,7,13,0)');
@@ -3888,28 +3898,80 @@ function holeGlow(w,h,biome){
   }
   return glowCache;
 }
-function holeVignette(w,h){
-  const key=w+'x'+h;
+function holeVignette(g2,w,h){
+  const key=ctxKuerzel(g2)+w+'x'+h;
   if(key!==vigKey){
-    const g=ctx.createRadialGradient(w/2,h/2,Math.min(w,h)*0.45,w/2,h/2,Math.max(w,h)*0.9);
+    const g=g2.createRadialGradient(w/2,h/2,Math.min(w,h)*0.45,w/2,h/2,Math.max(w,h)*0.9);
     g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,0.42)');
     vigCache=g; vigKey=key;
   }
   return vigCache;
 }
+/* HINTERGRUND IN HALBER AUFLÖSUNG
+   Auf dem X1 Carbon ist die Füllrate der Engpass, nicht die Rechenlast: DPR 1,0 statt
+   1,5 senkte die verfehlten Bilder von 28 % auf 3,3 %. Der Hintergrund füllt den
+   Bildschirm pro Bild acht- bis zehnmal vollständig und besteht fast nur aus weichen
+   Verläufen — er verträgt eine geringere Auflösung, ohne dass es auffällt. Er entsteht
+   deshalb auf einer eigenen Zwischenleinwand mit einem Viertel der Pixel und wird
+   hochskaliert eingeblendet. Das Spielgeschehen bleibt in voller Auflösung. */
+const BG_SKALA=0.5;                          // je Achse — also ein Viertel der Fläche
+let hintergrundHalb=!PERF_BG;                // Standard; `?perf=1&bg=voll` startet voll
+let bgLeinwand=null, bgCtx=null;
+function holeHintergrundKontext(w,h){
+  if(typeof document==='undefined' || !document.createElement) return null;
+  if(!bgLeinwand){ bgLeinwand=document.createElement('canvas'); bgCtx=bgLeinwand.getContext&&bgLeinwand.getContext('2d'); }
+  if(!bgCtx) return null;
+  const dw=Math.max(1,Math.round(w*renderDpr*BG_SKALA)), dh=Math.max(1,Math.round(h*renderDpr*BG_SKALA));
+  if(bgLeinwand.width!==dw || bgLeinwand.height!==dh){ bgLeinwand.width=dw; bgLeinwand.height=dh; }
+  bgCtx.setTransform(dw/w,0,0,dh/h,0,0);     // dieselben logischen Koordinaten wie im Hauptcanvas
+  return bgCtx;
+}
+// Alle Hintergrundebenen, in logischen Koordinaten, auf den übergebenen Kontext.
+function zeichneHintergrund(g,w,h,biome,now,skala){
+  g.fillStyle=biome.bg; g.fillRect(0,0,w,h);
+  if(zeichenEbenen.verlaeufe){ g.fillStyle=holeGlow(g,w,h,biome); g.fillRect(0,0,w,h); }
+  if(zeichenEbenen.nebel)  drawNebulae(g,w,h,camX,camY,biome);
+  if(zeichenEbenen.sterne) drawStarLayers(g,w,h,camX,camY,biome,now);
+  if(zeichenEbenen.deko)   drawBiomeDeko(g,w,h,camX,camY,biome);
+  if(zeichenEbenen.raster) drawFadedGrid(g,w,h,camX,camY,biome,skala);
+  if(zeichenEbenen.staub)  drawDust(g,w,h,camX,camY,biome);
+  if(zeichenEbenen.verlaeufe){ g.fillStyle=holeVignette(g,w,h); g.fillRect(0,0,w,h); }
+}
 // Wird einmal pro Bild gesetzt: viele Gegner ODER schwaches Gerät -> Leuchten aus
 function bestimmeEffektstufe(){
   fxAn = enemies.length <= CONFIG.fxGegnerGrenze && !sparmodus;
 }
-let fpsProbe=[], fpsLetzte=0;
+/* SPARMODUS — die alte Schwelle von 26 ms griff erst unter 38 fps. Ein Gerät, das
+   dauerhaft bei 46 fps liegt (gemessen auf dem X1 Carbon: 21,5 ms), bekam deshalb nie
+   Hilfe, obwohl es sichtbar ruckelte. Die neue Einschaltschwelle liegt bei 18,5 ms
+   (~54 fps) und erwischt auch regelmäßig knapp verfehlte 60-fps-Bilder.
+
+   Zwei Vorkehrungen gegen Pendeln, denn der Sparmodus verändert selbst die Bildrate,
+   die ihn steuert: Erstens liegt die Ausschaltschwelle mit 16,9 ms klar unter der
+   Einschaltschwelle und muss länger anhalten. Zweitens rastet der Sparmodus nach der
+   zweiten Einschaltung dauerhaft ein — ein Gerät, das ihn zweimal gebraucht hat, wird
+   ihn wieder brauchen, und ein springendes Bild ist schlimmer als ein weicheres. */
+const SPAR_AN_MS=18.5, SPAR_AUS_MS=16.9;
+const SPAR_FENSTER=90;                 // ~1,5 s bei 60 fps
+let fpsProbe=[], fpsLetzte=0, sparSchlecht=0, sparGut=0, sparEinschaltungen=0;
 function messeBildrate(t){
-  if(fpsLetzte){ fpsProbe.push(t-fpsLetzte); if(fpsProbe.length>90) fpsProbe.shift(); }
+  const d=fpsLetzte? t-fpsLetzte : 0;
   fpsLetzte=t;
-  if(fpsProbe.length===90){
-    const schnitt=fpsProbe.reduce((a,b)=>a+b,0)/90;
-    if(schnitt>26 && !sparmodus){ sparmodus=true; resize(); }      // unter ~38 fps: dauerhaft sparen
-    else if(schnitt<19 && sparmodus){ sparmodus=false; resize(); } // wieder flüssig: Effekte zurück
-    fpsProbe=[];
+  // Nur Kampfbilder, und keine Zustandssprünge aus Menü oder Orbitpfad: eine einzelne
+  // Pause von zwei Sekunden würde den Schnitt sonst über jede Schwelle heben.
+  if(state!=='playing' || !(d>0) || d>100) return;
+  fpsProbe.push(d);
+  if(fpsProbe.length<SPAR_FENSTER) return;
+  let summe=0; for(const v of fpsProbe) summe+=v;
+  const schnitt=summe/fpsProbe.length;
+  fpsProbe.length=0;
+  if(schnitt>SPAR_AN_MS){ sparGut=0; sparSchlecht++; }
+  else if(schnitt<SPAR_AUS_MS){ sparSchlecht=0; sparGut++; }
+  else { sparSchlecht=0; sparGut=0; }              // Graubereich ändert nichts
+  if(!sparmodus && sparSchlecht>=2){
+    sparmodus=true; sparEinschaltungen++; sparSchlecht=0; resize();
+  } else if(sparmodus && sparGut>=5 && sparEinschaltungen<2){
+    sparmodus=false; sparGut=0; resize();
   }
 }
 // Sichtprüfung vor teuren Canvas-Operationen. Die Simulation bleibt bewusst global,
@@ -3951,6 +4013,7 @@ function zeichnePerfOverlay(w,h){
   zeilen.push('max Gegner '+m.sichtbar.max+'/'+m.gegner.max+' (Ø '+m.gegner.schnitt+') · Felder '+m.felder.max);
   zeilen.push('max Partikel '+m.partikel.max+' · Zahlen '+m.zahlen.max+' · Schuss '+m.schuesse.max+'/'+m.eigeneSchuesse.max);
   zeilen.push('Welle '+b.welle+' · DPR '+z.dpr+(z.dprErzwungen?'!':'')+' · Spar '+(z.sparmodus?'AN':'aus')+' · FX '+(z.effekte?'an':'AUS')+(z.messlauf?' · MESSLAUF':''));
+  zeilen.push('Hintergrund '+z.hintergrund.toUpperCase()+'   [Shift+H]');
   zeilen.push('aus: '+(Array.isArray(z.ebenenAus)? z.ebenenAus.join(' ') : 'keine')+'   [Shift+1..8]');
   const zh=13, hoehe=zeilen.length*zh+14, oben=h-hoehe-8;
   ctx.save();
@@ -3980,13 +4043,13 @@ function drawNebulae(ctx,w,h,camX,camY,bio){
     if(bx<-n.r || bx>w+n.r || by<-n.r || by>h+n.r) continue;
     /* Der Verlauf hängt nur an Farbe und Radius, nicht an der Position. Einmal um den
        Ursprung gebaut, danach nur noch verschoben — bisher entstand er je Schwade und Bild neu. */
-    if(!n._grad || n._gradBio!==bio){
+    if(!n._grad || n._gradBio!==bio || n._gradCtx!==ctx){
       const col=bio.neb[n.c%bio.neb.length];
       const g=ctx.createRadialGradient(0,0,0,0,0,n.r);
       g.addColorStop(0,'rgba('+col[0]+','+col[1]+','+col[2]+','+n.a.toFixed(3)+')');
       g.addColorStop(0.55,'rgba('+col[0]+','+col[1]+','+col[2]+','+(n.a*0.4).toFixed(3)+')');
       g.addColorStop(1,'rgba('+col[0]+','+col[1]+','+col[2]+',0)');
-      n._grad=g; n._gradBio=bio;
+      n._grad=g; n._gradBio=bio; n._gradCtx=ctx;
     }
     ctx.save(); ctx.translate(bx,by);
     ctx.fillStyle=n._grad; ctx.beginPath(); ctx.arc(0,0,n.r,0,Math.PI*2); ctx.fill();
@@ -4068,15 +4131,20 @@ function drawStarLayers(ctx,w,h,camX,camY,bio,t){
    Ergebnis: das Raster wirkt wie eine Plattform unter dem Spieler statt wie ein
    gleichmäßiges Gitter über dem ganzen Bild — der Hintergrund gewinnt Tiefe. */
 let gridLayer=null, gridCtx=null, gridFade=null, gridFadeKey='';
-function drawFadedGrid(ctx,w,h,camX,camY,bio){
+function drawFadedGrid(ctx,w,h,camX,camY,bio,skala=1){
   if(typeof document==='undefined' || !document.createElement) return;
   // Ist das Fenster (noch) 0 Pixel groß, wirft drawImage eine InvalidStateError —
   // das passiert real beim Laden in einem verborgenen Tab.
   if(w<1 || h<1) return;
   if(!gridLayer){ gridLayer=document.createElement('canvas'); gridCtx=gridLayer.getContext&&gridLayer.getContext('2d'); }
   if(!gridCtx) return;
-  if(gridLayer.width!==w || gridLayer.height!==h){ gridLayer.width=w; gridLayer.height=h; }
+  /* Das Raster hat eine eigene Ebene und muss derselben Auflösung folgen wie das
+     Ziel — sonst bliebe es beim halbauflösenden Hintergrund die einzige Ebene in
+     voller Größe und würde einen guten Teil der Ersparnis auffressen. */
+  const gw=Math.max(1,Math.round(w*skala)), gh=Math.max(1,Math.round(h*skala));
+  if(gridLayer.width!==gw || gridLayer.height!==gh){ gridLayer.width=gw; gridLayer.height=gh; }
   const g=gridCtx;
+  g.setTransform(gw/w,0,0,gh/h,0,0);      // weiter in logischen Koordinaten zeichnen
   g.clearRect(0,0,w,h);
   /* Runde Arena-Andeutung statt Quadratgitter: konzentrische Ringe um den Spieler,
      die im Weltraum mitwandern. Wirkt organischer und ist zugleich viel billiger
@@ -4102,7 +4170,7 @@ function drawFadedGrid(ctx,w,h,camX,camY,bio){
   g.save();
   g.globalCompositeOperation='destination-out';
   // Der Verlauf hängt allein an der Fenstergröße — er wurde bisher 60× pro Sekunde neu gebaut.
-  const fadeKey=w+'x'+h;
+  const fadeKey=w+'x'+h+'@'+gw;
   if(fadeKey!==gridFadeKey){
     const fade=g.createRadialGradient(w/2,h/2,Math.min(w,h)*0.28,w/2,h/2,Math.min(w,h)*0.72);
     fade.addColorStop(0,'rgba(0,0,0,0)'); fade.addColorStop(1,'rgba(0,0,0,1)');
@@ -4110,7 +4178,8 @@ function drawFadedGrid(ctx,w,h,camX,camY,bio){
   }
   g.fillStyle=gridFade; g.fillRect(0,0,w,h);
   g.restore();
-  ctx.drawImage(gridLayer,0,0);
+  // Zielgröße ausdrücklich angeben: die Ebene kann jetzt kleiner sein als das Ziel.
+  ctx.drawImage(gridLayer,0,0,w,h);
 }
 // Staub im Vordergrund: bewegt sich SCHNELLER als die Welt und verkauft die Tiefe
 function drawDust(ctx,w,h,camX,camY,bio){
@@ -4250,19 +4319,17 @@ function draw(){
   ctx.save(); ctx.translate(sx,sy);
   // — Hintergrund: Biome mit eigener Palette + Parallax-Deko; Kampfebene bleibt lesbar —
   const biome=biomeForWave();
-  ctx.fillStyle=biome.bg; ctx.fillRect(0,0,w,h);
   const now=Date.now();
-  if(zeichenEbenen.verlaeufe){ ctx.fillStyle=holeGlow(w,h,biome); ctx.fillRect(0,0,w,h); }
-  // Tiefenebenen von hinten nach vorne
-  if(zeichenEbenen.nebel)  drawNebulae(ctx,w,h,camX,camY,biome);        // weiche Farbschwaden ganz hinten
-  if(zeichenEbenen.sterne) drawStarLayers(ctx,w,h,camX,camY,biome,now); // drei Sternenlagen, funkelnd
-  if(zeichenEbenen.deko)   drawBiomeDeko(ctx,w,h,camX,camY,biome);      // Landmarken je Biome
-  /* Tech-Raster: weltfest, aber zum Rand hin ausgeblendet. Vorher lag es als
-     gleichmäßiges Gitter über allem und ließ den Hintergrund flach wirken —
-     jetzt wirkt es wie eine Plattform unter dem Spieler. */
-  if(zeichenEbenen.raster) drawFadedGrid(ctx,w,h,camX,camY,biome);
-  if(zeichenEbenen.staub)  drawDust(ctx,w,h,camX,camY,biome);           // Staub ganz vorne
-  if(zeichenEbenen.verlaeufe){ ctx.fillStyle=holeVignette(w,h); ctx.fillRect(0,0,w,h); }
+  /* Tiefenebenen von hinten nach vorne: Grundfarbe, Glow, Nebel, Sterne, Landmarken,
+     Tech-Raster (weltfest, zum Rand ausgeblendet, wirkt wie eine Plattform unter dem
+     Spieler), Staub, Vignette. Wahlweise auf der halbauflösenden Zwischenleinwand. */
+  const bg = hintergrundHalb ? holeHintergrundKontext(w,h) : null;
+  if(bg){
+    zeichneHintergrund(bg,w,h,biome,now,renderDpr*BG_SKALA);
+    ctx.drawImage(bgLeinwand,0,0,w,h);      // hochskaliert; der Shake gilt bereits
+  } else {
+    zeichneHintergrund(ctx,w,h,biome,now,1);
+  }
   perfMark('zHintergrund');
 
   // — Welt-Ebene (Kamera folgt Spieler) —

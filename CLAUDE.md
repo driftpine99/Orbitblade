@@ -556,6 +556,58 @@ Korrigiert: Die Phasenschnitte summierten in jedem Bild mit, auch im Orbitpfad u
 Menüs, wurden aber nur durch die Kampfbilder geteilt. Bei 60 % Kampfanteil ergab das
 Phasenwerte oberhalb der gesamten Bildzeit.
 
+### Umgesetzt: Hintergrund in halber Auflösung (Standard)
+
+Der gesamte Hintergrund entsteht auf einer eigenen Zwischenleinwand mit halber
+Kantenlänge — also einem Viertel der Fläche — und wird hochskaliert eingeblendet.
+Das Spielgeschehen bleibt unangetastet in voller Auflösung.
+
+- `BG_SKALA` ist 0,5; gemessen 640 × 360 statt 1280 × 720, Pixelanteil exakt 0,25.
+- Das Tech-Raster hat eine eigene Ebene und folgt derselben Auflösung. Ohne das wäre
+  es die einzige Ebene in voller Größe geblieben und hätte einen Teil der Ersparnis
+  wieder aufgefressen.
+- Die Verlaufs-Caches unterscheiden jetzt den erzeugenden Kontext. Seit es zwei
+  mögliche Zeichenflächen gibt, hätte ein Verlauf sonst nach dem Umschalten zur
+  falschen gehört.
+- **Standard ist die halbe Auflösung.** `Shift+H` schaltet im laufenden Spiel um,
+  `?perf=1&bg=voll` startet in der vollen Fassung; das Overlay zeigt den Modus.
+
+Ergebnis des Vergleichs:
+
+- Optisch bei 1:1 kaum unterscheidbar. Mittlere Abweichung 1,44 von 255 je Kanal,
+  Maximum 52 an den schärfsten Sternspitzen. Erst bei sechsfacher Vergrößerung werden
+  Sternenkreuze und Rasterlinie sichtbar weicher — so wird das Spiel nicht betrachtet.
+- **Die Kosten verschieben sich bewusst von der GPU zur CPU.** JS-seitig ist die halbe
+  Fassung teurer, gemessen 0,417 statt 0,297 ms für `zHintergrund` — das ist der
+  zusätzliche Blit der Zwischenleinwand. Dafür entfallen rund drei Viertel der
+  Hintergrund-Füllarbeit. Da die Messung JS mit 1,5 ms von 19,5 ms Bildzeit ausweist
+  und die Füllrate als Engpass belegt ist, ist der Tausch klar richtig.
+- Grob gerechnet ersetzt das acht bis zehn Vollbild-Durchgänge durch ebenso viele in
+  Viertelauflösung plus einen Vollbild-Blit — also etwa drei statt neun
+  vollauflösende Durchgänge.
+- Kein Fehler in allen vier Kombinationen aus halber/voller Auflösung und
+  Sparmodus an/aus.
+
+Nicht bestätigt: **die tatsächliche Bildratenverbesserung auf dem X1 Carbon.** Die
+verborgene Browser-Pane kompositiert nicht, dort ist der GPU-Anteil grundsätzlich
+nicht messbar. Belegt sind Pixelmenge, Darstellungsqualität und Fehlerfreiheit; die
+Wirkung auf die Bildzeit muss ein Lauf auf dem Gerät zeigen.
+
+### Sparmodus greift jetzt früh genug
+
+Die alte Schwelle lag bei 26 ms und damit unter 38 fps. Ein Gerät bei dauerhaft
+46 fps (gemessen 21,5 ms) bekam nie Hilfe, obwohl es sichtbar ruckelte.
+
+- Einschalten bei über 18,5 ms (~54 fps) nach zwei aufeinanderfolgenden Fenstern.
+- Ausschalten erst bei unter 16,9 ms nach fünf Fenstern.
+- Fenster sind 90 Bilder; Nicht-Kampfbilder und Lücken über 100 ms fließen nicht ein,
+  sonst hätte eine einzelne Pause den Schnitt über jede Schwelle gehoben.
+- Nach der zweiten Einschaltung rastet der Sparmodus dauerhaft ein. Der Sparmodus
+  verändert selbst die Bildrate, die ihn steuert — ohne diese Sperre würde er pendeln,
+  und ein springendes Bild ist schlimmer als ein dauerhaft weicheres.
+
+Die Aktualisierungsrate der Nebelschwaden wurde bewusst nicht angetastet.
+
 ### Ebenen einzeln abschaltbar
 
 Mit `?perf=1` schalten `Shift+1..8` die Zeichenebenen einzeln ab: Nebel, Sterne, Deko,
@@ -575,17 +627,12 @@ statt sie zu erraten.
   Pfadoperationen, aber keine Pixel, und der Engpass ist die Füllrate. Es wäre zudem
   nicht darstellungsneutral, weil pulsierende Kerne, Augen und Flossen zeitabhängig
   animiert sind und einfrieren würden.
-- Die eigentliche Abhilfe steht noch aus. Vorgeschlagen ist, den Hintergrund in halber
-  Auflösung in eine Zwischenleinwand zu zeichnen und hochskaliert einzublenden, während
-  das Spielgeschehen in voller Auflösung bleibt. Das viertelt die teuersten Pixel und
-  trifft ausgerechnet den Teil, der aus weichen Verläufen besteht. Es ist jedoch
-  **nicht darstellungsneutral** — Sternenpunkte würden minimal weicher — und braucht
-  deshalb eine ausdrückliche Entscheidung sowie einen Umschalter zum Vergleich.
-  Alternativen: DPR-Obergrenze pauschal senken (billiger, trifft aber auch scharfe
-  Elemente) oder nur die Nebelschwaden seltener aktualisieren (kleinerer Gewinn,
-  risikolos).
-- Die Schwelle des Sparmodus muss so nachgezogen werden, dass sie ein dauerhaft bei
-  46 fps laufendes Gerät überhaupt erreicht.
+- Die Abhilfe ist umgesetzt (halber Hintergrund, Sparmodus-Schwelle), ihre Wirkung auf
+  die Bildzeit aber noch nicht auf echter Hardware bestätigt. Ein Lauf auf dem
+  X1 Carbon mit `Shift+H` im Wechsel ist der offene Schritt.
+- Bleibt die Verbesserung hinter den Erwartungen zurück, sind die nächsten Kandidaten
+  die pauschale Senkung der DPR-Obergrenze (trifft dann auch scharfe Elemente) und
+  eine seltenere Aktualisierung der Nebelschwaden.
 - `separieren` bleibt mit 0,33 ms die teuerste Update-Phase. Eine Halbierung der
   Nachbarzellen wäre möglich, ändert aber die Reihenfolge der Positionskorrekturen und
   damit das Ergebnis — deshalb zurückgestellt.
