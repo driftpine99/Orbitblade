@@ -387,6 +387,85 @@ Summe: 19 mögliche Investitionen bei 15 regulären Punkten.
   Standard-Welle ist die primäre teilbare Leistungszahl; ein echter Rangmodus bleibt
   eine spätere, getrennte Aufgabe.
 
+## Performance-Messfassung und erste Optimierung (umgesetzt 16.08.2026)
+
+### Messwerkzeug und Reproduktion
+
+`?perf=1` ist keine Momentanwertanzeige mehr, sondern die geforderte Messfassung:
+
+- gleitendes Fenster über ~90 s (5.400 Bilder) mit Schnitt, P95 und Maximum getrennt
+  für Frame, Update und Draw;
+- 18 Phasen innerhalb von Update und Draw als ms pro Bild (`separieren`, `klinge`,
+  `gegnerKI`, `zGegner`, `zPartikel`, `zHintergrund` …), im Overlay nach Kosten sortiert;
+- Mengen je Bild: Gegner sichtbar/gesamt, Projektile beider Seiten, Felder, Echos,
+  Splitter, Partikel, Zahlen, Beute;
+- Zustand: DPR, Sparmodus, Effektstufe, Messlauf-Flagge;
+- `perfDump()` in der Konsole liefert denselben Bericht als JSON, `perfReset()` bzw.
+  `Shift+P` setzt das Fenster zurück. Nur Kampfbilder werden gezählt.
+
+Reproduzierbarer Einstieg: `?perf=1&wave=26&pts=15&god=1` springt direkt in Welle 26,
+gibt 15 Orbitpunkte und verhindert den Tod. Ein solcher Lauf ist als `messlauf`
+markiert und schreibt weder Bestmarke noch Spielstand — `persist()` ist dabei gesperrt.
+Ohne `?perf=1` kostet die gesamte Messfassung nichts: `PERF_DEBUG` ist eine Konstante
+und `perfMark` kehrt sofort zurück.
+
+### Befund
+
+Gemessen auf X1 Carbon, Chrome, DPR 1, Welle-26-Build (Doppelorbit, Wirbel A,
+Splitter 3, Klingenmodul 2, Wächter, Meisterschaft 3, Sturmwirbel, Resonanz, Krone):
+
+- **Der Einbruch liegt im Zeichnen, nicht in der Simulation.** Bei 115 Gegnern kostet
+  `update` 0,55 ms (P95 0,9), `draw` rund 5 ms — etwa 90 % der Bildarbeit.
+- Innerhalb von Draw dominieren `zGegner` (~2,4 ms bei 115 Gegnern, wächst linear mit
+  der Gegnerzahl) und `zPartikel` (~1,3 ms, nahezu konstant, da Partikel bei 340 gedeckelt).
+  `zHintergrund` ist mit ~0,8 ms konstant und gegnerunabhängig.
+- Innerhalb von Update ist `separieren` mit Abstand die teuerste Phase (0,33 von 0,55 ms
+  bei 115 Gegnern) und wächst überproportional.
+- Die Werte gelten für Desktop. Ein Pixel 9 liegt erfahrungsgemäß Faktor 3–5 darüber;
+  damit erklärt allein die Zeichenzeit den beobachteten Einbruch ab Welle 26.
+
+Widerlegte Vermutung: `Math.hypot` ist in V8 für zwei Argumente exakt so schnell wie
+`Math.sqrt(dx*dx+dy*dy)` (8,6 vs. 8,7 ms je 100.000 Aufrufe). Die 60 Fundstellen bleiben
+unverändert — die Umschreibung wäre reine Unruhe ohne Gewinn gewesen.
+
+### Umgesetzte Optimierungen
+
+Alle Änderungen sind balance- und darstellungsneutral und einzeln nachgemessen:
+
+- `sichtbar()` las je Aufruf zweimal `canvas.clientWidth/Height` aus dem DOM. Gemessen
+  1,573 µs gegenüber 0,016 µs für eine Variable — Faktor 100. Bei 444 Sichtprüfungen
+  pro Bild kostete das **0,497 ms; jetzt 0,010 ms** (Median aus 9 Läufen). Der
+  Sichtbereich wird einmal je Bild in `draw()` gesetzt.
+- `separiereGegner()` baute pro Bild rund 1.150 Strings als Rasterschlüssel. Mit einem
+  eindeutigen Zahlenschlüssel (`cx*2^22+cy`, gültig bis ±117 Mio. Pixel) sinkt die Phase
+  von **0,220 ms auf 0,081 ms**; die erzeugten Positionen sind bitgenau identisch.
+- `shadowColor` wurde je Gegner, Projektil und Partikel gesetzt, obwohl bei
+  abgeschaltetem Leuchten (ab 22 Gegnern) `shadowBlur` 0 ist und die Farbe wirkungslos
+  bleibt. Der neue Helfer `sbc(farbe, staerke)` setzt beides nur gemeinsam.
+- Nebelverläufe und der Ausblendverlauf des Rasters wurden pro Bild neu erzeugt. Beide
+  hängen nur an Farbe/Radius bzw. Fenstergröße und werden jetzt zwischengespeichert;
+  die Schwaden werden über `translate` positioniert statt neu aufgebaut.
+- Die Schriftumschaltung der Schadenszahlen parste bis zu 72 Schriftstrings pro Bild.
+  Jetzt wird nur bei echtem Wechsel gesetzt, aus einem Cache.
+- Nebenbefund behoben: `drawFadedGrid` warf bei 0 × 0 Pixel großem Fenster jedes Bild
+  eine `InvalidStateError` aus `drawImage`.
+
+### Offen
+
+- **Die Gerätemessung fehlt weiterhin.** Die verborgene Browser-Pane kompositiert nicht,
+  wodurch `draw()`-Zeiten nach längeren Läufen durch Rückstau unbrauchbar werden
+  (gemessen 36 ms bei 7 ms Phasensumme). Belastbar sind nur die isolierten Funktions-
+  messungen und die Update-Seite. Pixel 9 und X1 Carbon müssen über GitHub Pages
+  mit `?perf=1&wave=26&pts=15&god=1` gegengemessen werden.
+- `zGegner` bleibt der größte verbleibende Posten und skaliert linear. Der nächste
+  echte Hebel wäre das Vorrendern der Gegnertypen in Sprites statt ~8 Pfadoperationen
+  je Gegner und Bild. Das ist **nicht** darstellungsneutral: pulsierende Kerne, Augen
+  und Flossen sind zeitabhängig animiert und würden einfrieren. Diese Abwägung braucht
+  eine ausdrückliche Entscheidung und ist deshalb bewusst nicht miterledigt.
+- `separieren` bleibt mit 0,33 ms die teuerste Update-Phase. Eine Halbierung der
+  Nachbarzellen wäre möglich, ändert aber die Reihenfolge der Positionskorrekturen und
+  damit das Ergebnis — deshalb zurückgestellt.
+
 ## Umgesetzter Stand vom 13.08.2026
 
 - Orbitpfad v2 besitzt 14 sichtbare reguläre Knoten, 19 mögliche Investitionen und
@@ -654,8 +733,9 @@ fertige Ursachenmessung.
 
 ## Nächste Arbeitsreihenfolge
 
-1. Den Performanceeinbruch um Welle 26 reproduzierbar messen und zunächst die
-   offensichtlichen, balance-neutralen Update- und Draw-Hotspots optimieren.
+1. Den gemessenen Stand auf Pixel 9 und X1 Carbon über GitHub Pages gegenmessen
+   (`?perf=1&wave=26&pts=15&god=1`) und danach entscheiden, ob Sprite-Vorrendern der
+   Gegner nötig ist. Messfassung und die balance-neutralen Hotspots sind erledigt.
 2. Danach den Test des veröffentlichten Orbitpfads fortsetzen: Standardlauf bis Welle
    30 sowie Klingenecho und Machtecho jeweils bis mindestens Boss 40; Punkt-,
    Evolutions-, Kronen- und Siegzeit sowie Effektlast notieren.
@@ -691,14 +771,17 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
   Pixel-9-Layout wurden lokal im Browser geprüft. Der vollständige Siegdialog und die
   neunte Endlosreihe brauchen zusätzlich einen echten Durchlauf über GitHub Pages.
 - Echte Geräte- und Touchtests erfolgen nach Veröffentlichung über GitHub Pages.
-- Gerätemessung der Performance ist auf den neuen Gesamtstand verschoben.
+- Gerätemessung der Performance ist auf den neuen Gesamtstand verschoben. Die
+  Desktop-Messung vom 16.08.2026 weist den Einbruch dem Zeichnen zu; die Bestätigung
+  auf echter Hardware steht aus.
 - Die unveränderte Fokus-Ladegeschwindigkeit schwankt vermutlich stark mit der
   Gegnerdichte und muss zusammen mit der Welle-26-Performance gemessen werden.
 - Die drei aktuellen Laufziele liefern überwiegend automatische oder doppelte
   Fortschritte und sollen durch einen einzelnen Orbitauftrag ersetzt werden.
 - Ein realer Lauf bis Welle 26 lief spielerisch gut und bestätigte den besseren
-  Orbitpfad, zeigte aber einen noch ungemessenen Performanceeinbruch in den späten
-  Wellen. Diagnose und balance-neutrale Optimierung sind deshalb vorgezogen.
+  Orbitpfad, zeigte aber einen Performanceeinbruch in den späten Wellen. Die Diagnose
+  ist erfolgt (Zeichnen, nicht Simulation), die balance-neutralen Hotspots sind
+  entfernt; die Gerätebestätigung fehlt noch.
 
 ## Charakterdarstellung vom 12.08.2026
 

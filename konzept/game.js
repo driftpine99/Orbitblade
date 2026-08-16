@@ -589,7 +589,11 @@ function migrateSave(data){
   data.v = SAVE_VERSION;
   return data;
 }
+/* `var` mit Absicht: Der Perf-Block setzt die Flagge erst weiter unten, persist() darf
+   aber schon vorher aufgerufen werden können, ohne in die TDZ einer `const` zu laufen. */
+var messlaufSchutz=false;
 function persist(){
+  if(messlaufSchutz) return;   // ein Messlauf darf den echten Spielstand nicht überschreiben
   try{ if(typeof localStorage!=='undefined') localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }catch(e){}
 }
 
@@ -810,7 +814,79 @@ let camX=0, camY=0, stossWaveT=0, wirbelT=0, wirbelShownR=0;
 let renderDpr=1, sichtbareGegner=0, naechstesHudUpdate=0;
 let sparmodus=false;                     // dauerhaft, wenn die Bildrate einbricht
 const PERF_DEBUG=typeof location!=='undefined' && /(?:\?|&)perf=1(?:&|$)/.test(location.search||'');
+/* MESSFASSUNG — der Welle-26-Einbruch lässt sich mit Momentanwerten nicht belegen.
+   Über ein gleitendes Fenster von ~90 s laufen Schnitt, P95 und Maximum getrennt für
+   Frame, Update und Draw, dazu die Phasen innerhalb beider Hälften und alle Mengen,
+   die mit der Welle wachsen. Ohne `?perf=1` kostet das nichts: PERF_DEBUG ist eine
+   Konstante, `perfMark` fällt dann sofort zurück.
+   Reproduktion: `?perf=1&wave=26&pts=15&god=1` springt direkt in die fragliche Welle,
+   gibt Punkte zum Bauen und verhindert den Tod. Ein solcher Lauf ist als `messlauf`
+   markiert und schreibt weder Bestmarke noch Speicherstand. */
+const perfZahl=(k)=>{
+  const s=(typeof location!=='undefined' && location.search)||'';
+  const m=new RegExp('(?:\\?|&)'+k+'=(\\d+)(?:&|$)').exec(s);
+  return m? parseInt(m[1],10) : 0;
+};
+const PERF_WAVE = PERF_DEBUG ? perfZahl('wave') : 0;
+const PERF_PTS  = PERF_DEBUG ? perfZahl('pts')  : 0;
+const PERF_GOD  = PERF_DEBUG && /(?:\?|&)god=1(?:&|$)/.test(location.search||'');
+const messlauf  = PERF_WAVE>0 || PERF_PTS>0 || PERF_GOD;
+messlaufSchutz  = messlauf;
+
+const PERF_CAP=5400;                        // ~90 s bei 60 fps
 const perf={ frame:16.7, update:0, draw:0, fps:60 };
+const perfRing={ frame:new Float32Array(PERF_CAP), update:new Float32Array(PERF_CAP), draw:new Float32Array(PERF_CAP) };
+let perfIdx=0, perfLen=0, perfSeit=0, perfFrames=0, perfPhaseUhr=0, perfStatNext=0, perfStat=null;
+const perfPhasen={};                        // Phasenname -> aufsummierte ms im Fenster
+// Grenzstein zwischen zwei Phasen. Die Zeit seit der letzten Marke geht auf `name`.
+function perfMark(name){
+  if(!PERF_DEBUG) return;
+  const n=performance.now();
+  perfPhasen[name]=(perfPhasen[name]||0)+(n-perfPhaseUhr);
+  perfPhaseUhr=n;
+}
+function perfPhaseStart(){ if(PERF_DEBUG) perfPhaseUhr=performance.now(); }
+function perfReset(){
+  perfIdx=0; perfLen=0; perfFrames=0; perfStat=null;
+  for(const k in perfPhasen) delete perfPhasen[k];
+  perfSeit=performance.now();
+}
+function perfProbe(){
+  perfRing.frame[perfIdx]=perf.frame; perfRing.update[perfIdx]=perf.update; perfRing.draw[perfIdx]=perf.draw;
+  perfIdx=(perfIdx+1)%PERF_CAP; if(perfLen<PERF_CAP) perfLen++;
+  perfFrames++;
+}
+function perfWerte(name){
+  const n=perfLen;
+  if(!n) return { avg:0, p95:0, max:0 };
+  const c=perfRing[name].slice(0,n); c.sort();
+  let sum=0; for(let i=0;i<n;i++) sum+=c[i];
+  const r=(v)=>Math.round(v*100)/100;
+  return { avg:r(sum/n), p95:r(c[Math.min(n-1,Math.floor(n*0.95))]), max:r(c[n-1]) };
+}
+// Vollständiger Messbericht — in der Konsole über `perfDump()` abrufbar.
+function perfBericht(){
+  const dauer=(performance.now()-perfSeit)/1000;
+  const phasen={};
+  for(const k in perfPhasen) phasen[k]=Math.round(perfPhasen[k]/Math.max(1,perfFrames)*1000)/1000;
+  return {
+    fensterSek:Math.round(dauer*10)/10, bilder:perfFrames,
+    fpsSchnitt:Math.round(perfFrames/Math.max(0.001,dauer)*10)/10,
+    frame:perfWerte('frame'), update:perfWerte('update'), draw:perfWerte('draw'),
+    phasenMsProBild:phasen,
+    welle:wave,
+    mengen:{ gegner:enemies.length, sichtbar:sichtbareGegner, schuesse:shots.length,
+      eigeneSchuesse:pShots.length, bomben:bombs.length, felder:powerFields.length,
+      echos:powerEchoes.length, splitter:shards.length, partikel:particles.length,
+      zahlen:floats.length, fragmente:stars.length, kugeln:orbs.length },
+    zustand:{ dpr:Math.round(renderDpr*100)/100, sparmodus, effekte:fxAn, messlauf }
+  };
+}
+if(PERF_DEBUG && typeof window!=='undefined'){
+  window.perfDump=()=>{ const b=perfBericht(); console.log(JSON.stringify(b,null,2)); return b; };
+  window.perfReset=perfReset;
+  window.addEventListener('keydown',(e)=>{ if((e.key||'').toLowerCase()==='p'&&e.shiftKey) perfReset(); });
+}
 let counterCd=0, counterFx=0, shards=[]; // Konterstoß-Cooldown/Effekt, kreisende Splitter
 // Nur EINE Macht am Start — der zweite Slot wird im Shop freigeschaltet und ist
 // dadurch ein echter Fortschritt statt einer Selbstverständlichkeit.
@@ -1478,6 +1554,11 @@ function resetGame(){
   toasts=[]; banner=null;
   tutStep=0; tutT=0; tutorialCircleUntil=0; tutorialBladeUntil=0; unlockFx=0; combatResumeUntil=0; combatResumeStep=''; setzeHelfer();
   if(metaLevel('startimpuls')>0) skillPoints=1;
+  /* Messlauf-Einstieg (nur mit ?perf=1): direkt in die fragliche Welle springen und
+     Orbitpunkte mitgeben, damit ein realistischer Build gebaut werden kann. Ohne das
+     wäre Welle 26 nur mit einem 20-Minuten-Lauf erreichbar und damit nicht wiederholbar. */
+  if(PERF_WAVE>1) wave=PERF_WAVE;
+  if(PERF_PTS>0){ const p=Math.min(PERF_PTS, REGULAR_POINT_CAP); skillPoints+=p; regularPointsEarned+=p; }
   shake=0; state='playing'; setMusicLevel(); hideAll(); updateTreeButton(); updateHUD(true); startWave();
   // Beim allerersten Spiel übernimmt der Einstieg die Ansage
   if(save.tutorialDone) announce('Welle 1', 'Überlebe die Arena', '#7cc8ff');
@@ -1608,6 +1689,7 @@ function onBossDefeated(){
   persist();   // Freischaltungen hängen an der erreichten Welle (checkMilestones), nicht am Boss
 }
 function recordBest(){
+  if(messlauf) return;                           // ein gesprungener Lauf ist keine Leistung
   const id=hilfeId();
   if(!save.best || typeof save.best!=='object') save.best={};
   if(wave>(save.best[id]||0)){ save.best[id]=wave; persist(); }
@@ -2660,13 +2742,18 @@ function executeNova(){
    wird nur mit den eigenen und den acht Nachbarzellen. Kostet damit ungefähr
    linear statt quadratisch — der Hauptgrund fürs Ruckeln in späten Wellen. */
 const SEP_ZELLE=56;                       // etwas größer als der größte Gegnerdurchmesser
+const SEP_KEY=4194304;                    // 2^22 — Zeilenversatz für den eindeutigen Zahlenschlüssel
 const sepRaster=new Map();
 function separiereGegner(){
   if(enemies.length<2) return;
   sepRaster.clear();
+  /* Zahlenschlüssel statt "cx,cy": Der String-Schlüssel erzeugte pro Bild rund
+     115 + 115×9 ≈ 1150 neue Strings, allein dafür lief der Müllsammler mit. Die
+     Multiplikation ist eindeutig umkehrbar, solange |cy| < 2^21 Zellen bleibt —
+     das entspricht ±117 Mio. Pixel und ist im Spiel nicht erreichbar. */
   for(let i=0;i<enemies.length;i++){
     const e=enemies[i];
-    const key=Math.floor(e.x/SEP_ZELLE)+','+Math.floor(e.y/SEP_ZELLE);
+    const key=Math.floor(e.x/SEP_ZELLE)*SEP_KEY + Math.floor(e.y/SEP_ZELLE);
     let liste=sepRaster.get(key);
     if(!liste){ liste=[]; sepRaster.set(key,liste); }
     liste.push(i);
@@ -2675,7 +2762,7 @@ function separiereGegner(){
     const a=enemies[i];
     const cx=Math.floor(a.x/SEP_ZELLE), cy=Math.floor(a.y/SEP_ZELLE);
     for(let ox=-1;ox<=1;ox++) for(let oy=-1;oy<=1;oy++){
-      const liste=sepRaster.get((cx+ox)+','+(cy+oy));
+      const liste=sepRaster.get((cx+ox)*SEP_KEY + (cy+oy));
       if(!liste) continue;
       for(const j of liste){
         if(j<=i) continue;                // jedes Paar nur einmal
@@ -2695,6 +2782,7 @@ function separiereGegner(){
 
 // Zentraler Spieler-Schaden: Effekte, Konterstoß, Tod an einer Stelle
 function hurtPlayer(dmg){
+  if(PERF_GOD) return false;                     // Messlauf: der Tod würde die Messung abbrechen
   if(Date.now()<=shieldUntil) return false;      // Schild absorbiert
   dmg *= hilfe().schaden;                        // Rückenwind der gewählten Hilfsstufe
   // Barriere zuerst: hält sie den Schlag komplett auf, bleibt die Lebensleiste unberührt
@@ -3091,6 +3179,7 @@ function update(dt){
   for(const id of ACTIVE_IDS) if(activeCd[id]>0) activeCd[id]=Math.max(0, activeCd[id]-dt);
   updateCooldownUI(btnWirbel, cdWirbel, activeCd[activeSlot1]||0, activeCdMax(activeSlot1), 'a');
   updateCooldownUI(btnStoss,  cdStoss,  activeCd[activeSlot2]||0, activeCdMax(activeSlot2), 'b');
+  perfMark('cooldowns');
 
   // Bewegung – Spieler läuft frei durch die Welt, Kamera hält ihn zentriert
   const w=canvas.clientWidth || window.innerWidth, h=canvas.clientHeight || window.innerHeight;
@@ -3124,6 +3213,7 @@ function update(dt){
   // Effekt-Timer
   if(stossWaveT>0){ stossWaveT -= dt/380; if(stossWaveT<0) stossWaveT=0; }
   if(wirbelT>0){ wirbelT -= dt/420; if(wirbelT<0) wirbelT=0; }
+  perfMark('spieler');
   // Schwert-Treffer: Rundum-Grundschaden + Bonus dort, wo die Klinge wirklich ist
   spinHitTimer -= dt;
   if(spinHitTimer<=0){
@@ -3265,6 +3355,7 @@ function update(dt){
       en.y += Math.sin(ang)*(treffer?14:6);
     }
   }
+  perfMark('klinge');
   // Splitter (kreisende Energie) aktualisieren
   if(runAbilities.splitter){
     const slv=runAbilities.splitter;
@@ -3281,6 +3372,7 @@ function update(dt){
       }
     }
   } else if(shards.length){ shards.length=0; }
+  perfMark('splitter');
 
   // spawn
   if(wave%5!==0){
@@ -3293,6 +3385,7 @@ function update(dt){
   // Über ein Raster statt jeder-gegen-jeden: bei 39 Gegnern waren das 741 Vergleiche
   // pro Bild, mit Raster sind es nur noch die aus den acht Nachbarzellen.
   separiereGegner();
+  perfMark('separieren');
   // enemies update
   const recycleDist=Math.hypot(w,h)*0.95;   // weit außer Sicht = wird neu positioniert
   for(const en of enemies){
@@ -3380,6 +3473,7 @@ function update(dt){
       }
     }
   }
+  perfMark('gegnerKI');
   // Projektile (Distanz-Gegner) – bewegen, treffen den Spieler, verglühen
   for(let i=shots.length-1;i>=0;i--){
     const s=shots[i];
@@ -3460,6 +3554,7 @@ function update(dt){
     }
     if(hit) pShots.splice(i,1);
   }
+  perfMark('projektile');
   // Bomben: Ticken, dann verzögerte Explosion mit Schub
   for(let i=bombs.length-1;i>=0;i--){
     const b=bombs[i];
@@ -3566,6 +3661,7 @@ function update(dt){
   }
   if(counterCd>0) counterCd-=dt;
   if(counterFx>0){ counterFx-=dt/300; if(counterFx<0) counterFx=0; }
+  perfMark('felder');
   // remove dead – Exploder zünden erst nach einem sichtbaren Zünd-Puls
   for(let i=enemies.length-1;i>=0;i--){
     const en=enemies[i];
@@ -3596,6 +3692,7 @@ function update(dt){
       enemies.splice(i,1);
     }
   }
+  perfMark('tote');
   checkLevelUp();
   // Fragmente einsammeln — wandern direkt aufs Werkstatt-Konto
   for(let i=stars.length-1;i>=0;i--){
@@ -3640,6 +3737,7 @@ function update(dt){
     if(!p.sword && !p.bolt && !p.ring){ p.x+=p.vx*dt/1000; p.y+=p.vy*dt/1000; p.vy+= 300*dt/1000; }
   }
   for(let i=floats.length-1;i>=0;i--){ const f=floats[i]; f.life-=dt/1000; f.y+=f.vy*dt/1000; if(f.life<=0) floats.splice(i,1); }
+  perfMark('beute');
   // Ansage & Hinweise altern lassen
   tutorialTick(dt);
   if(unlockFx>0){ unlockFx-=dt/900; if(unlockFx<0) unlockFx=0; }
@@ -3654,6 +3752,7 @@ function update(dt){
   }
   if(shake>0) shake-= dt*0.04;
   updateHUD();
+  perfMark('hud');
 }
 
 // #rrggbb -> rgba(...) mit gewünschter Deckkraft (für Auren und Verläufe)
@@ -3667,6 +3766,19 @@ function hexA(hex,a){
    sobald viel los ist. Alle Zuweisungen laufen über sie, damit es keine Ausreißer gibt. */
 let fxAn=true;
 function sb(v){ ctx.shadowBlur = fxAn ? v : 0; }
+/* Farbe und Stärke gemeinsam setzen. Ist das Leuchten aus, war `shadowColor` bisher
+   wirkungslos, kostete aber trotzdem je Zuweisung eine Farbanalyse im Canvas — bei
+   Welle 26 rund 115 Gegner plus Projektile und Partikel pro Bild. */
+function sbc(color,v){ if(fxAn){ ctx.shadowColor=color; ctx.shadowBlur=v; } else ctx.shadowBlur=0; }
+// Schriftstrings der Schadenszahlen einmal bauen statt pro Zahl und Bild
+const FLOAT_FONT='800 13px system-ui';
+const floatFontCache=new Map();
+function floatFontFor(scale){
+  const px=Math.round(13*scale);
+  let s=floatFontCache.get(px);
+  if(!s){ s='800 '+px+'px system-ui'; floatFontCache.set(px,s); }
+  return s;
+}
 
 /* Bildschirmgroße Gradienten einmal bauen statt 60× pro Sekunde.
    Sie hängen nur von Größe und Biome ab. */
@@ -3708,18 +3820,43 @@ function messeBildrate(t){
 }
 // Sichtprüfung vor teuren Canvas-Operationen. Die Simulation bleibt bewusst global,
 // nur das Zeichnen unsichtbarer Gegner, Beute und Partikel entfällt.
+/* Der Sichtbereich wird einmal je Bild in draw() gesetzt statt in jedem Aufruf neu aus
+   dem DOM gelesen. Gemessen: `canvas.clientWidth`/`clientHeight` kosten zusammen rund
+   1,57 µs, eine Variable 0,016 µs — Faktor 100. Bei Welle 26 laufen ~444 Sichtprüfungen
+   pro Bild (115 Gegner, ~300 Partikel, Zahlen, Beute, Projektile), das waren allein
+   ~0,70 ms pro Bild und damit rund ein Siebtel der gesamten Zeichenzeit. */
+let vpW=0, vpH=0;
 function sichtbar(x,y,rand=0){
-  const w=canvas.clientWidth||window.innerWidth, h=canvas.clientHeight||window.innerHeight;
-  return x>=camX-rand && x<=camX+w+rand && y>=camY-rand && y<=camY+h+rand;
+  return x>=camX-rand && x<=camX+vpW+rand && y>=camY-rand && y<=camY+vpH+rand;
 }
 function zeichnePerfOverlay(w,h){
   if(!PERF_DEBUG) return;
+  // Die Statistik kostet einen Sort über bis zu 5400 Werte — zweimal pro Sekunde genügt,
+  // sonst misst das Messwerkzeug sich selbst.
+  const jetzt=performance.now();
+  if(!perfStat || jetzt>perfStatNext){ perfStat=perfBericht(); perfStatNext=jetzt+500; }
+  const b=perfStat, m=b.mengen, z=b.zustand;
+  const ms=(o)=>'Ø'+o.avg.toFixed(1)+'  p95 '+o.p95.toFixed(1)+'  max '+o.max.toFixed(1);
+  const zeilen=[
+    'FENSTER '+b.fensterSek+'s · '+b.bilder+' Bilder · Ø '+b.fpsSchnitt+' fps',
+    'Frame  '+ms(b.frame),
+    'Update '+ms(b.update),
+    'Draw   '+ms(b.draw)
+  ];
+  const ph=Object.keys(b.phasenMsProBild).sort((x,y)=>b.phasenMsProBild[y]-b.phasenMsProBild[x]).slice(0,8);
+  for(const k of ph) zeilen.push('  '+(k+'            ').slice(0,13)+b.phasenMsProBild[k].toFixed(2)+' ms');
+  zeilen.push('Gegner '+m.sichtbar+'/'+m.gegner+' · Schuss '+m.schuesse+'/'+m.eigeneSchuesse+' · Felder '+m.felder);
+  zeilen.push('Partikel '+m.partikel+' · Zahlen '+m.zahlen+' · Beute '+(m.fragmente+m.kugeln)+' · Bomben '+m.bomben);
+  zeilen.push('Welle '+b.welle+' · DPR '+z.dpr+' · Spar '+(z.sparmodus?'AN':'aus')+' · FX '+(z.effekte?'an':'AUS')+(z.messlauf?' · MESSLAUF':''));
+  const zh=13, hoehe=zeilen.length*zh+14, oben=h-hoehe-8;
   ctx.save();
-  ctx.fillStyle='rgba(2,6,13,.80)'; ctx.fillRect(8,h-76,246,68);
-  ctx.fillStyle='#bfe3ff'; ctx.font='600 11px ui-monospace,monospace'; ctx.textAlign='left';
-  ctx.fillText('FPS '+perf.fps.toFixed(0)+' · '+perf.frame.toFixed(1)+' ms',16,h-56);
-  ctx.fillText('Update '+perf.update.toFixed(1)+' · Draw '+perf.draw.toFixed(1)+' ms',16,h-40);
-  ctx.fillText('Gegner '+enemies.length+'/'+sichtbareGegner+' · Partikel '+particles.length+' · '+renderDpr.toFixed(2)+'×',16,h-24);
+  ctx.fillStyle='rgba(2,6,13,.86)'; ctx.fillRect(8,oben,322,hoehe);
+  ctx.strokeStyle='rgba(110,200,255,.35)'; ctx.lineWidth=1; ctx.strokeRect(8.5,oben+0.5,321,hoehe-1);
+  ctx.font='600 11px ui-monospace,monospace'; ctx.textAlign='left';
+  for(let i=0;i<zeilen.length;i++){
+    ctx.fillStyle = i===0 ? '#ffd257' : (i<4 ? '#bfe3ff' : (zeilen[i].startsWith('  ') ? '#9ad0ff' : '#c8d4e6'));
+    ctx.fillText(zeilen[i],16,oben+18+i*zh);
+  }
   ctx.restore();
 }
 function hexPath(c,r){ c.beginPath(); for(let i=0;i<6;i++){ const a=Math.PI/3*i; const x=Math.cos(a)*r, y=Math.sin(a)*r; i?c.lineTo(x,y):c.moveTo(x,y);} c.closePath(); }
@@ -3734,12 +3871,19 @@ function drawNebulae(ctx,w,h,camX,camY,bio){
     const bx=((n.x-camX*par)%span+span)%span - span*0.5 + w*0.5;
     const by=((n.y-camY*par)%span+span)%span - span*0.5 + h*0.5;
     if(bx<-n.r || bx>w+n.r || by<-n.r || by>h+n.r) continue;
-    const col=bio.neb[n.c%bio.neb.length];
-    const g=ctx.createRadialGradient(bx,by,0,bx,by,n.r);
-    g.addColorStop(0,'rgba('+col[0]+','+col[1]+','+col[2]+','+n.a.toFixed(3)+')');
-    g.addColorStop(0.55,'rgba('+col[0]+','+col[1]+','+col[2]+','+(n.a*0.4).toFixed(3)+')');
-    g.addColorStop(1,'rgba('+col[0]+','+col[1]+','+col[2]+',0)');
-    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(bx,by,n.r,0,Math.PI*2); ctx.fill();
+    /* Der Verlauf hängt nur an Farbe und Radius, nicht an der Position. Einmal um den
+       Ursprung gebaut, danach nur noch verschoben — bisher entstand er je Schwade und Bild neu. */
+    if(!n._grad || n._gradBio!==bio){
+      const col=bio.neb[n.c%bio.neb.length];
+      const g=ctx.createRadialGradient(0,0,0,0,0,n.r);
+      g.addColorStop(0,'rgba('+col[0]+','+col[1]+','+col[2]+','+n.a.toFixed(3)+')');
+      g.addColorStop(0.55,'rgba('+col[0]+','+col[1]+','+col[2]+','+(n.a*0.4).toFixed(3)+')');
+      g.addColorStop(1,'rgba('+col[0]+','+col[1]+','+col[2]+',0)');
+      n._grad=g; n._gradBio=bio;
+    }
+    ctx.save(); ctx.translate(bx,by);
+    ctx.fillStyle=n._grad; ctx.beginPath(); ctx.arc(0,0,n.r,0,Math.PI*2); ctx.fill();
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -3816,9 +3960,12 @@ function drawStarLayers(ctx,w,h,camX,camY,bio,t){
    Eigene Ebene, weil die Ausblendung sonst auch Sterne und Nebel wegradieren würde.
    Ergebnis: das Raster wirkt wie eine Plattform unter dem Spieler statt wie ein
    gleichmäßiges Gitter über dem ganzen Bild — der Hintergrund gewinnt Tiefe. */
-let gridLayer=null, gridCtx=null;
+let gridLayer=null, gridCtx=null, gridFade=null, gridFadeKey='';
 function drawFadedGrid(ctx,w,h,camX,camY,bio){
   if(typeof document==='undefined' || !document.createElement) return;
+  // Ist das Fenster (noch) 0 Pixel groß, wirft drawImage eine InvalidStateError —
+  // das passiert real beim Laden in einem verborgenen Tab.
+  if(w<1 || h<1) return;
   if(!gridLayer){ gridLayer=document.createElement('canvas'); gridCtx=gridLayer.getContext&&gridLayer.getContext('2d'); }
   if(!gridCtx) return;
   if(gridLayer.width!==w || gridLayer.height!==h){ gridLayer.width=w; gridLayer.height=h; }
@@ -3847,9 +3994,14 @@ function drawFadedGrid(ctx,w,h,camX,camY,bio){
   // nur diese Ebene zum Rand hin wegradieren
   g.save();
   g.globalCompositeOperation='destination-out';
-  const fade=g.createRadialGradient(w/2,h/2,Math.min(w,h)*0.28,w/2,h/2,Math.min(w,h)*0.72);
-  fade.addColorStop(0,'rgba(0,0,0,0)'); fade.addColorStop(1,'rgba(0,0,0,1)');
-  g.fillStyle=fade; g.fillRect(0,0,w,h);
+  // Der Verlauf hängt allein an der Fenstergröße — er wurde bisher 60× pro Sekunde neu gebaut.
+  const fadeKey=w+'x'+h;
+  if(fadeKey!==gridFadeKey){
+    const fade=g.createRadialGradient(w/2,h/2,Math.min(w,h)*0.28,w/2,h/2,Math.min(w,h)*0.72);
+    fade.addColorStop(0,'rgba(0,0,0,0)'); fade.addColorStop(1,'rgba(0,0,0,1)');
+    gridFade=fade; gridFadeKey=fadeKey;
+  }
+  g.fillStyle=gridFade; g.fillRect(0,0,w,h);
   g.restore();
   ctx.drawImage(gridLayer,0,0);
 }
@@ -3975,6 +4127,7 @@ function drawLandmark(ctx,w,h,camX,camY,par,tile,ti,tj,bio){
 }
 function draw(){
   const w=canvas.clientWidth||window.innerWidth,h=canvas.clientHeight||window.innerHeight;
+  vpW=w; vpH=h;                   // Sichtbereich für sichtbar() — ein DOM-Zugriff statt hunderter
   ctx.clearRect(0,0,w,h);
   /* WICHTIG: Der Canvas-Zustand überlebt den Bildwechsel. Ohne diesen Reset behielt
      shadowBlur den Wert vom Ende des letzten Bildes — dadurch wurde der komplette
@@ -4003,6 +4156,7 @@ function draw(){
   drawFadedGrid(ctx,w,h,camX,camY,biome);
   drawDust(ctx,w,h,camX,camY,biome);             // Staub ganz vorne
   ctx.fillStyle=holeVignette(w,h); ctx.fillRect(0,0,w,h);
+  perfMark('zHintergrund');
 
   // — Welt-Ebene (Kamera folgt Spieler) —
   ctx.save(); ctx.translate(-camX,-camY);
@@ -4113,7 +4267,7 @@ function draw(){
     const r=o.r*(o.big?1.7:1)*(1+0.15*Math.sin(now/120));
     // Lebenskugeln rot, XP-Orbs blau — die Farbe muss auf einen Blick sagen, was es ist
     const oc = o.hp? '#ff5a5a' : (o.big?'#9fd6ff':'#6ec8ff');
-    ctx.shadowColor=oc; sb(14); ctx.fillStyle=oc;
+    sbc(oc,14); ctx.fillStyle=oc;
     ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
     sb(0);
     if(o.hp){                                  // kleines Kreuz macht die Heilung eindeutig
@@ -4126,6 +4280,7 @@ function draw(){
     }
     ctx.restore();
   }
+  perfMark('zWeltFx');
   // enemies – futuristische Neon-Silhouetten
   for(const en of enemies){
     const r=en.radius;
@@ -4149,7 +4304,7 @@ function draw(){
     // Bodenschatten (nicht rotiert)
     ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(en.x, en.y+r*0.75, r*0.85, r*0.35,0,0,Math.PI*2); ctx.fill();
     ctx.save(); ctx.translate(en.x,en.y); ctx.rotate(ang);
-    ctx.lineJoin='round'; ctx.shadowColor=en.color; sb(15); ctx.strokeStyle=en.color; ctx.lineWidth=2.5;
+    ctx.lineJoin='round'; sbc(en.color,15); ctx.strokeStyle=en.color; ctx.lineWidth=2.5;
     const tNow=now;
     if(en.type==='drohne'){
       // Drohne: schnelle Pfeil-/Rautenform, Sensorauge pulsiert beim Scannen
@@ -4314,11 +4469,12 @@ function draw(){
     ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.roundRect(en.x-bw/2,by,bw,bh,2); ctx.fill();
     ctx.fillStyle=en.type==='boss'?(en.color||'#c77dff'):'#4de0a0'; ctx.beginPath(); ctx.roundRect(en.x-bw/2,by,bw*Math.max(0,en.hp/en.maxHp),bh,2); ctx.fill();
   }
+  perfMark('zGegner');
   // Projektile (Distanz-Gegner) – leuchtender Schweif + weißer Kern
   ctx.save(); ctx.globalCompositeOperation='lighter';
   for(const s of shots){
     if(!sichtbar(s.x,s.y,26)) continue;
-    ctx.strokeStyle=s.color; ctx.shadowColor=s.color; sb(14); ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.strokeStyle=s.color; sbc(s.color,14); ctx.lineWidth=3; ctx.lineCap='round';
     ctx.beginPath(); ctx.moveTo(s.x - s.vx*0.035, s.y - s.vy*0.035); ctx.lineTo(s.x, s.y); ctx.stroke();
     ctx.fillStyle='#fff'; sb(18);
     ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
@@ -4327,7 +4483,7 @@ function draw(){
   for(const s of pShots){
     if(!sichtbar(s.x,s.y,22)) continue;
     const shotColor=s.moduleColor||(s.spectral?'#c77dff':'#9ad0ff');
-    ctx.strokeStyle=shotColor; ctx.shadowColor=shotColor; sb(12); ctx.lineWidth=3; ctx.lineCap='round';
+    ctx.strokeStyle=shotColor; sbc(shotColor,12); ctx.lineWidth=3; ctx.lineCap='round';
     ctx.beginPath(); ctx.moveTo(s.x - s.vx*0.03, s.y - s.vy*0.03); ctx.lineTo(s.x, s.y); ctx.stroke();
     ctx.fillStyle='#eaf6ff'; sb(14);
     ctx.beginPath(); ctx.arc(s.x,s.y,4,0,Math.PI*2); ctx.fill();
@@ -4346,7 +4502,7 @@ function draw(){
   for(const b of bombs){
     if(!sichtbar(b.x,b.y,30)) continue;
     const frac=Math.max(0, b.t/b.max);
-    ctx.strokeStyle='#ff7a5a'; ctx.fillStyle='rgba(255,122,90,0.10)'; ctx.shadowColor='#ff7a5a'; sb(18);
+    ctx.strokeStyle='#ff7a5a'; ctx.fillStyle='rgba(255,122,90,0.10)'; sbc('#ff7a5a',18);
     ctx.beginPath(); ctx.arc(b.x,b.y,14,0,Math.PI*2); ctx.fill();
     ctx.lineWidth=3; ctx.beginPath(); ctx.arc(b.x,b.y,14,0,Math.PI*2*frac); ctx.stroke();
     ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(b.x,b.y,22,0,Math.PI*2); ctx.stroke();
@@ -4360,6 +4516,7 @@ function draw(){
   }
   ctx.restore();
 
+  perfMark('zProjektile');
   const angles=bladeAngles();
   if(now<tutorialCircleUntil){
     ctx.save(); ctx.strokeStyle='rgba(110,200,255,.9)'; ctx.lineWidth=2; ctx.setLineDash([7,6]); ctx.lineDashOffset=-now/80;
@@ -4475,11 +4632,12 @@ function draw(){
   if(shards.length){
     ctx.save(); ctx.globalCompositeOperation='lighter';
     for(const s of shards){
-      ctx.shadowColor='#9ad0ff'; sb(10); ctx.fillStyle='#bfe3ff';
+      sbc('#9ad0ff',10); ctx.fillStyle='#bfe3ff';
       ctx.beginPath(); ctx.arc(s.x,s.y,4.5,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
   }
+  perfMark('zSpieler');
   // particles (additiv = leuchtend)
   ctx.globalCompositeOperation='lighter';
   for(const p of particles){
@@ -4489,7 +4647,7 @@ function draw(){
     } else if(!sichtbar(p.x,p.y,50)) continue;
     ctx.globalAlpha=Math.max(0,p.life/(p.max||0.6));
     if(p.bolt){   // Kettenblitz: zackige Linie zwischen zwei Gegnern
-      ctx.strokeStyle='#bfe3ff'; ctx.lineWidth=2; ctx.shadowColor='#9ad0ff'; sb(8);
+      ctx.strokeStyle='#bfe3ff'; ctx.lineWidth=2; sbc('#9ad0ff',8);
       ctx.beginPath(); ctx.moveTo(p.x,p.y);
       const seg=4; for(let k=1;k<seg;k++){ const f=k/seg; ctx.lineTo(p.x+(p.x2-p.x)*f+(Math.random()-0.5)*10, p.y+(p.y2-p.y)*f+(Math.random()-0.5)*10); }
       ctx.lineTo(p.x2,p.y2); ctx.stroke(); sb(0); continue;
@@ -4497,7 +4655,7 @@ function draw(){
     if(p.ring){   // Sweet-Spot-Funkenring: dehnt sich kurz auf und verblasst
       const t=1-p.life/p.max, rr=6+t*22;
       ctx.strokeStyle=p.color; ctx.lineWidth=3*(1-t)+0.5;
-      ctx.shadowColor=p.color; sb(12);
+      sbc(p.color,12);
       ctx.beginPath(); ctx.arc(p.x,p.y,rr,0,Math.PI*2); ctx.stroke(); sb(0); continue;
     }
     ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
@@ -4505,16 +4663,20 @@ function draw(){
   ctx.globalCompositeOperation='source-over';
   ctx.globalAlpha=1;
   // floats
-  ctx.font='800 13px system-ui'; ctx.textAlign='center';
+  /* Jede Zuweisung an ctx.font parst den Schriftstring neu. Bisher wurde bei jeder
+     skalierten Zahl zweimal umgeschaltet — bei bis zu 36 gleichzeitigen Zahlen also
+     72 Parsevorgänge pro Bild. Jetzt nur noch beim echten Wechsel, mit gecachten Strings. */
+  let floatFont=FLOAT_FONT; ctx.font=FLOAT_FONT; ctx.textAlign='center';
   for(const f of floats){
     if(!sichtbar(f.x,f.y,48)) continue;
     ctx.globalAlpha=Math.max(0,f.life/0.9);
-    if(f.scale && f.scale!==1) ctx.font='800 '+Math.round(13*f.scale)+'px system-ui';
+    const wunsch=(f.scale && f.scale!==1) ? floatFontFor(f.scale) : FLOAT_FONT;
+    if(wunsch!==floatFont){ ctx.font=wunsch; floatFont=wunsch; }
     ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillText(f.text,f.x+1,f.y+1);
     ctx.fillStyle=f.color; ctx.fillText(f.text,f.x,f.y);
-    if(f.scale && f.scale!==1) ctx.font='800 13px system-ui';
   }
   ctx.globalAlpha=1;
+  perfMark('zPartikel');
   ctx.restore();   // Welt-Ebene schließen
 
   // — Bildschirm-Ebene (folgt nicht der Kamera) —
@@ -4603,6 +4765,7 @@ function draw(){
     ctx.restore();
   }
   ctx.restore();   // Shake schließen
+  perfMark('zBildschirm');
   zeichnePerfOverlay(w,h);
 }
 
@@ -4612,13 +4775,18 @@ function loop(t){
   const dt=Math.min(50, t-lastTime); lastTime=t;
   messeBildrate(t);            // erkennt schwache Geräte und spart dauerhaft Effekte
   if(state==='countdown') tickCombatResume(t);
+  const spielt=state==='playing';
   const updateStart=performance.now();
-  if(state==='playing') update(dt);
+  perfPhaseUhr=updateStart;
+  if(spielt) update(dt);
   perf.update=performance.now()-updateStart;
   const drawStart=performance.now();
+  perfPhaseUhr=drawStart;
   draw();
   perf.draw=performance.now()-drawStart;
   perf.frame=dt; perf.fps=dt>0?1000/dt:60;
+  // Nur Kampfbilder zählen — Menü- und Baumframes würden das Fenster verwässern.
+  if(PERF_DEBUG && spielt) perfProbe();
 }
 loop(performance.now());
 
