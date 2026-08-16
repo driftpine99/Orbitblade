@@ -831,6 +831,12 @@ const PERF_WAVE = PERF_DEBUG ? perfZahl('wave') : 0;
 const PERF_PTS  = PERF_DEBUG ? perfZahl('pts')  : 0;
 const PERF_GOD  = PERF_DEBUG && /(?:\?|&)god=1(?:&|$)/.test(location.search||'');
 const PERF_DPR  = PERF_DEBUG ? perfZahl('dpr') : 0;   // in Hundertstel, z. B. dpr=100 -> 1,00
+/* `?perf=1&gpu=1`: liest nach jedem Bild ein einzelnes Pixel zurück. Das zwingt die
+   Grafikpipeline leerzulaufen, wodurch die sonst unsichtbare, aufgestaute GPU-Zeit als
+   Phase `gpuSync` messbar wird. Bewusst eingriffsintensiv — die erzwungene
+   Synchronisation kostet selbst etwas und verfälscht die absolute Bildzeit. Aussagekräftig
+   ist allein, ob `gpuSync` gross oder klein ist. Nur für die Diagnose, nie im Normalbetrieb. */
+const PERF_GPU  = PERF_DEBUG && /(?:\?|&)gpu=1(?:&|$)/.test(location.search||'');
 const messlauf  = PERF_WAVE>0 || PERF_PTS>0 || PERF_GOD;
 messlaufSchutz  = messlauf;
 
@@ -4883,6 +4889,11 @@ function loop(t){
   perfPhaseUhr=drawStart;
   draw();
   perf.draw=performance.now()-drawStart;
+  if(PERF_GPU && canvas.width>0 && canvas.height>0){
+    perfPhaseUhr=performance.now();
+    try{ ctx.getImageData(0,0,1,1); }catch(e){}
+    perfMark('gpuSync');       // Wartezeit auf die Grafikpipeline
+  }
   perf.frame=rohDt; perf.fps=rohDt>0?1000/rohDt:60;
   // Nur Kampfbilder zählen — Menü- und Baumframes würden das Fenster verwässern.
   if(PERF_DEBUG && spielt) perfProbe();
