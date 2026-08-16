@@ -834,10 +834,24 @@ const messlauf  = PERF_WAVE>0 || PERF_PTS>0 || PERF_GOD;
 messlaufSchutz  = messlauf;
 
 const PERF_CAP=5400;                        // ~90 s bei 60 fps
+const PERF_SPRUNG=500;                      // größere Lücken sind Zustandswechsel, keine Bildrate
 const perf={ frame:16.7, update:0, draw:0, fps:60 };
 const perfRing={ frame:new Float32Array(PERF_CAP), update:new Float32Array(PERF_CAP), draw:new Float32Array(PERF_CAP) };
 let perfIdx=0, perfLen=0, perfSeit=0, perfFrames=0, perfPhaseUhr=0, perfStatNext=0, perfStat=null;
+let perfKampfMs=0;                          // reine Kampfzeit — Basis der echten Bildrate
 const perfPhasen={};                        // Phasenname -> aufsummierte ms im Fenster
+const perfMengenNamen=['gegner','sichtbar','schuesse','eigeneSchuesse','bomben','felder',
+  'echos','splitter','partikel','zahlen','fragmente','kugeln'];
+const perfMax={}, perfSum={};               // Mengen über das Fenster statt Momentaufnahme
+/* Zeichenebenen einzeln abschaltbar (nur mit ?perf=1, Shift+1..8).
+   Der X1-Carbon-Lauf vom 16.08.2026 zeigte 19,5 ms Bildzeit bei nur 1,7 ms Update
+   plus Draw. Die Differenz steckt im Rastern und Kompositieren, das kein Zeitstempel
+   im Skript sehen kann — `draw()` misst nur das Absetzen der Canvas-Befehle. Mit
+   diesen Schaltern lässt sich im laufenden Kampf halbierend eingrenzen, welche Ebene
+   die Füllrate frisst. Jeder Umschalter setzt das Messfenster zurück. */
+const zeichenEbenen={ nebel:true, sterne:true, deko:true, raster:true,
+  staub:true, verlaeufe:true, gegner:true, partikel:true };
+const EBENEN_TASTEN=['nebel','sterne','deko','raster','staub','verlaeufe','gegner','partikel'];
 // Grenzstein zwischen zwei Phasen. Die Zeit seit der letzten Marke geht auf `name`.
 function perfMark(name){
   if(!PERF_DEBUG) return;
@@ -847,14 +861,31 @@ function perfMark(name){
 }
 function perfPhaseStart(){ if(PERF_DEBUG) perfPhaseUhr=performance.now(); }
 function perfReset(){
-  perfIdx=0; perfLen=0; perfFrames=0; perfStat=null;
+  perfIdx=0; perfLen=0; perfFrames=0; perfStat=null; perfKampfMs=0;
   for(const k in perfPhasen) delete perfPhasen[k];
+  for(const k of perfMengenNamen){ perfMax[k]=0; perfSum[k]=0; }
   perfSeit=performance.now();
 }
+function perfMengenJetzt(){
+  return { gegner:enemies.length, sichtbar:sichtbareGegner, schuesse:shots.length,
+    eigeneSchuesse:pShots.length, bomben:bombs.length, felder:powerFields.length,
+    echos:powerEchoes.length, splitter:shards.length, partikel:particles.length,
+    zahlen:floats.length, fragmente:stars.length, kugeln:orbs.length };
+}
 function perfProbe(){
+  /* Zustandswechsel — Menü, Orbitpfad, Tabwechsel — erzeugen Lücken von vielen hundert
+     Millisekunden. Die sind keine Bildrate, sondern Pausen, und würden Schnitt und
+     Maximum unbrauchbar machen. Echte Ruckler bleiben erhalten. */
+  if(!(perf.frame>0) || perf.frame>PERF_SPRUNG) return;
   perfRing.frame[perfIdx]=perf.frame; perfRing.update[perfIdx]=perf.update; perfRing.draw[perfIdx]=perf.draw;
   perfIdx=(perfIdx+1)%PERF_CAP; if(perfLen<PERF_CAP) perfLen++;
-  perfFrames++;
+  perfFrames++; perfKampfMs+=perf.frame;
+  const m=perfMengenJetzt();
+  for(const k of perfMengenNamen){
+    const v=m[k];
+    if(v>(perfMax[k]||0)) perfMax[k]=v;
+    perfSum[k]=(perfSum[k]||0)+v;
+  }
 }
 function perfWerte(name){
   const n=perfLen;
@@ -867,25 +898,43 @@ function perfWerte(name){
 // Vollständiger Messbericht — in der Konsole über `perfDump()` abrufbar.
 function perfBericht(){
   const dauer=(performance.now()-perfSeit)/1000;
+  const n=Math.max(1,perfFrames);
   const phasen={};
-  for(const k in perfPhasen) phasen[k]=Math.round(perfPhasen[k]/Math.max(1,perfFrames)*1000)/1000;
+  for(const k in perfPhasen) phasen[k]=Math.round(perfPhasen[k]/n*1000)/1000;
+  const mengen={};
+  for(const k of perfMengenNamen) mengen[k]={ max:perfMax[k]||0, schnitt:Math.round((perfSum[k]||0)/n) };
+  const frame=perfWerte('frame');
+  const ebenenAus=EBENEN_TASTEN.filter(k=>!zeichenEbenen[k]);
   return {
     fensterSek:Math.round(dauer*10)/10, bilder:perfFrames,
-    fpsSchnitt:Math.round(perfFrames/Math.max(0.001,dauer)*10)/10,
-    frame:perfWerte('frame'), update:perfWerte('update'), draw:perfWerte('draw'),
+    // Echte Bildrate aus der reinen Kampfzeit. Bilder durch Wanduhrzeit zu teilen war
+    // falsch: Orbitpfad- und Pausenzeit zählt zur Uhr, aber nicht zu den Bildern.
+    fps:perfFrames&&perfKampfMs>0 ? Math.round(1000/(perfKampfMs/n)*10)/10 : 0,
+    kampfAnteil:perfFrames? Math.round(perfKampfMs/10/Math.max(0.001,dauer))/100 : 0,
+    frame, update:perfWerte('update'), draw:perfWerte('draw'),
+    // Was bleibt, ist Rastern, Kompositieren und Warten auf Vsync — für das Skript unsichtbar.
+    ausserhalbJs:Math.round(Math.max(0,frame.avg-perfWerte('update').avg-perfWerte('draw').avg)*100)/100,
     phasenMsProBild:phasen,
-    welle:wave,
-    mengen:{ gegner:enemies.length, sichtbar:sichtbareGegner, schuesse:shots.length,
-      eigeneSchuesse:pShots.length, bomben:bombs.length, felder:powerFields.length,
-      echos:powerEchoes.length, splitter:shards.length, partikel:particles.length,
-      zahlen:floats.length, fragmente:stars.length, kugeln:orbs.length },
-    zustand:{ dpr:Math.round(renderDpr*100)/100, sparmodus, effekte:fxAn, messlauf }
+    welle:wave, mengen,
+    zustand:{ dpr:Math.round(renderDpr*100)/100, sparmodus, effekte:fxAn, messlauf,
+      ebenenAus:ebenenAus.length? ebenenAus : 'keine' }
   };
 }
 if(PERF_DEBUG && typeof window!=='undefined'){
   window.perfDump=()=>{ const b=perfBericht(); console.log(JSON.stringify(b,null,2)); return b; };
   window.perfReset=perfReset;
-  window.addEventListener('keydown',(e)=>{ if((e.key||'').toLowerCase()==='p'&&e.shiftKey) perfReset(); });
+  window.zeichenEbenen=zeichenEbenen;
+  // e.code statt e.key: Shift+1 ist auf deutscher Tastatur '!', auf englischer '!'
+  // — der Code bleibt in beiden Fällen 'Digit1'.
+  window.addEventListener('keydown',(e)=>{
+    if(!e.shiftKey) return;
+    if(e.code==='KeyP'){ perfReset(); return; }
+    const m=/^Digit([1-8])$/.exec(e.code||'');
+    if(!m) return;
+    const k=EBENEN_TASTEN[+m[1]-1];
+    zeichenEbenen[k]=!zeichenEbenen[k];
+    perfReset();                    // nach dem Umschalten zählt nur noch der neue Zustand
+  });
 }
 let counterCd=0, counterFx=0, shards=[]; // Konterstoß-Cooldown/Effekt, kreisende Splitter
 // Nur EINE Macht am Start — der zweite Slot wird im Shop freigeschaltet und ist
@@ -3838,23 +3887,28 @@ function zeichnePerfOverlay(w,h){
   const b=perfStat, m=b.mengen, z=b.zustand;
   const ms=(o)=>'Ø'+o.avg.toFixed(1)+'  p95 '+o.p95.toFixed(1)+'  max '+o.max.toFixed(1);
   const zeilen=[
-    'FENSTER '+b.fensterSek+'s · '+b.bilder+' Bilder · Ø '+b.fpsSchnitt+' fps',
+    'FENSTER '+b.fensterSek+'s · '+b.bilder+' Bilder · '+b.fps+' fps · Kampf '+Math.round(b.kampfAnteil*100)+'%',
     'Frame  '+ms(b.frame),
     'Update '+ms(b.update),
-    'Draw   '+ms(b.draw)
+    'Draw   '+ms(b.draw),
+    'ausserhalb JS  '+b.ausserhalbJs.toFixed(1)+' ms  (Rastern/Vsync)'
   ];
   const ph=Object.keys(b.phasenMsProBild).sort((x,y)=>b.phasenMsProBild[y]-b.phasenMsProBild[x]).slice(0,8);
   for(const k of ph) zeilen.push('  '+(k+'            ').slice(0,13)+b.phasenMsProBild[k].toFixed(2)+' ms');
-  zeilen.push('Gegner '+m.sichtbar+'/'+m.gegner+' · Schuss '+m.schuesse+'/'+m.eigeneSchuesse+' · Felder '+m.felder);
-  zeilen.push('Partikel '+m.partikel+' · Zahlen '+m.zahlen+' · Beute '+(m.fragmente+m.kugeln)+' · Bomben '+m.bomben);
+  // Mengen als Fenster-Maximum: eine Momentaufnahme zeigte im Leerlauf 0 Gegner und
+  // sagte damit nichts über die belasteten Bilder aus.
+  zeilen.push('max Gegner '+m.sichtbar.max+'/'+m.gegner.max+' (Ø '+m.gegner.schnitt+') · Felder '+m.felder.max);
+  zeilen.push('max Partikel '+m.partikel.max+' · Zahlen '+m.zahlen.max+' · Schuss '+m.schuesse.max+'/'+m.eigeneSchuesse.max);
   zeilen.push('Welle '+b.welle+' · DPR '+z.dpr+' · Spar '+(z.sparmodus?'AN':'aus')+' · FX '+(z.effekte?'an':'AUS')+(z.messlauf?' · MESSLAUF':''));
+  zeilen.push('aus: '+(Array.isArray(z.ebenenAus)? z.ebenenAus.join(' ') : 'keine')+'   [Shift+1..8]');
   const zh=13, hoehe=zeilen.length*zh+14, oben=h-hoehe-8;
   ctx.save();
-  ctx.fillStyle='rgba(2,6,13,.86)'; ctx.fillRect(8,oben,322,hoehe);
-  ctx.strokeStyle='rgba(110,200,255,.35)'; ctx.lineWidth=1; ctx.strokeRect(8.5,oben+0.5,321,hoehe-1);
+  ctx.fillStyle='rgba(2,6,13,.86)'; ctx.fillRect(8,oben,342,hoehe);
+  ctx.strokeStyle='rgba(110,200,255,.35)'; ctx.lineWidth=1; ctx.strokeRect(8.5,oben+0.5,341,hoehe-1);
   ctx.font='600 11px ui-monospace,monospace'; ctx.textAlign='left';
   for(let i=0;i<zeilen.length;i++){
-    ctx.fillStyle = i===0 ? '#ffd257' : (i<4 ? '#bfe3ff' : (zeilen[i].startsWith('  ') ? '#9ad0ff' : '#c8d4e6'));
+    ctx.fillStyle = i===0 ? '#ffd257' : (i===4 ? '#ff9a5a' : (i<4 ? '#bfe3ff'
+      : (zeilen[i].startsWith('  ') ? '#9ad0ff' : (zeilen[i].startsWith('aus:') ? '#8fa3bd' : '#c8d4e6'))));
     ctx.fillText(zeilen[i],16,oben+18+i*zh);
   }
   ctx.restore();
@@ -4145,17 +4199,17 @@ function draw(){
   const biome=biomeForWave();
   ctx.fillStyle=biome.bg; ctx.fillRect(0,0,w,h);
   const now=Date.now();
-  ctx.fillStyle=holeGlow(w,h,biome); ctx.fillRect(0,0,w,h);
+  if(zeichenEbenen.verlaeufe){ ctx.fillStyle=holeGlow(w,h,biome); ctx.fillRect(0,0,w,h); }
   // Tiefenebenen von hinten nach vorne
-  drawNebulae(ctx,w,h,camX,camY,biome);          // weiche Farbschwaden ganz hinten
-  drawStarLayers(ctx,w,h,camX,camY,biome,now);   // drei Sternenlagen, funkelnd
-  drawBiomeDeko(ctx,w,h,camX,camY,biome);        // Landmarken je Biome
+  if(zeichenEbenen.nebel)  drawNebulae(ctx,w,h,camX,camY,biome);        // weiche Farbschwaden ganz hinten
+  if(zeichenEbenen.sterne) drawStarLayers(ctx,w,h,camX,camY,biome,now); // drei Sternenlagen, funkelnd
+  if(zeichenEbenen.deko)   drawBiomeDeko(ctx,w,h,camX,camY,biome);      // Landmarken je Biome
   /* Tech-Raster: weltfest, aber zum Rand hin ausgeblendet. Vorher lag es als
      gleichmäßiges Gitter über allem und ließ den Hintergrund flach wirken —
      jetzt wirkt es wie eine Plattform unter dem Spieler. */
-  drawFadedGrid(ctx,w,h,camX,camY,biome);
-  drawDust(ctx,w,h,camX,camY,biome);             // Staub ganz vorne
-  ctx.fillStyle=holeVignette(w,h); ctx.fillRect(0,0,w,h);
+  if(zeichenEbenen.raster) drawFadedGrid(ctx,w,h,camX,camY,biome);
+  if(zeichenEbenen.staub)  drawDust(ctx,w,h,camX,camY,biome);           // Staub ganz vorne
+  if(zeichenEbenen.verlaeufe){ ctx.fillStyle=holeVignette(w,h); ctx.fillRect(0,0,w,h); }
   perfMark('zHintergrund');
 
   // — Welt-Ebene (Kamera folgt Spieler) —
@@ -4282,7 +4336,7 @@ function draw(){
   }
   perfMark('zWeltFx');
   // enemies – futuristische Neon-Silhouetten
-  for(const en of enemies){
+  if(zeichenEbenen.gegner) for(const en of enemies){
     const r=en.radius;
     if(!sichtbar(en.x,en.y,r*2.5+18)) continue;
     sichtbareGegner++;
@@ -4640,7 +4694,7 @@ function draw(){
   perfMark('zSpieler');
   // particles (additiv = leuchtend)
   ctx.globalCompositeOperation='lighter';
-  for(const p of particles){
+  if(zeichenEbenen.partikel) for(const p of particles){
     if(p.sword) continue;   // Blade-Trail wird direkt am Spieler gezeichnet
     if(p.bolt){
       if(!sichtbar(p.x,p.y,40) && !sichtbar(p.x2,p.y2,40)) continue;
@@ -4772,7 +4826,10 @@ function draw(){
 function loop(t){
   raf=requestAnimationFrame(loop);
   if(!lastTime) lastTime=t;
-  const dt=Math.min(50, t-lastTime); lastTime=t;
+  // Die Simulation bleibt bei 50 ms gedeckelt; gemessen wird der echte Abstand,
+  // sonst meldet die Statistik den Deckel als Maximum statt den wahren Ruckler.
+  const rohDt=t-lastTime;
+  const dt=Math.min(50, rohDt); lastTime=t;
   messeBildrate(t);            // erkennt schwache Geräte und spart dauerhaft Effekte
   if(state==='countdown') tickCombatResume(t);
   const spielt=state==='playing';
@@ -4784,7 +4841,7 @@ function loop(t){
   perfPhaseUhr=drawStart;
   draw();
   perf.draw=performance.now()-drawStart;
-  perf.frame=dt; perf.fps=dt>0?1000/dt:60;
+  perf.frame=rohDt; perf.fps=rohDt>0?1000/rohDt:60;
   // Nur Kampfbilder zählen — Menü- und Baumframes würden das Fenster verwässern.
   if(PERF_DEBUG && spielt) perfProbe();
 }

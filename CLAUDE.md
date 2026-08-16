@@ -450,18 +450,61 @@ Alle Änderungen sind balance- und darstellungsneutral und einzeln nachgemessen:
 - Nebenbefund behoben: `drawFadedGrid` warf bei 0 × 0 Pixel großem Fenster jedes Bild
   eine `InvalidStateError` aus `drawImage`.
 
+### Erste Gerätemessung X1 Carbon (16.08.2026)
+
+Erster echter Lauf über GitHub Pages, Welle 27, DPR 1.5, Sparmodus aus, Effekte an:
+
+- Bildzeit Ø 19,5 ms (p95 33,4), also rund 51 fps — auf diesem Gerät zu wenig.
+- **Update 0,4 ms + Draw 1,3 ms = 1,7 ms.** Die restlichen ~18 ms sind für das Skript
+  unsichtbar: `draw()` misst nur das Absetzen der Canvas-Befehle, nicht das Rastern
+  und Kompositieren. p95 und Maximum sind exakt 2× und 3× 16,7 ms, also ausgelassene
+  Vsync-Intervalle.
+- Damit ist auf dem Laptop **nicht die JS-Arbeit der Engpass, sondern die Füllrate.**
+  Sprite-Vorrendern der Gegner würde Pfadoperationen sparen, aber keine Pixel — es ist
+  nach diesem Befund der falsche Hebel und bleibt zurückgestellt.
+- Arbeitsverdacht: Der Hintergrund füllt den Bildschirm pro Bild acht- bis zehnmal
+  vollständig (Grundfarbe, Glow-Verlauf, bis zu zehn große Nebelkreise mit `lighter`,
+  drei Sternenlagen, Raster über eine zweite Vollbild-Leinwand, Staub, Vignette). Bei
+  DPR 1.5 ist das je Durchgang die 2,25-fache Pixelmenge. Diese Last ist konstant und
+  gegnerunabhängig — das erklärt, warum der Einbruch spät auffällt, obwohl die
+  Gegner-Skalierung harmlos misst: die Grundlast liegt bereits nahe am Budget.
+
+Der Lauf deckte drei Fehler im Messwerkzeug auf, die alle behoben sind:
+
+- Die Bildrate teilte Kampfbilder durch Wanduhrzeit; Orbitpfad- und Pausenzeit zählte
+  zur Uhr, aber nicht zu den Bildern. Sie kommt jetzt aus der reinen Kampfzeit, und
+  `kampfAnteil` zeigt, wie viel des Fensters überhaupt Kampf war.
+- `Frame max` meldete den 50-ms-Deckel der Simulationsschleife statt des wahren
+  Rucklers. Gemessen wird jetzt der ungedeckelte Abstand; Lücken über 500 ms gelten
+  als Zustandswechsel und fließen gar nicht erst ein.
+- Die Mengen waren eine Momentaufnahme und zeigten im Leerlauf 0 Gegner. Sie laufen
+  jetzt als Maximum und Schnitt über das Fenster.
+
+Neu ist außerdem `ausserhalbJs` — die Differenz zwischen Bildzeit und der Summe aus
+Update und Draw. Das ist die eigentliche Kennzahl für Rasterlast.
+
+### Ebenen einzeln abschaltbar
+
+Mit `?perf=1` schalten `Shift+1..8` die Zeichenebenen einzeln ab: Nebel, Sterne, Deko,
+Raster, Staub, Verläufe (Glow und Vignette), Gegner, Partikel. Jeder Umschalter setzt
+das Messfenster zurück, die aktive Auswahl steht in der letzten Overlay-Zeile. Damit
+lässt sich im laufenden Kampf halbierend eingrenzen, welche Ebene die Füllrate frisst,
+statt sie zu erraten.
+
 ### Offen
 
-- **Die Gerätemessung fehlt weiterhin.** Die verborgene Browser-Pane kompositiert nicht,
+- **Die belastbare Gerätemessung fehlt weiterhin.** Die verborgene Browser-Pane kompositiert nicht,
   wodurch `draw()`-Zeiten nach längeren Läufen durch Rückstau unbrauchbar werden
   (gemessen 36 ms bei 7 ms Phasensumme). Belastbar sind nur die isolierten Funktions-
   messungen und die Update-Seite. Pixel 9 und X1 Carbon müssen über GitHub Pages
   mit `?perf=1&wave=26&pts=15&god=1` gegengemessen werden.
-- `zGegner` bleibt der größte verbleibende Posten und skaliert linear. Der nächste
-  echte Hebel wäre das Vorrendern der Gegnertypen in Sprites statt ~8 Pfadoperationen
-  je Gegner und Bild. Das ist **nicht** darstellungsneutral: pulsierende Kerne, Augen
-  und Flossen sind zeitabhängig animiert und würden einfrieren. Diese Abwägung braucht
-  eine ausdrückliche Entscheidung und ist deshalb bewusst nicht miterledigt.
+- Sprite-Vorrendern der Gegner ist nach der X1-Carbon-Messung **zurückgestellt**: Es
+  spart Pfadoperationen, aber keine Pixel, und der Engpass ist dort die Füllrate. Es
+  wäre zudem nicht darstellungsneutral, weil pulsierende Kerne, Augen und Flossen
+  zeitabhängig animiert sind und einfrieren würden.
+- Der nächste Schritt ist die Bisektion über `Shift+1..8`: Erst wenn feststeht, welche
+  Hintergrundebene die Füllrate frisst, wird entschieden, ob Ebenen zusammengelegt,
+  in niedrigerer Auflösung gerendert oder seltener aktualisiert werden.
 - `separieren` bleibt mit 0,33 ms die teuerste Update-Phase. Eine Halbierung der
   Nachbarzellen wäre möglich, ändert aber die Reihenfolge der Positionskorrekturen und
   damit das Ergebnis — deshalb zurückgestellt.
