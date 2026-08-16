@@ -483,6 +483,30 @@ Der Lauf deckte drei Fehler im Messwerkzeug auf, die alle behoben sind:
 Neu ist außerdem `ausserhalbJs` — die Differenz zwischen Bildzeit und der Summe aus
 Update und Draw. Das ist die eigentliche Kennzahl für Rasterlast.
 
+### Zweiter X1-Carbon-Lauf: kein Einbruch bei 37 Gegnern
+
+Welle 26, 9,2 s Fenster, 37 gleichzeitige Gegner, Effekte aus: Frame Ø 16,7 ms,
+p95 16,8, max 17,1 — makellose 60 fps ohne ein einziges ausgelassenes Bild. Die
+15,4 ms `ausserhalb JS` sind reines Vsync-Warten, kein Befund.
+
+Daraus folgt: **Der Einbruch ist noch nicht reproduziert.** Zwei Gründe, warum der
+Lauf ihn nicht traf:
+
+- Die 115 Gegner der Welle 26 sind die Gesamtzahl der Welle, nicht die gleichzeitig
+  lebenden. Tatsächlich waren es 37 — dafür reicht die Leistung mühelos.
+- Das Fenster war mit 9,2 s zu kurz. Der erste Lauf über 122 s zeigte p95 33,4 ms,
+  also seltene, aber reale Aussetzer. Solche Ereignisse erwischt ein kurzes Fenster
+  nicht, und ein Durchschnitt verdeckt sie ohnehin.
+
+Zusätzlich unterschieden sich beide Läufe im Zeichenpfad: der erste lief mit `FX an`
+(≤ 22 Gegner, Auren-Gradient je Gegner), der zweite mit `FX AUS`.
+
+Deshalb ergänzt: eine **Verteilung der Bildzeiten** in sechs Klassen (≤17, ≤20, ≤25,
+≤34, ≤50, >50 ms) und ein **Mitschnitt der sechs schlechtesten Bilder** mit Bildzeit,
+Update, Draw, teuerster Phase, Welle, Gegner- und Partikelzahl, Bossflagge und
+Effektstufe. Ein Schnitt sagt nur, DASS es hakt; erst der Mitschnitt sagt, WOBEI.
+Beides steht im Overlay und vollständig in `perfDump()`.
+
 ### Ebenen einzeln abschaltbar
 
 Mit `?perf=1` schalten `Shift+1..8` die Zeichenebenen einzeln ab: Nebel, Sterne, Deko,

@@ -843,6 +843,14 @@ const perfPhasen={};                        // Phasenname -> aufsummierte ms im 
 const perfMengenNamen=['gegner','sichtbar','schuesse','eigeneSchuesse','bomben','felder',
   'echos','splitter','partikel','zahlen','fragmente','kugeln'];
 const perfMax={}, perfSum={};               // Mengen über das Fenster statt Momentaufnahme
+/* Ein Schnitt kann seltene Ruckler nicht zeigen. Deshalb zusätzlich eine Verteilung
+   der Bildzeiten und ein Mitschnitt der schlechtesten Bilder mit ihrem Kontext —
+   ohne den weiß man, DASS es hakt, aber nie WOBEI. */
+const PERF_KLASSEN=[17,20,25,34,50,1e9];    // Obergrenzen in ms
+const PERF_KLASSEN_NAME=['≤17','≤20','≤25','≤34','≤50','>50'];
+const perfKlassen=new Array(PERF_KLASSEN.length).fill(0);
+const perfSchlimmste=[];                    // bis zu 6 Bilder, absteigend nach Bildzeit
+const perfPhasenBild={};                    // Phasen NUR des laufenden Bildes
 /* Zeichenebenen einzeln abschaltbar (nur mit ?perf=1, Shift+1..8).
    Der X1-Carbon-Lauf vom 16.08.2026 zeigte 19,5 ms Bildzeit bei nur 1,7 ms Update
    plus Draw. Die Differenz steckt im Rastern und Kompositieren, das kein Zeitstempel
@@ -855,8 +863,9 @@ const EBENEN_TASTEN=['nebel','sterne','deko','raster','staub','verlaeufe','gegne
 // Grenzstein zwischen zwei Phasen. Die Zeit seit der letzten Marke geht auf `name`.
 function perfMark(name){
   if(!PERF_DEBUG) return;
-  const n=performance.now();
-  perfPhasen[name]=(perfPhasen[name]||0)+(n-perfPhaseUhr);
+  const n=performance.now(), d=n-perfPhaseUhr;
+  perfPhasen[name]=(perfPhasen[name]||0)+d;
+  perfPhasenBild[name]=(perfPhasenBild[name]||0)+d;   // für den Mitschnitt schlechter Bilder
   perfPhaseUhr=n;
 }
 function perfPhaseStart(){ if(PERF_DEBUG) perfPhaseUhr=performance.now(); }
@@ -864,6 +873,8 @@ function perfReset(){
   perfIdx=0; perfLen=0; perfFrames=0; perfStat=null; perfKampfMs=0;
   for(const k in perfPhasen) delete perfPhasen[k];
   for(const k of perfMengenNamen){ perfMax[k]=0; perfSum[k]=0; }
+  perfKlassen.fill(0); perfSchlimmste.length=0;
+  for(const k in perfPhasenBild) delete perfPhasenBild[k];
   perfSeit=performance.now();
 }
 function perfMengenJetzt(){
@@ -886,6 +897,22 @@ function perfProbe(){
     if(v>(perfMax[k]||0)) perfMax[k]=v;
     perfSum[k]=(perfSum[k]||0)+v;
   }
+  // Verteilung: zeigt, ob gleichmäßig langsam oder gelegentlich hakend
+  for(let i=0;i<PERF_KLASSEN.length;i++) if(perf.frame<=PERF_KLASSEN[i]){ perfKlassen[i]++; break; }
+  // Kontext der schlechtesten Bilder festhalten
+  if(perf.frame>20 && (perfSchlimmste.length<6 || perf.frame>perfSchlimmste[perfSchlimmste.length-1].frame)){
+    let spitze='', spitzeMs=0;
+    for(const k in perfPhasenBild) if(perfPhasenBild[k]>spitzeMs){ spitzeMs=perfPhasenBild[k]; spitze=k; }
+    perfSchlimmste.push({
+      frame:Math.round(perf.frame*10)/10, update:Math.round(perf.update*100)/100,
+      draw:Math.round(perf.draw*100)/100, spitze, spitzeMs:Math.round(spitzeMs*100)/100,
+      welle:wave, gegner:m.gegner, sichtbar:m.sichtbar, partikel:m.partikel,
+      zahlen:m.zahlen, schuesse:m.schuesse+m.eigeneSchuesse, fx:fxAn, boss:bossActive
+    });
+    perfSchlimmste.sort((a,b)=>b.frame-a.frame);
+    if(perfSchlimmste.length>6) perfSchlimmste.length=6;
+  }
+  for(const k in perfPhasenBild) delete perfPhasenBild[k];
 }
 function perfWerte(name){
   const n=perfLen;
@@ -915,6 +942,8 @@ function perfBericht(){
     // Was bleibt, ist Rastern, Kompositieren und Warten auf Vsync — für das Skript unsichtbar.
     ausserhalbJs:Math.round(Math.max(0,frame.avg-perfWerte('update').avg-perfWerte('draw').avg)*100)/100,
     phasenMsProBild:phasen,
+    verteilung:PERF_KLASSEN_NAME.reduce((o,name,i)=>{ o[name+' ms']=perfKlassen[i]; return o; },{}),
+    schlimmsteBilder:perfSchlimmste,
     welle:wave, mengen,
     zustand:{ dpr:Math.round(renderDpr*100)/100, sparmodus, effekte:fxAn, messlauf,
       ebenenAus:ebenenAus.length? ebenenAus : 'keine' }
@@ -3891,9 +3920,15 @@ function zeichnePerfOverlay(w,h){
     'Frame  '+ms(b.frame),
     'Update '+ms(b.update),
     'Draw   '+ms(b.draw),
-    'ausserhalb JS  '+b.ausserhalbJs.toFixed(1)+' ms  (Rastern/Vsync)'
+    'Rest   '+b.ausserhalbJs.toFixed(1)+' ms  (Rastern + Vsync-Warten)'
   ];
-  const ph=Object.keys(b.phasenMsProBild).sort((x,y)=>b.phasenMsProBild[y]-b.phasenMsProBild[x]).slice(0,8);
+  /* Die Verteilung ist die eigentliche Ruckel-Diagnose: bei sauberen 60 fps liegt
+     alles in der ersten Klasse. Jede Zahl weiter rechts ist ein ausgelassenes Bild. */
+  const v=b.verteilung, vk=Object.keys(v);
+  zeilen.push('Bilder '+vk.map(k=>k.replace(' ms','')+':'+v[k]).join(' '));
+  const s=b.schlimmsteBilder[0];
+  if(s) zeilen.push('worst '+s.frame+'ms u'+s.update+' d'+s.draw+' '+s.spitze+' · '+s.gegner+'G '+s.partikel+'P'+(s.boss?' BOSS':'')+(s.fx?' FX':''));
+  const ph=Object.keys(b.phasenMsProBild).sort((x,y)=>b.phasenMsProBild[y]-b.phasenMsProBild[x]).slice(0,6);
   for(const k of ph) zeilen.push('  '+(k+'            ').slice(0,13)+b.phasenMsProBild[k].toFixed(2)+' ms');
   // Mengen als Fenster-Maximum: eine Momentaufnahme zeigte im Leerlauf 0 Gegner und
   // sagte damit nichts über die belasteten Bilder aus.
@@ -3907,8 +3942,10 @@ function zeichnePerfOverlay(w,h){
   ctx.strokeStyle='rgba(110,200,255,.35)'; ctx.lineWidth=1; ctx.strokeRect(8.5,oben+0.5,341,hoehe-1);
   ctx.font='600 11px ui-monospace,monospace'; ctx.textAlign='left';
   for(let i=0;i<zeilen.length;i++){
-    ctx.fillStyle = i===0 ? '#ffd257' : (i===4 ? '#ff9a5a' : (i<4 ? '#bfe3ff'
-      : (zeilen[i].startsWith('  ') ? '#9ad0ff' : (zeilen[i].startsWith('aus:') ? '#8fa3bd' : '#c8d4e6'))));
+    const z0=zeilen[i];
+    ctx.fillStyle = i===0 ? '#ffd257' : (i===4 ? '#ff9a5a'
+      : (i<4 ? '#bfe3ff' : (z0.startsWith('Bilder ')||z0.startsWith('worst ') ? '#4de0a0'
+      : (z0.startsWith('  ') ? '#9ad0ff' : (z0.startsWith('aus:') ? '#8fa3bd' : '#c8d4e6')))));
     ctx.fillText(zeilen[i],16,oben+18+i*zh);
   }
   ctx.restore();
