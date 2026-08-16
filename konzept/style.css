@@ -27,7 +27,8 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 #hud-left{flex:1;min-width:128px;max-width:min(52vw,360px)}
 #hud-right{display:grid;grid-template-columns:auto auto;align-items:start;gap:5px;pointer-events:auto;flex:none}
 #run-status,#run-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px}
-#run-status{flex-direction:column;align-items:stretch}
+#run-status{grid-column:1;grid-row:1;flex-direction:column;align-items:stretch}
+#run-actions{grid-column:2;grid-row:1}
 #health-wrap{position:relative;height:clamp(22px,5.6vw,26px);background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden;backdrop-filter:blur(8px)}
 #health-bar{height:100%;width:100%;background:linear-gradient(90deg,#c81e2c,#ff5a5a);box-shadow:0 0 14px rgba(255,77,77,.45);transition:width .15s}
 #health-risk{display:none;position:absolute;inset:0 auto 0 0;width:50%;pointer-events:none;
@@ -114,17 +115,24 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 #combat-resume.hidden{display:none}
 #combat-resume strong{font-size:clamp(58px,18vw,104px);font-weight:250;line-height:1;color:#fff;filter:drop-shadow(0 0 18px rgba(110,200,255,.8))}
 #combat-resume span{margin-top:8px;font-size:var(--fs-sm);font-weight:750;letter-spacing:.15em;text-transform:uppercase;color:#a9c9e8}
-#pause-goals{width:100%;max-width:340px;display:grid;gap:4px;margin:0 auto 2px}
-#pause-goals:empty{display:none}
-#pause-goals .pause-goal{display:flex;justify-content:space-between;gap:10px;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:rgba(10,18,32,.55);font-size:11px;color:var(--muted);text-align:left}
-#pause-goals .pause-goal.done{opacity:.48}#pause-goals b{color:var(--accent);white-space:nowrap}
+#hud-orbitauftrag{grid-column:1/-1;grid-row:2;justify-self:end;max-width:180px;padding:4px 7px;border:1px solid rgba(255,210,87,.5);border-radius:999px;background:rgba(10,18,32,.82);color:#fff;font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+#hud-orbitauftrag.hidden{display:none}
+.orbitauftrag-karte{width:100%;max-width:380px;margin:3px auto 10px;padding:11px 12px;border:1px solid rgba(255,210,87,.52);border-radius:8px;background:rgba(18,25,40,.78);text-align:left;box-shadow:0 0 18px rgba(255,210,87,.08)}
+.orbitauftrag-karte:empty{display:none}.orbitauftrag-karte.kompakt{max-width:340px;margin:4px auto 8px;padding:8px 10px}
+.orbitauftrag-label{display:block;margin-bottom:2px;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+.orbitauftrag-kopf{display:flex;align-items:baseline;justify-content:space-between;gap:8px}.orbitauftrag-kopf b{font-size:var(--fs-sm);color:var(--gold)}.orbitauftrag-kopf span{font-size:11px;color:var(--accent);font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.orbitauftrag-karte p{margin:4px 0 7px;color:var(--muted);font-size:var(--fs-xs);line-height:1.35}.orbitauftrag-figur{display:inline-block;margin:0 0 5px;padding:2px 6px;border:1px solid rgba(199,125,255,.5);border-radius:999px;color:#dcb5ff;font-size:10px;font-weight:700}
+.orbitauftrag-leiste{height:5px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.12)}.orbitauftrag-leiste i{display:block;height:100%;background:linear-gradient(90deg,#6ec8ff,#ffd257);transition:width .16s}
+.orbitauftrag-fuss{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:7px;color:var(--gold);font-size:11px;font-weight:750}.orbitauftrag-tausch{min-height:44px;padding:4px 10px;border:1px solid var(--line);border-radius:5px;background:rgba(110,200,255,.1);color:var(--text);font-size:11px;font-weight:700;cursor:pointer}.orbitauftrag-tausch:disabled{opacity:.58;cursor:default}
+.orbitauftrag-karte.erledigt{border-color:rgba(77,224,160,.7)}.orbitauftrag-karte.erledigt .orbitauftrag-kopf b{color:var(--good)}
 
 @media(max-width:520px){
   #hud{gap:6px;padding-left:calc(8px + env(safe-area-inset-left));padding-right:calc(8px + env(safe-area-inset-right))}
   #hud-left{max-width:none}
   #hud-right{grid-template-columns:auto;gap:4px}
-  #run-status{flex-direction:row;gap:4px}
-  #run-actions{gap:4px}
+  #run-status{grid-column:1;grid-row:1;flex-direction:row;gap:4px}
+  #hud-orbitauftrag{grid-column:1;grid-row:2}
+  #run-actions{grid-column:1;grid-row:3;gap:4px}
   #coin-text,#wave-text{padding:4px 6px;font-size:10px;min-height:24px;display:flex;align-items:center;justify-content:center}
   .tree-btn{height:44px;min-width:44px;padding:0 7px}
   #pause-btn{width:44px;height:44px}

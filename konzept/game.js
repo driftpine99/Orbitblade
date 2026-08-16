@@ -190,58 +190,73 @@ const SKINS = {
   amethyst: { name:'Amethyst',  blade:'#b45bff', core:'#f2e6ff', voll:true },
 };
 
-/* LAUFZIELE — der Beinahe-Motor. Vampire Survivors zieht seine Sogwirkung aus der
-   30-Minuten-Marke: Wer sie knapp verfehlt, startet sofort neu. Orbitblade hatte keinen
-   solchen Punkt. Drei wechselnde Aufgaben je Lauf schaffen ihn — und sie ersetzen für
-   jüngere Spieler die Bauplanung, die sie noch nicht leisten können: Es steht immer
-   konkret da, worauf man hinspielen kann. */
-const ZIELE = [
-  { id:'welle',     name:'Erreiche Welle {z}',            ziel:12,  lohn:60, art:'stand' },
-  { id:'kills',     name:'Besiege {z} Gegner',            ziel:150, lohn:50, art:'zaehl' },
-  { id:'fokus',     name:'Löse {z} Fokus-Einsätze aus',   ziel:6,   lohn:70, art:'zaehl' },
-  { id:'panzer',    name:'Zerlege {z} Panzergegner',      ziel:10,  lohn:70, art:'zaehl' },
-  { id:'makellos',  name:'Besiege einen Boss makellos',   ziel:1,   lohn:80, art:'zaehl' },
-  { id:'stufe5',    name:'Bring eine Macht auf Stufe 5',  ziel:1,   lohn:60, art:'zaehl' },
-  { id:'entwicklung',name:'Entwickle eine Macht',         ziel:1,   lohn:90, art:'zaehl' },
-  { id:'fragmente', name:'Sammle {z} Fragmente im Lauf',  ziel:250, lohn:40, art:'stand' },
-  { id:'barriere',  name:'Baue eine volle Barriere auf',  ziel:1,   lohn:50, art:'zaehl' },
-];
-let laufziele=[];
-function setzeLaufziele(){
-  const topf=[...ZIELE];
-  // Panzer-Ziel nur, wenn in diesem Lauf überhaupt Panzer vorkommen können
-  const panzerAb = hilfe().panzerAb || CONFIG.panzerAbWelle;
-  laufziele=[];
-  for(let i=0;i<3 && topf.length;i++){
-    const k=Math.floor(Math.random()*topf.length);
-    const def=topf.splice(k,1)[0];
-    if(def.id==='panzer' && panzerAb>14){ i--; continue; }
-    laufziele.push({ def, wert:0, fertig:false });
-  }
+/* ORBITAUFTRAG — genau ein dauerhafter, nicht verfallender Anlass für den nächsten
+   Lauf. Die Definitionen sind Code-Konstanten; Spielstandsdaten enthalten nur ID,
+   Status und Zahl und werden beim Laden streng geprüft. */
+const ORBIT_AUFTRAEGE={
+  fokus_einsatz:{id:'fokus_einsatz',titel:'Fokus im Orbit',text:'Setze 5 fokussierte Hauptmächte ein.',kurz:'Fokusmächte',ziel:5,lohn:160},
+  boss_makellos:{id:'boss_makellos',titel:'Makelloser Orbit',text:'Besiege 1 Boss ohne Lebensschaden.',kurz:'Boss makellos',ziel:1,lohn:200},
+  panzer_sweet:{id:'panzer_sweet',titel:'Präzisionsbrecher',text:'Triff 20 Panzergegner im Sweet Spot.',kurz:'Panzer-Sweet',ziel:20,lohn:170},
+  held_lichtbund:{id:'held_lichtbund',titel:'Lichtbund',text:'Erzeuge als Lichthüter 3 Fokusbarrieren.',kurz:'Lichtbarrieren',ziel:3,lohn:170,figur:'held'},
+  leere_hunger:{id:'leere_hunger',titel:'Leerenhunger',text:'Lade als Leerenklinge 3-mal unter 45 % Leben Fokus voll.',kurz:'Risiko-Fokus',ziel:3,lohn:190,figur:'konstrukt'},
+};
+const ORBIT_UNIVERSELL=['fokus_einsatz','boss_makellos','panzer_sweet'];
+function orbitDef(auftrag=save&&save.orbitauftrag){
+  return auftrag&&typeof auftrag.id==='string'&&Object.prototype.hasOwnProperty.call(ORBIT_AUFTRAEGE,auftrag.id) ? ORBIT_AUFTRAEGE[auftrag.id] : null;
 }
-// Zählendes Ziel weiterzählen
-function zielZaehl(id, n){
-  for(const z of laufziele){
-    if(z.def.id!==id || z.fertig) continue;
-    z.wert += (n||1);
-    if(z.wert>=z.def.ziel) zielErfuellt(z);
-  }
+function orbitFigurLabel(def){ return def&&def.figur ? (def.figur==='held'?'Lichthüter':'Leerenklinge') : ''; }
+function istGueltigerOrbitauftrag(auftrag){
+  const def=orbitDef(auftrag);
+  return !!(def && auftrag && Number.isInteger(auftrag.wert) && auftrag.wert>=0 &&
+    ((auftrag.status==='aktiv' && auftrag.wert<def.ziel) ||
+     (auftrag.status==='erledigt' && auftrag.wert===def.ziel)));
 }
-// Standsziel auf einen absoluten Wert setzen (Welle, Fragmentkonto)
-function zielStand(id, wert){
-  for(const z of laufziele){
-    if(z.def.id!==id || z.fertig) continue;
-    if(wert>z.wert) z.wert=wert;
-    if(z.wert>=z.def.ziel) zielErfuellt(z);
-  }
+function neuerOrbitauftrag(ausschluss=''){
+  const pool=[...ORBIT_UNIVERSELL,...(figur().id==='held'?['held_lichtbund']:['leere_hunger'])];
+  const ohne=pool.filter(id=>id!==ausschluss && id!==save.orbitauftragLetzterId);
+  const wahl=ohne.length?ohne:pool.filter(id=>id!==ausschluss);
+  const id=wahl[Math.floor(Math.random()*wahl.length)]||pool[0];
+  return {id,status:'aktiv',wert:0};
 }
-function zielErfuellt(z){
-  z.fertig=true; z.wert=z.def.ziel;
-  player.stars += z.def.lohn;
-  pushToast('Ziel geschafft: +'+z.def.lohn+' ◆');
-  announce('Ziel geschafft!', zielText(z.def), '#ffd257');
+// Nur zwischen Läufen ersetzen: Ein erledigter Auftrag bleibt in Pause und Ergebnis sichtbar.
+function sorgeOrbitauftrag(){
+  if(messlaufSchutz) return false;
+  if(istGueltigerOrbitauftrag(save.orbitauftrag) && save.orbitauftrag.status==='aktiv') return false;
+  save.orbitauftrag=neuerOrbitauftrag(); persist(); return true;
 }
-function zielText(def){ return def.name.replace('{z}', def.ziel); }
+// Eine noch unbegonnene Charakteraufgabe folgt der Auswahl. Begonnener Fortschritt
+// bleibt dagegen erhalten; der Charakterhinweis und der Tagestausch verhindern Verlust.
+function passeOrbitauftragAnFigurwahl(){
+  const auftrag=save.orbitauftrag, def=orbitDef(auftrag);
+  if(messlaufSchutz || !def || !def.figur || def.figur===figur().id || auftrag.status!=='aktiv' || auftrag.wert!==0) return false;
+  save.orbitauftrag=neuerOrbitauftrag(def.id); return true;
+}
+function orbitFortschritt(id,anzahl=1){
+  if(messlaufSchutz || !Number.isFinite(anzahl)) return false;
+  const auftrag=save.orbitauftrag, def=orbitDef(auftrag);
+  if(!def || auftrag.status!=='aktiv' || def.id!==id) return false;
+  const neu=Math.max(0,Math.min(def.ziel,auftrag.wert+Math.max(0,Math.floor(anzahl))));
+  if(neu===auftrag.wert) return false;
+  auftrag.wert=neu;
+  if(neu===def.ziel){
+    // Erst vollständigen Zustand schreiben, dann genau einmal persistieren: kein Doppel-Lohn.
+    auftrag.status='erledigt'; save.stars=Math.max(0,Math.floor(Number(save.stars)||0))+def.lohn;
+    save.orbitauftragLetzterId=def.id; persist();
+    pushToast('Orbitauftrag erledigt: +'+def.lohn+' ◆'); announce('Orbitauftrag erledigt!',def.titel+' · +'+def.lohn+' ◆','#ffd257');
+    if(sfx) sfx('unlockBig');
+  } else persist();
+  renderOrbitauftrag(); updateHUD(true); return true;
+}
+function lokalerTag(){ const d=new Date(), z=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
+function tauscheOrbitauftrag(){
+  if(state!=='menu' || messlaufSchutz) return;
+  const heute=lokalerTag();
+  if(save.orbitauftragTauschTag===heute){ pushToast('Orbitauftrag heute bereits getauscht.'); return; }
+  const alt=save.orbitauftrag;
+  if(alt&&alt.wert>0&&!window.confirm('Fortschritt dieses Orbitauftrags verfällt. Wirklich tauschen?')) return;
+  save.orbitauftrag=neuerOrbitauftrag(alt&&alt.id||''); save.orbitauftragTauschTag=heute;
+  persist(); renderOrbitauftrag(); if(sfx) sfx('pick');
+}
 
 /* HILFEN statt Schwierigkeitsgraden (Bushnells Gesetz, Mario-Kart-Muster).
    Es ist dasselbe Spiel, nur mit unterschiedlich viel Rückenwind. Entscheidend und
@@ -445,7 +460,7 @@ function treeNodes(){
     {id:'power_master',stage:4,col:4,kind:'buff',name:'Machtmeisterschaft',short:'MACHT +1',desc:'Rang 1 öffnet Super-Macht und Synergie; Rang 2/3 vertiefen die Mechanik.',icon:'⬡',maxRank:3,reqAny:['char_route_a','char_route_b'],spine:'master',apply:rank=>{steigereMacht(id,rank+1);treeFlags.powerMaster=rank;}},
     {id:'power_module',stage:4,col:6,kind:'buff',name:pm[0],short:pm[1],desc:pm[2],icon:'◉',maxRank:2,reqAny:['char_route_a','char_route_b'],apply:rank=>treeFlags.powerModule=rank},
     {id:'blade_synergy',stage:5,col:3,kind:'major',name:figur().id==='held'?(treeRang('char_route_a')?'Leuchtfeuer':'Sonnenorbit'):(treeRang('char_route_a')?'Satter Abgrund':'Ereignishorizont'),short:figur().id==='held'?(treeRang('char_route_a')?'FOKUS-SCHILD':'3. TREFFER'):(treeRang('char_route_a')?'HEIL-KOMBO':'3 KLINGEN'),desc:figur().id==='held'?(treeRang('char_route_a')?'Volle Fokusladung erzeugt eine besonders starke Barriere.':'Jeder dritte Zonentreffer schlägt ein zweites Mal zu.'):(treeRang('char_route_a')?'Klingen-Kills heilen stärker, solange du angeschlagen bist.':'Unter 35 % Leben kreisen drei Klingen um dich.'),icon:'✦',reqAll:['power_master'],reqRanks:{power_master:1},spine:'synergy',apply:()=>{if(figur().id==='held'){if(treeRang('char_route_a'))treeFlags.leuchtfeuer=true;else treeFlags.klingentakt=true;}else{if(treeRang('char_route_a'))treeFlags.satterAbgrund=true;else treeFlags.ereignishorizont=true;}}},
-    {id:'evo_'+evoId,stage:5,col:5,kind:'evo',power:id,name:evo.name,short:'SUPER-MACHT',desc:evo.desc,icon:'✹',reqAll:['power_master'],reqRanks:{power_master:1,[partner]:1},spine:'evolution',evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;zielZaehl('stufe5');zielZaehl('entwicklung');announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}},
+    {id:'evo_'+evoId,stage:5,col:5,kind:'evo',power:id,name:evo.name,short:'SUPER-MACHT',desc:evo.desc,icon:'✹',reqAll:['power_master'],reqRanks:{power_master:1,[partner]:1},spine:'evolution',evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}},
     {id:'orbit_resonance',stage:6,col:4,kind:'buff',name:'Orbitresonanz',short:'KOMBO +1',desc:'Rang 1 öffnet die Krone; weitere Ränge verbinden Klinge und Mächte sichtbar.',icon:'◎',maxRank:3,reqAll:['blade_synergy','evo_'+evoId],spine:'resonance',apply:rank=>{treeFlags.aktiveCdMult=Math.pow(.94,rank);treeFlags.fokusRabatt=rank;if(rank>=2)treeFlags.fokusMachtBonus=.15;if(rank>=3)treeFlags.orbitResonanz=true;}},
     {id:'orbit_crown',stage:7,col:4,kind:'capstone',name:'Orbitkrone',short:treeRang('orbit_crown')?'KERNRESERVE':'FINALE',desc:treeRang('orbit_crown')?'Kernreserve gibt +10 % maximales Leben und vollen Fokus bei jedem Bossbeginn.':(treeRang('blade_multi')?'Drei Klingen vollenden deinen Rundum-Orbit.':'Zonentreffer laden Fokus doppelt und entfesseln die Hauptmacht.'),icon:'★',maxRank:metaLevel('startimpuls')?2:1,reqAll:['orbit_resonance','evo_'+evoId],reqRanks:{orbit_resonance:1},minInvested:14,spine:'crown',apply:rank=>{if(rank===1){if(treeRang('blade_multi'))bonuses.blades=3;else treeFlags.perfekterOrbit=true;treeFlags.orbitKrone=true;}else{const vorher=player.maxHp;treeFlags.kernreserve=true;player.maxHp=Math.round(player.maxHp*1.1);player.hp=Math.min(player.maxHp,player.hp+player.maxHp-vorher);}}},
   ];
@@ -499,7 +514,7 @@ function checkMilestones(){
 
 /* TESTFASSUNG des Konzepts vom 11.8.2026 — läuft neben der stabilen Version.
    Eigener Speicherschlüssel, damit ein Testlauf den echten Spielstand nicht anfasst. */
-const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=8;
+const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=9;
 // opts: Bedien-Einstellungen (Seite und Anordnung der Fähigkeiten-Knöpfe)
 // best ist jetzt je Hilfsstufe getrennt — sonst wäre die Bestmarke nicht vergleichbar
 const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin', muted:false, bossKills:0, stars:0, meta:{}, tutorialDone:false, tutorialVersion:0, focusTutorialSeen:false,
@@ -508,7 +523,7 @@ const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin
   // Mit welchen aktiven Mächten jeder Lauf beginnt. Vorher war das fest verdrahtet,
   // sodass später freigeschaltete Mächte nie am Start standen.
   startMaechte:{ slot1:'wirbel', slot2:'stoss' },
-  klingenform:'strahl', figur:'held' };
+  klingenform:'strahl', figur:'held', orbitauftrag:null, orbitauftragTauschTag:'', orbitauftragLetzterId:'' };
 let save = clone(DEFAULT_SAVE);
 
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
@@ -524,6 +539,9 @@ function loadSave(){
   save = Object.assign(clone(DEFAULT_SAVE), save);
   if(!save.best || typeof save.best!=='object') save.best={};   // Sicherheitsnetz nach der Migration
   if(!SKINS[save.skin]) save.skin='rubin';
+  if(!istGueltigerOrbitauftrag(save.orbitauftrag)) save.orbitauftrag=null;
+  if(typeof save.orbitauftragTauschTag!=='string') save.orbitauftragTauschTag='';
+  if(typeof save.orbitauftragLetzterId!=='string' || !Object.prototype.hasOwnProperty.call(ORBIT_AUFTRAEGE,save.orbitauftragLetzterId)) save.orbitauftragLetzterId='';
 }
 function migrateSave(data){
   if(!data || typeof data!=='object') return clone(DEFAULT_SAVE);
@@ -585,6 +603,12 @@ function migrateSave(data){
     delete data.meta.begleiter;
     const alt=[['ability:bombe','bombenkern'],['ability:nova','novakern'],['ability:sog','gravitationskern'],['figur:konstrukt','leerenprotokoll']];
     for(const [unlock,projekt] of alt) if(data.unlocks&&data.unlocks[unlock]) data.meta[projekt]=1;
+  }
+  // v8 → v9: die drei laufgebundenen Ziele werden durch einen persistenten Auftrag ersetzt.
+  if(data.v<9){
+    data.orbitauftrag=null;
+    data.orbitauftragTauschTag='';
+    data.orbitauftragLetzterId='';
   }
   data.v = SAVE_VERSION;
   return data;
@@ -1111,20 +1135,21 @@ let fokus=0, fokusBereit=false, fokusAktiv=false;
 function fokusFaktor(){ return fokusAktiv? CONFIG.fokusBonus+(treeFlags.fokusMachtBonus||0) : 1; }
 // Wie viele Sweet-Spot-Treffer die Leiste braucht — der Charakter verschiebt das
 function fokusZiel(){ return Math.max(4, Math.round(CONFIG.fokusZiel*figur().fokusZiel)-(treeFlags.fokusRabatt||0)); }
-function pruefeVolleBarriere(){ if(barriere>=barriereMax()-0.01) zielZaehl('barriere'); }
 function fokusVoll(quelle){
   if(fokusBereit) return false;
   fokus=fokusZiel(); fokusBereit=true;
+  const barriereVorFokus=barriere;
   if(figur().id==='held'){
     const anteil=(treeFlags.leuchtfeuer?0.14:0.05)+(treeFlags.fokusBarriereBonus||0);
     barriere=Math.min(barriereMax(),barriere+player.maxHp*anteil*figur().barriereMal);
     if(treeFlags.waechter) enemies.forEach(en=>{if(Math.hypot(en.x-player.x,en.y-player.y)<150) en.stunT=Math.max(en.stunT||0,260);});
   }
+  if(figur().id==='held' && barriere>barriereVorFokus+.01) orbitFortschritt('held_lichtbund');
+  if(figur().id==='konstrukt' && player.hp/player.maxHp<.45) orbitFortschritt('leere_hunger');
   if(begleiterStufe()>=4){
     barriere=Math.min(barriereMax(),barriere+player.maxHp*.05);
     particles.push({ring:true,x:player.x,y:player.y,color:'#4de0a0',life:.32,max:.32});
   }
-  pruefeVolleBarriere();
   pushFloat(player.x,player.y-38,quelle==='kernreserve'?'KERNRESERVE: FOKUS':'FOKUS BEREIT','#dcb5ff',1.3);
   particles.push({ring:true,x:player.x,y:player.y,color:'#c77dff',life:.48,max:.48});
   if(!save.focusTutorialSeen){
@@ -1516,8 +1541,7 @@ function kaufenTreeKnoten(id){
     runTree:{...runTree}, skillPoints, echoPoints, bonuses:{...bonuses}, treeFlags:{...treeFlags},
     runAbilities:{...runAbilities}, runEvolutions:{...runEvolutions},
     hp:player.hp,maxHp:player.maxHp,stars:player.stars,badges:{...save.badges},barriere,
-    toasts:toasts.map(t=>({...t})),banner:banner?{...banner}:null,unlockFx,
-    laufziele:laufziele.map(z=>({def:z.def,wert:z.wert,fertig:z.fertig}))
+    toasts:toasts.map(t=>({...t})),banner:banner?{...banner}:null,unlockFx
   }};
   if(node.endless) echoPoints--; else skillPoints--;
   const next=treeRang(id)+1; runTree[id]=next; node.apply(next);
@@ -1533,7 +1557,7 @@ function rueckgaengigTreeKnoten(){
   runTree=s.runTree; skillPoints=s.skillPoints; echoPoints=s.echoPoints; bonuses=s.bonuses; treeFlags=s.treeFlags;
   runAbilities=s.runAbilities; runEvolutions=s.runEvolutions;
   player.maxHp=s.maxHp; player.hp=Math.min(s.hp,player.maxHp); player.stars=s.stars;
-  save.badges=s.badges; persist(); laufziele=s.laufziele; toasts=s.toasts; banner=s.banner; unlockFx=s.unlockFx;
+  save.badges=s.badges; persist(); toasts=s.toasts; banner=s.banner; unlockFx=s.unlockFx;
   barriere=Math.min(s.barriere,barriereMax());
   const name=treeUndo.name; treeUndo=null;
   updateActiveButtons(); updateHUD(true); updateTreeButton(); renderSkillTree(); treeMeldung(name+' rückgängig');
@@ -1643,8 +1667,10 @@ function newPlayer(){
 }
 player = newPlayer();
 window.playerRef = player;
-window.addEventListener('load',()=>{ player = newPlayer(); window.playerRef = player; if(state==='menu') updateHUD(); });
+window.addEventListener('load',()=>{ player = newPlayer(); window.playerRef = player; if(state==='menu'){ sorgeOrbitauftrag(); updateHUD(); renderOrbitauftrag(); } });
 function resetGame(){
+  // Erst jetzt, vor dem nächsten Lauf, folgt auf einen erledigten Auftrag ein neuer.
+  sorgeOrbitauftrag();
   player=newPlayer(); window.playerRef = player; enemies=[]; stars=[]; particles=[]; floats=[]; shots=[]; orbs=[]; killCount=0; hpKillCount=0;
   wave=1; waveEnemiesToSpawn=0; waveSpawned=0; spawnTimer=0;
   activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}; phaserCd=0; dmgBoostUntil=0; shieldUntil=0; moveBoostUntil=0; stossWaveT=0; wirbelT=0; spinHitTimer=0;
@@ -1656,7 +1682,7 @@ function resetGame(){
   regularPointsEarned=0; regularTreeFrozen=false; echoPoints=0; echoMilestones=0; treeReturnState='playing';
   bombs=[]; pShots=[]; powerFields=[]; powerEchoes=[]; novaFx=0; novaEcho=0; barriere=0;
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
-  wiederaufBenutzt=false; nachhallZaehler=0; splitterSweetZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false; setzeLaufziele();
+  wiederaufBenutzt=false; nachhallZaehler=0; splitterSweetZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false;
   toasts=[]; banner=null;
   tutStep=0; tutT=0; tutorialCircleUntil=0; tutorialBladeUntil=0; unlockFx=0; combatResumeUntil=0; combatResumeStep=''; setzeHelfer();
   if(metaLevel('startimpuls')>0) skillPoints=1;
@@ -1666,7 +1692,7 @@ function resetGame(){
   if(PERF_WAVE>1) wave=PERF_WAVE;
   if(PERF_PTS>0){ const p=Math.min(PERF_PTS, REGULAR_POINT_CAP); skillPoints+=p; regularPointsEarned+=p; }
   sparmodusNeuerLauf();
-  shake=0; state='playing'; setMusicLevel(); hideAll(); updateTreeButton(); updateHUD(true); startWave();
+  shake=0; state='playing'; setMusicLevel(); hideAll(); updateTreeButton(); renderOrbitauftrag(); updateHUD(true); startWave();
   // Beim allerersten Spiel übernimmt der Einstieg die Ansage
   if(save.tutorialDone) announce('Welle 1', 'Überlebe die Arena', '#7cc8ff');
 }
@@ -1682,7 +1708,6 @@ function startWave(){
   waveEnemiesToSpawn = (wave%5===0)? 1 : count;
   waveSpawned=0; spawnTimer=0;
   waveText.textContent='Welle '+wave;
-  zielStand('welle', wave);
   if(wave%5===0) spawnBoss();                                  // Boss-Welle (mit eigener Ansage)
   else if(wave>1){ const b=biomeForWave(); announce('Welle '+wave, (wave-1)%5===0? b.name : '', b.accent); }  // Biome-Name, wenn Zone wechselt
   recordBest();
@@ -1779,11 +1804,13 @@ function fireBossAbility(en){
 function onBossDefeated(){
   bossActive=false;
   save.bossKills=(save.bossKills||0)+1;
+  // Boss-Sauberkeit bleibt bewusst an echten Lebensschaden gebunden (siehe hurtPlayer).
+  if(bossHitClean) orbitFortschritt('boss_makellos');
   if(istFinale()){
     // Boss-XP gehört noch zum regulären Lauf, bevor der Abschlussbildschirm einfriert.
     checkLevelUp(); persist(); sieg(); return;
   }
-  if(bossHitClean){ earnBadge('makellos'); zielZaehl('makellos'); }
+  if(bossHitClean) earnBadge('makellos');
   if((save.bossKills||0)>=10) earnBadge('meister');
   // Volle Heilung als Etappenbelohnung — behebt "Boss geschafft, dann sofort gestorben"
   if(player.hp < player.maxHp){
@@ -1936,13 +1963,33 @@ canvas.addEventListener('touchstart',e=>{
   e.preventDefault();
 },{passive:false});
 
-// Pause
-function renderPauseGoals(){
-  const box=document.getElementById('pause-goals'); if(!box) return;
-  box.innerHTML=laufziele.map(z=>'<div class="pause-goal '+(z.fertig?'done':'')+'"><span>'+(z.fertig?'✓ ':'')+zielText(z.def)+'</span><b>'+Math.min(z.wert,z.def.ziel)+' / '+z.def.ziel+'</b></div>').join('');
+// Orbitauftrag: dieselbe vollständige Karte zwischen den Läufen, im Kampf nur die Kurzzeile.
+function orbitKartenHtml(mitTausch=false){
+  const auftrag=save.orbitauftrag, def=orbitDef(auftrag);
+  if(!def) return '';
+  const fertig=auftrag.status==='erledigt', wert=Math.max(0,Math.min(def.ziel,auftrag.wert));
+  const figurLabel=orbitFigurLabel(def), prozent=Math.round(wert/def.ziel*100);
+  const heute=lokalerTag(), getauscht=save.orbitauftragTauschTag===heute;
+  return '<span class="orbitauftrag-label">Orbitauftrag</span><div class="orbitauftrag-kopf"><b>'+(fertig?'✓ ':'')+def.titel+'</b><span>'+wert+' / '+def.ziel+'</span></div>'+
+    (figurLabel?'<span class="orbitauftrag-figur">'+figurLabel+'</span>':'')+
+    '<p>'+def.text+'</p><div class="orbitauftrag-leiste"><i style="width:'+prozent+'%"></i></div><div class="orbitauftrag-fuss"><span>'+(fertig?'Lohn erhalten: ':'Lohn: ')+def.lohn+' ◆</span>'+
+    (mitTausch?'<button class="orbitauftrag-tausch" '+(getauscht?'disabled':'')+'>'+ (getauscht?'Heute getauscht':'Kostenlos tauschen')+'</button>':'')+'</div>';
 }
-function pauseGame(){ if(state!=='playing') return; state='paused'; setMusicLevel(); updateTreeButton(); refreshMenuVisibility(); renderPauseGoals(); overlayPause.classList.remove('hidden'); }
-function resumeGame(){ if(state!=='paused') return; state='playing'; setMusicLevel(); overlayPause.classList.add('hidden'); lastTime=performance.now(); updateTreeButton(); }
+function renderOrbitauftrag(){
+  const auftrag=save.orbitauftrag, def=orbitDef(auftrag), fertig=!!(auftrag&&auftrag.status==='erledigt');
+  const start=document.getElementById('start-orbitauftrag');
+  if(start){ start.classList.toggle('erledigt',fertig); start.innerHTML=orbitKartenHtml(true); const b=start.querySelector('.orbitauftrag-tausch'); if(b) b.onclick=tauscheOrbitauftrag; }
+  for(const id of ['pause-orbitauftrag','gameover-orbitauftrag','sieg-orbitauftrag']){
+    const box=document.getElementById(id); if(!box) continue;
+    box.classList.toggle('erledigt',fertig); box.innerHTML=orbitKartenHtml(false);
+  }
+  const hud=document.getElementById('hud-orbitauftrag');
+  if(!hud) return;
+  hud.classList.toggle('hidden',!def||fertig||state!=='playing');
+  hud.textContent=def&&!fertig?'Auftrag: '+def.kurz+' '+auftrag.wert+'/'+def.ziel:'';
+}
+function pauseGame(){ if(state!=='playing') return; state='paused'; setMusicLevel(); updateTreeButton(); refreshMenuVisibility(); renderOrbitauftrag(); overlayPause.classList.remove('hidden'); }
+function resumeGame(){ if(state!=='paused') return; state='playing'; setMusicLevel(); overlayPause.classList.add('hidden'); lastTime=performance.now(); updateTreeButton(); renderOrbitauftrag(); }
 document.getElementById('pause-btn').addEventListener('click',pauseGame);
 document.getElementById('resume-btn').addEventListener('click',resumeGame);
 /* Lauf aufgeben — nach Genre-Konvention (Vampire Survivors, Hades, Brotato):
@@ -1956,6 +2003,7 @@ function laufBeenden(){
   updateTreeButton();
   hideAll();
   document.getElementById('overlay-abbruch').classList.add('hidden');
+  sorgeOrbitauftrag(); renderOrbitauftrag();
   refreshMenuVisibility();
   overlayStart.classList.remove('hidden');
 }
@@ -2111,7 +2159,7 @@ function renderCharakterWahl(){
     });
     portrait.className='wahl-portrait';
     b.prepend(portrait);
-    if(frei) b.onclick=()=>{ save.figur=id; persist(); if(sfx) sfx('pick'); renderCharakterWahl(); };
+    if(frei) b.onclick=()=>{ save.figur=id; passeOrbitauftragAnFigurwahl(); persist(); renderOrbitauftrag(); if(sfx) sfx('pick'); renderCharakterWahl(); };
     box.appendChild(b);
   }
   const d=document.getElementById('charakter-detail'), f=figur();
@@ -2180,7 +2228,7 @@ function renderOrbitPresets(){
     card.innerHTML=`<span><b>Konfiguration ${i+1}</b><small>${text}</small></span><button class="preset-load" ${p?'':'disabled'}>Laden</button><button class="preset-save">Aktuelles Set speichern</button>`;
     card.querySelector('.preset-load').onclick=()=>{
       if(!p) return; save.figur=isAvailable('figur',p.figur)?p.figur:'held';
-      save.startMaechte={slot1:p.slot1,slot2:p.slot2}; startMaechte(); persist(); renderStartMaechte(); if(sfx)sfx('pick');
+      passeOrbitauftragAnFigurwahl(); save.startMaechte={slot1:p.slot1,slot2:p.slot2}; startMaechte(); persist(); renderOrbitauftrag(); renderStartMaechte(); if(sfx)sfx('pick');
     };
     card.querySelector('.preset-save').onclick=()=>{
       const vw=startMaechte(); save.presets[i]={figur:save.figur,slot1:vw.slot1,slot2:vw.slot2}; persist(); renderOrbitPresets(); if(sfx)sfx('pick');
@@ -2287,7 +2335,7 @@ function zumHauptmenue(){
   refreshMenuVisibility();
   document.getElementById('overlay-start').classList.remove('hidden');
   state='menu'; setMusicLevel();
-  updateTreeButton();
+  updateTreeButton(); sorgeOrbitauftrag(); renderOrbitauftrag();
 }
 document.getElementById('restart-btn').addEventListener('click', zumHauptmenue);
 document.getElementById('sieg-weiter').addEventListener('click', endlosWeiter);
@@ -2395,7 +2443,7 @@ function renderProgress(){
       txt.innerHTML=`<span class="kosm-name">${f.name}</span>`+
         `<span class="kosm-desc">${avail? f.desc : (isEarned('figur',id)?'◆ Projekt in der Werkstatt':'🔒 '+(w? 'Blaupause ab Welle '+w : 'gesperrt'))}</span>`;
       cell.appendChild(txt);
-      if(avail) cell.onclick=()=>{ save.figur=id; persist(); if(sfx) sfx('pick'); renderProgress(); };
+      if(avail) cell.onclick=()=>{ save.figur=id; passeOrbitauftragAnFigurwahl(); persist(); renderOrbitauftrag(); if(sfx) sfx('pick'); renderProgress(); };
       fig.appendChild(cell);
     }
   }
@@ -2618,7 +2666,7 @@ function doActive(slot){
     pushFloat(player.x,player.y-42,'FOKUS ×'+fokusFaktor().toFixed(1),'#f2e5ff',1.15);
     shake=Math.max(shake,9);
     if(sfx) sfx('focus');
-    zielZaehl('fokus');
+    orbitFortschritt('fokus_einsatz');
   } else if(echoLadung){
     treeFlags.echoPowerCharge=0;
     spawnParticles(player.x,player.y,'#c77dff',16);
@@ -2992,8 +3040,6 @@ function killEnemy(en,i){
     if(player.hp<player.maxHp){ player.hp=Math.min(player.maxHp, player.hp+heal); pushFloat(player.x,player.y-26,'+'+Math.round(heal)+' HP','#4de0a0'); }
   }
   killCount++;
-  zielZaehl('kills');
-  if(en.panzer) zielZaehl('panzer');
   let dropped=false;
   if(en.type==='boss'){ dropOrb(en.x,en.y,true); dropped=true; }
   else if(en.type==='schwer'){ dropOrb(en.x,en.y,false); dropped=true; }
@@ -3230,15 +3276,15 @@ function sieg(){
   const verdient=bucheFragmente();
   const ersterSieg=!save.gewonnen;
   save.gewonnen=true; save.endlosFrei=true; persist();
-  const zieleFertig=laufziele.filter(z=>z.fertig).length;
   document.getElementById('sieg-text').innerHTML=
     (ersterSieg? '<b>Zum ersten Mal!</b><br>' : '')+
     `Du hast den Zerbrochenen Mond bezwungen — auf <b>${hilfe().name}</b>.<br>`+
-    `Level ${player.level} · ${zieleFertig} von ${laufziele.length} Laufzielen`+
+    `Level ${player.level} · Orbitpfad abgeschlossen`+
     (finalePunkte? `<br><b style="color:var(--gold)">+${finalePunkte} Finale-${finalePunkte===1?'Punkt':'Punkte'}</b> · Orbit jetzt abschließen` : '')+
     (verdient>0? `<br><b style="color:var(--gold)">+${verdient} ◆</b> Fragmente` : '');
   hideAll();
   document.getElementById('overlay-sieg').classList.remove('hidden');
+  renderOrbitauftrag();
   updateSiegEndlosButton();
   if(sfx){ sfx('unlockBig'); setTimeout(()=>sfx('levelup'), 260); }
 }
@@ -3260,6 +3306,7 @@ function startEndlosmodus(restVerwerfen=false){
   if(restVerwerfen) skillPoints=0;
   regularTreeFrozen=true; treeUndo=null; skillPoints=0; endlosLauf=true;
   state='playing'; setMusicLevel();
+  renderOrbitauftrag();
   wave++; startWave();
   grantEchoMilestone(1,true);
 }
@@ -3275,6 +3322,7 @@ function gameOver(){
     `Erreicht: <b>Welle ${wave}</b> · Level ${player.level}<br>`+
     (earned>0? `<b style="color:var(--gold)">+${earned} ◆</b> Fragmente · ${save.stars} ◆ insgesamt<br>`:'')+
     `<span style="color:var(--muted)">Bestmarke: Welle ${best}</span>`;
+  renderOrbitauftrag();
   overlayOver.classList.remove('hidden');
 }
 
@@ -3360,6 +3408,7 @@ function update(dt){
       if(treffer){
         tutorialSweetSpotTreffer();
         fokusTreffer();
+        if(en.panzer) orbitFortschritt('panzer_sweet');
         if(treeFlags.perfekterOrbit) fokusTreffer();
         handleBladeModuleSweet(en,toEnemy,dmg);
         handleBladeEchoSweet(en,toEnemy,dmg);
@@ -3805,7 +3854,7 @@ function update(dt){
   for(let i=stars.length-1;i>=0;i--){
     const c=stars[i];
     const d=Math.hypot(c.x-player.x,c.y-player.y);
-    if(d<28){ player.stars+=c.amount; zielStand('fragmente', player.stars); pushFloat(c.x,c.y-10,'+'+c.amount+'◆','#ffd257'); if(sfx) sfx('coin'); stars.splice(i,1); continue; }
+    if(d<28){ player.stars+=c.amount; pushFloat(c.x,c.y-10,'+'+c.amount+'◆','#ffd257'); if(sfx) sfx('coin'); stars.splice(i,1); continue; }
     // magnet — nach dem Wellenende zieht es unabhängig von der Entfernung und schneller
     if(c.sog){ c.x+=(player.x-c.x)*9*dt/1000; c.y+=(player.y-c.y)*9*dt/1000; }
     else if(d<90){ c.x+=(player.x-c.x)*4*dt/1000; c.y+=(player.y-c.y)*4*dt/1000; }
@@ -3820,7 +3869,6 @@ function update(dt){
         if(player.hp >= player.maxHp-0.5){
           const vorher=barriere;
           barriere=Math.min(barriereMax(), barriere+player.maxHp*CONFIG.barriere.proKugel*figur().barriereMal);
-          if(barriere>=barriereMax()-0.01) zielZaehl('barriere');
           const zuwachs=Math.round(barriere-vorher);
           if(zuwachs>0){ pushFloat(o.x,o.y-10,'+'+zuwachs+' Barriere','#7cc8ff'); if(sfx) sfx('unlock'); }
           else { pushFloat(o.x,o.y-10,'Barriere voll','#7cc8ff'); }

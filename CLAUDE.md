@@ -40,7 +40,7 @@ Leitplanken:
 - Aktive Mächte werden vor dem Lauf gewählt und bleiben im Lauf fest.
 - Jede Hauptmacht besitzt genau eine dreistufige Partnerfähigkeit.
 - Performanceentlastung: DPR-Cap, Culling, HUD mit 10 Updates/s und `?perf=1`.
-- `SAVE_VERSION` ist 8.
+- `SAVE_VERSION` ist 9.
 
 ## Charaktere
 
@@ -672,11 +672,9 @@ statt sie zu erraten.
 
 ### Offen
 
-- **Die belastbare Gerätemessung fehlt weiterhin.** Die verborgene Browser-Pane kompositiert nicht,
-  wodurch `draw()`-Zeiten nach längeren Läufen durch Rückstau unbrauchbar werden
-  (gemessen 36 ms bei 7 ms Phasensumme). Belastbar sind nur die isolierten Funktions-
-  messungen und die Update-Seite. Pixel 9 und X1 Carbon müssen über GitHub Pages
-  mit `?perf=1&wave=26&pts=15&god=1` gegengemessen werden.
+- Die Abhilfe ist auf dem X1 Carbon über GitHub Pages bestätigt. Offen bleibt nur die
+  spätere Gegenprobe auf dem Pixel 9; die verborgene Browser-Pane eignet sich wegen
+  fehlender Komposition weiterhin nicht für belastbare Füllratenmessungen.
 - Sprite-Vorrendern der Gegner ist **endgültig zurückgestellt**: Es spart
   Pfadoperationen, aber keine Pixel, und der Engpass ist die Füllrate. Es wäre zudem
   nicht darstellungsneutral, weil pulsierende Kerne, Augen und Flossen zeitabhängig
@@ -872,11 +870,11 @@ sofort fort; Simulation, Cooldowns und Framezeit bleiben bis dahin eingefroren.
   Begleiters erhält einen lokalen Glow und einen kurzen Hinweis am Begleiter statt
   eines weiteren HUD-Balkens.
 
-**Umgesetzt:** Links stehen nur Leben/Barriere und XP/Level. Die alten Laufziele laufen
-bis zu ihrem späteren Ersatz intern weiter und sind im Pausenfenster einsehbar, belegen
-aber keine Dauerfläche mehr. Welle
-und Fragmente sind kompakt gruppiert, Ton liegt nur noch in den Einstellungen, die
-Leerenzone ist im Lebensbalken markiert und Boss-Überladung leuchtet am Begleiter.
+**Umgesetzt:** Links stehen nur Leben/Barriere und XP/Level. Ein einzelner persistenter
+Orbitauftrag ersetzt die alten Laufziele: volle Karte zwischen Läufen, Kurzfortschritt
+im Kampf und sofortiger Fragmentlohn beim Abschluss. Welle und Fragmente sind kompakt
+gruppiert, Ton liegt nur noch in den Einstellungen, die Leerenzone ist im Lebensbalken
+markiert und Boss-Überladung leuchtet am Begleiter.
 
 ### Nutzen und Ersatz der aktuellen Laufziele
 
@@ -890,8 +888,7 @@ Die aktuelle Fassung wählt drei von neun Laufzielen und zahlt im Mittel ungefä
   Leerenklinge;
 - erledigte Ziele bleiben durchgestrichen im HUD; der Laufstand überlebt kein Neuladen.
 
-Die drei Zufallsziele werden deshalb nicht nur ausgeblendet, sondern später durch genau
-einen **Orbitauftrag** ersetzt:
+Die drei Zufallsziele sind deshalb durch genau einen **Orbitauftrag** ersetzt:
 
 - ein aktiver, nicht verfallender Auftrag, dessen Fortschritt über Läufe erhalten bleibt;
 - passend zu gewähltem Charakter und verfügbaren Mechaniken, nie zu gesperrtem Inhalt;
@@ -901,10 +898,11 @@ einen **Orbitauftrag** ersetzt:
 - höchstens ein kostenloser Tausch pro Kalendertag, damit ein unpassender Auftrag nicht
   blockiert, aber kein Aufgaben-Reroll-Spiel entsteht.
 
-Geeigneter Startpool: fokussierte Hauptmächte einsetzen, einen Boss ohne
-Rammbock-Treffer besiegen, eine Sweet-Hit-Serie halten, Panzer per Sweet Spot brechen
-und charaktergerechte Licht-/Leerenaktionen ausführen. Reine Wellen-, Kill-,
-Fragment- und Evolutions-Checklisten entfallen.
+Orbitauftrag v1 nutzt bewusst nur robuste vorhandene Kampfhooks: fokussierte
+Hauptmächte einsetzen, einen Boss ohne Lebensschaden besiegen, Panzer im Sweet Spot
+treffen sowie charaktergerechte Lichtbarrieren oder Risiko-Fokus erzeugen. Serien-
+und Rammbockaufträge bleiben spätere Erweiterungen. Reine Wellen-, Kill-, Fragment-
+und Evolutions-Checklisten entfallen.
 
 ### Spätere tägliche Motivation
 
@@ -957,22 +955,16 @@ fertige Ursachenmessung.
 
 ## Nächste Arbeitsreihenfolge
 
-1. Den gemessenen Stand auf Pixel 9 und X1 Carbon über GitHub Pages gegenmessen
-   (`?perf=1&wave=26&pts=15&god=1`) und danach entscheiden, ob Sprite-Vorrendern der
-   Gegner nötig ist. Messfassung und die balance-neutralen Hotspots sind erledigt.
-2. Danach den Test des veröffentlichten Orbitpfads fortsetzen: Standardlauf bis Welle
-   30 sowie Klingenecho und Machtecho jeweils bis mindestens Boss 40; Punkt-,
-   Evolutions-, Kronen- und Siegzeit sowie Effektlast notieren.
-3. Die drei alten Laufziele durch einen einzelnen persistenten Orbitauftrag ersetzen.
-4. Erst anhand der vollständigen Läufe XP-Kurve und Wirkungszahlen feinbalancieren.
-5. Totes Hangar-Zwischen-Overlay entfernen, alle drei Bestmarken anzeigen und das rein
-   kosmetische Hangarprestige als Fragment-Senke spezifizieren.
-6. Den optimierten Gesamtstand auf Pixel 9 und X1 Carbon kalt und nach längerer Laufzeit
-   gegenmessen; verbleibende thermische oder gerätespezifische Probleme bearbeiten.
-7. Deterministischen Lauf-Seed und danach das optionale Tagessignal konzipieren und
-   umsetzen. Charakter-/Machtmeisterschaften folgen erst aus echten Nutzungsdaten.
-8. Einen standardisierten Rangmodus und Monetarisierung erst behandeln, wenn
-   Kernschleife und Wiederspielwert tragen.
+1. Performancepunkt 1 ist abgeschlossen; der Orbitauftrag ist umgesetzt.
+2. Einen echten Standardlauf bis Welle 30 direkt mit einem Echo bis Boss 40 fortsetzen;
+   Punkt-, Evolutions-, Kronen- und Siegzeit sowie Effektlast notieren. Das zweite Echo
+   darf zeitsparend über den vorhandenen Messlauf-Einstieg bis Boss 40 geprüft werden.
+3. Danach ausschließlich grobe Balanceausreißer bei XP-Kurve und Wirkungszahlen
+   korrigieren.
+
+Vom Nutzer bewusst auf später verschoben bleiben das tote Hangar-Zwischen-Overlay,
+alle drei Bestmarken, kosmetisches Hangarprestige, die Pixel-9-Gegenprobe,
+deterministischer Seed und Tagessignal sowie Rangmodus und Monetarisierung.
 
 Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 Änderungen genügen derzeit proportionale Checks: mindestens
@@ -999,9 +991,9 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
   Desktop-Messung vom 16.08.2026 weist den Einbruch dem Zeichnen zu; die Bestätigung
   auf echter Hardware steht aus.
 - Die unveränderte Fokus-Ladegeschwindigkeit schwankt vermutlich stark mit der
-  Gegnerdichte und muss zusammen mit der Welle-26-Performance gemessen werden.
-- Die drei aktuellen Laufziele liefern überwiegend automatische oder doppelte
-  Fortschritte und sollen durch einen einzelnen Orbitauftrag ersetzt werden.
+  Gegnerdichte und wird im nächsten echten Standard-/Endloslauf mitbeobachtet.
+- Orbitauftrag v1 ist umgesetzt; sein Fortschritt und Lohn werden in einem echten
+  Standard-/Endloslauf noch praktisch geprüft.
 - Ein realer Lauf bis Welle 26 lief spielerisch gut und bestätigte den besseren
   Orbitpfad, zeigte aber einen Performanceeinbruch in den späten Wellen. Die Diagnose
   ist erfolgt (Zeichnen, nicht Simulation), die balance-neutralen Hotspots sind

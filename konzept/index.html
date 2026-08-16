@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Orbitblade — Konzeptfassung</title>
-<link rel="stylesheet" href="style.css?v=20260814-focus-hud">
+<link rel="stylesheet" href="style.css?v=20260816-orbitauftrag">
 </head>
 <body>
 <div id="game-wrap">
@@ -18,6 +18,7 @@
     </div>
     <div id="hud-right">
       <div id="run-status"><div id="wave-text">Welle 1</div><div id="coin-text">◆ 0</div></div>
+      <div id="hud-orbitauftrag" class="hidden" aria-live="polite"></div>
       <div id="run-actions"><button id="tree-btn" class="tree-btn hidden" aria-label="Orbitpfad öffnen">✦ <span>0</span></button><button id="pause-btn" aria-label="Pause">⏸</button></div>
     </div>
   </div>
@@ -61,6 +62,7 @@
     <p class="subtitle" style="color:var(--gold);letter-spacing:.14em;font-size:var(--fs-xs);text-transform:uppercase">Konzeptfassung zum Testen</p>
     </div>
     <p class="subtitle">Deine Klinge kreist. Überlebe die Arena.</p>
+    <section id="start-orbitauftrag" class="orbitauftrag-karte" aria-label="Orbitauftrag"></section>
     <button id="start-btn" class="primary">Spiel starten</button>
     <button id="startmaechte-btn" class="secondary">Vorbereitung</button>
     <button id="hangar-btn" class="secondary">Hangar</button>
@@ -72,7 +74,7 @@
   <!-- Pause -->
   <div id="overlay-pause" class="overlay hidden">
     <h2>Pausiert</h2>
-    <div id="pause-goals" aria-label="Laufziele"></div>
+    <section id="pause-orbitauftrag" class="orbitauftrag-karte kompakt" aria-label="Orbitauftrag"></section>
     <button id="resume-btn" class="primary">Weiter</button>
     <button id="codex-btn" class="secondary">Mächte &amp; Ausrüstung</button>
     <button id="info-btn-pause" class="secondary">ℹ Wie funktioniert das Spiel?</button>
@@ -152,6 +154,7 @@
   <div id="overlay-gameover" class="overlay hidden">
     <h2>Besiegt</h2>
     <p id="gameover-stats"></p>
+    <section id="gameover-orbitauftrag" class="orbitauftrag-karte kompakt" aria-label="Orbitauftrag"></section>
     <button id="wieder-btn" class="primary">Nochmal spielen</button>
     <button id="metashop-btn" class="secondary">◆ Werkstatt</button>
     <button id="restart-btn" class="secondary">Hauptmenü</button>
@@ -161,6 +164,7 @@
   <div id="overlay-sieg" class="overlay hidden">
     <h2>Gewonnen</h2>
     <p id="sieg-text"></p>
+    <section id="sieg-orbitauftrag" class="orbitauftrag-karte kompakt" aria-label="Orbitauftrag"></section>
     <button id="sieg-weiter" class="primary">Endlos weiterspielen</button>
     <button id="sieg-einfrieren" class="secondary hidden">Restpunkt verwerfen &amp; Endlos</button>
     <button id="sieg-menue" class="secondary">Hauptmenü</button>
@@ -277,6 +281,6 @@
     </div>
   </div>
 </div>
-<script src="game.js?v=20260816-spar"></script>
+<script src="game.js?v=20260816-orbitauftrag"></script>
 </body>
 </html>
