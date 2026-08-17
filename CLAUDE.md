@@ -970,6 +970,51 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 Änderungen genügen derzeit proportionale Checks: mindestens
 `node --check konzept/game.js` und betroffene Klickwege über GitHub Pages.
 
+## Ideen aus dem Spieltest (17.08.2026)
+
+Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.
+
+### Beide Klingenführungen im Lauf erreichbar machen
+
+Doppelorbit und Präzisionsorbit sind die beiden Fähigkeiten, die Spaß und Können am
+stärksten prägen. Heute schließen sie sich als `exclusiveGroup:'orbit'` dauerhaft aus.
+Idee: darauf hinarbeiten können, im Lauf beide zu bekommen.
+
+Belegt beim Nachmessen: Die Wahl liegt auf **Stufe 0** und fällt damit beim allerersten
+Punkt nach rund **50 Sekunden** — also bevor der Spieler die Auswirkung beurteilen kann,
+und sie sperrt die andere Hälfte für den gesamten Lauf.
+
+Zu bedenken: Die A/B-Weichen sind eine der drei Quellen für Build-Unterschiede zwischen
+Läufen. Wer beide bekommen kann, verliert diese Unterscheidung — es sei denn, die zweite
+Form kostet spürbar (späte Stufe, mehrere Punkte, oder nur als Kronen-Alternative).
+
+### Ton ist schlecht
+
+Nicht nur ungetestet, sondern vom Nutzer als schlecht bewertet. Damit ist es kein
+Prüfpunkt mehr, sondern ein Qualitätsproblem. Lösung offen; Lizenzmusik und ein Ersatz
+der prozeduralen Web-Audio-Töne sind die naheliegenden Wege.
+
+### Baumknoten sollen ihre Wirkung selbst zeigen
+
+Der Baum als Ganzes gefällt, die Knöpfe nicht. Nachgemessen: 13 der 14 Symbole sind
+eindeutig, ein Kollisionsproblem gibt es also nicht. Das Problem ist, dass abstrakte
+Geometrie (`⬡ ◉ ◎ ◒ ✹`) keine Bedeutung trägt — man kann nicht ableiten, was ein Knoten
+tut. Die Aussage steckt allein im Kürzel, und mehrere davon sind kryptisch:
+
+| Knoten | Symbol | Kürzel | Problem |
+|---|---|---|---|
+| Wirbel · A/B | A / B | ZUG / ZONE | sagt nichts über die Wirkung |
+| Orbitresonanz | ◎ | KOMBO +1 | unklar, was kombiniert wird |
+| Wirbelkerbe | ◒ | 4. SWEET: ZUG | Fachbegriff ohne Kontext |
+| Wanderkern | ◉ | MUTATION WANDERT | 16 Zeichen auf einem 54-px-Knopf |
+
+Gut funktionieren dagegen `2 KLINGEN`, `SWEET ×1,45` und `BARRIERE` — sie benennen die
+Wirkung statt des Mechanismus.
+
+Idee: Symbole, die die Wirkung zeigen (Klingenzahl, Zone, Kette), und ein längerer Text
+beim Antippen. Der zweite Teil ist seit dem 17.08. gebaut — der erste Tipp kauft nicht
+mehr, sondern zeigt die vollständige Beschreibung im Detailfenster.
+
 ## Bekannte Baustellen
 
 - Wirkungszahlen der neuen Mechaniken sind Startwerte für die spätere Balancingrunde.
