@@ -1465,6 +1465,10 @@ function updateActiveButtons(){
 }
 
 let treeSelected=null, treeUndo=null;
+// Wann der gewählte Knoten gewählt wurde — sperrt den Zweittipp-Kauf kurz, damit ein
+// schneller Doppeltipp nicht ungewollt kauft.
+let treeSelectedAt=0;
+const TREE_ZWEITTIPP_MS=250;
 const REGULAR_POINT_CAP=15;
 const CROWN_SPINE=['blade','mutation','partner','char','master','synergy','evolution','resonance','crown'];
 function crownSpineMissingAfter(node,nodes){
@@ -1529,10 +1533,23 @@ function renderSkillTree(){
     b.innerHTML='<span class="orbit-icon">'+(status.art==='bought'&&node.kind!=='root'?'✓':node.icon||'✦')+'</span>'+
       (node.short?'<span class="orbit-short">'+node.short+'</span>':'')+
       '<span class="orbit-label">'+node.name+'</span>'+((node.maxRank||1)>1?'<span class="rank-badge">'+treeRang(node.id)+'/'+node.maxRank+'</span>':'');
+    /* Der ERSTE Tipp kauft nie — er wählt nur aus und zeigt die Beschreibung unten.
+       Vorher kaufte ein Tipp auf einen bereiten Knoten sofort; damit konnte man sich
+       nicht informieren, und der vorhandene „Freischalten"-Knopf war unerreichbar.
+       Seit der Pfad 19 Plätze bei 15 Punkten hat, kostet ein Fehlgriff eine echte
+       Entscheidung — und rückgängig geht nur der letzte Kauf.
+       Gekauft wird jetzt auf zwei Wegen: über den Knopf im Detailfenster oder durch
+       erneutes Antippen desselben Knotens. Die kurze Sperre verhindert, dass ein
+       hastiger Doppeltipp den zweiten Schritt gleich mitnimmt. */
     b.onclick=()=>{
-      treeSelected=node.id;
-      if(treeStatus(node,nodes).art==='ready') kaufenTreeKnoten(node.id);
-      else renderSkillTree();
+      const schonGewaehlt = treeSelected===node.id;
+      const entsperrt = Date.now()-treeSelectedAt >= TREE_ZWEITTIPP_MS;
+      if(schonGewaehlt && entsperrt && treeStatus(node,nodes).art==='ready'){
+        kaufenTreeKnoten(node.id);
+        return;
+      }
+      if(!schonGewaehlt){ treeSelected=node.id; treeSelectedAt=Date.now(); }
+      renderSkillTree();
     };
     treeBranches.appendChild(b);
   }
@@ -1545,7 +1562,9 @@ function renderTreeDetail(node,nodes){
   const rangText=max>1?'Rang '+rang+' / '+max:'Mechanik';
   const actions=(status.art==='ready'?'<button id="tree-buy">'+(rang?'Verbessern':'Freischalten')+'</button>':'<span class="detail-state">'+rangText+'</span>')+
     (treeUndo?'<button id="tree-undo" class="tree-undo">↶ Letzten Punkt</button>':'');
-  box.innerHTML='<span class="detail-icon '+(node.kind||'buff')+'">'+(node.icon||'✦')+'</span><span><b>'+node.name+'</b><small>'+node.desc+'</small><em>'+status.text+'</em></span>'+
+  // Der zweite Kaufweg (nochmal auf den Knoten tippen) wäre sonst nicht auffindbar
+  const zweitTipp = status.art==='ready' ? '<em class="detail-tipp">oder den Knoten nochmal antippen</em>' : '';
+  box.innerHTML='<span class="detail-icon '+(node.kind||'buff')+'">'+(node.icon||'✦')+'</span><span><b>'+node.name+'</b><small>'+node.desc+'</small><em>'+status.text+'</em>'+zweitTipp+'</span>'+
     '<span class="tree-actions">'+actions+'</span>';
   const buy=document.getElementById('tree-buy'); if(buy) buy.onclick=()=>kaufenTreeKnoten(node.id);
   const undo=document.getElementById('tree-undo'); if(undo) undo.onclick=rueckgaengigTreeKnoten;
@@ -1607,6 +1626,9 @@ function openSkillTree(){
   if((state!=='playing'&&state!=='sieg') || visibleTreePoints()<1) return;
   treeReturnState=state;
   if(state==='sieg') document.getElementById('overlay-sieg').classList.add('hidden');
+  // Auswahl zurücksetzen: Sonst wäre der zuletzt betrachtete Knoten beim erneuten
+  // Öffnen noch gewählt, und der erste Tipp darauf würde sofort kaufen.
+  treeSelected=null; treeSelectedAt=0;
   state='tree'; setMusicLevel(); overlayTree.classList.remove('hidden'); updateTreeButton(); renderSkillTree();
 }
 let combatResumeUntil=0, combatResumeStep='';
