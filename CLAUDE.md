@@ -77,11 +77,11 @@ Er benötigt kein horizontales Scrollen, kein Zoomen und auf üblichen Mobilger�
 kein vertikales Scrollen. Drei Knoten sind exklusive A/B-Wahlen, drei Knoten besitzen
 jeweils drei große Rangsegmente; Klingen- und Machtmodul besitzen je zwei Ränge.
 
-Der Pfad bietet 19 Investitionen bei höchstens 15 regulären Punkten:
+Der Pfad bietet 18 Investitionen bei höchstens 15 regulären Punkten:
 
 1. Klingenführung A/B – 1 Punkt;
 2. Hauptmacht A/B – 1 Punkt;
-3. Partnerpassiv – 3 mechanische Ränge;
+3. Partnerpassiv – 2 mechanische Ränge;
 4. Klingenmodul – 2 mechanische Ränge;
 5. Charakterhaltung A/B – 1 Punkt;
 6. Machtmeisterschaft – 3 mechanische Ränge;
@@ -163,11 +163,18 @@ Präzisionsorbit die Spitzenleistung.
 
 Aktiv 2 bleibt über den Lauf stabil und erhält keinen eigenen Seitenbaum.
 
-- Orbitresonanz Rang 1: Jeder fünfte Sweet Hit verkürzt beide Mächte moderat.
-- Rang 2: fokussierte Hauptmacht hinterlässt ein kleines machtbezogenes Klingenecho.
-- Rang 3: Aktiv 2 markiert drei Sekunden eine Kopplung; die folgende Hauptmacht
-  verstärkt ihre Evolution. Ohne Aktiv 2 entsteht die Kopplung nach drei Sweet Hits
-  in Folge, damit Ein-Slot-Spieler keinen nutzlosen Rang erhalten.
+Umgesetzt seit 17.08.2026 — alle drei Ränge sind mechanisch, keiner ist ein Prozentwert:
+
+- Rang 1: Kopplung. Ein Machteinsatz verkürzt die andere Macht spürbar. Ohne zweiten
+  Slot verstärkt er stattdessen 1300 ms lang den Klingenschaden.
+- Rang 2: Ein **fokussierter** Einsatz macht die andere Macht sofort bereit; ohne
+  zweiten Slot hält der Klingenbonus 3000 statt 1300 ms.
+- Rang 3: Ein fokussierter Einsatz lässt vier Sekunden lang eine Zusatzklinge
+  mitkreisen. Sie läuft über `effektiveKlingen()`, damit die Sweet-Zone korrekt
+  mitschrumpft — die Klinge ist ein Zugewinn mit Preis, kein reiner Bonus.
+
+Vorher gab Rang 1 lediglich −6 % Abklingzeit und war zugleich Pflichtkauf für die
+Krone; die einzige echte Mechanik saß auf Rang 3.
 
 Aktiv 2 darf höchstens etwa ein Viertel der Buildstärke ausmachen.
 
@@ -318,13 +325,16 @@ Diese Architektur bleibt. Korrigiert wird nur, dass derzeit 15 erwartete Punkte 
 - Ein Lauf bis zum Sieg vergibt höchstens 15 reguläre Levelpunkte.
 - `Startimpuls` ergänzt weiterhin einen 16. Startpunkt und den zweiten Kronenrang
   `Kernreserve`; der Abstand zwischen Angebot und Budget bleibt dadurch gleich.
-- Der reguläre Pfad bietet 19 Investitionen, mit `Kernreserve` 20.
-- Ein fertiger Welle-30-Build lässt damit stets vier Vertiefungen aus.
+- Der reguläre Pfad bietet 18 Investitionen, mit `Kernreserve` 19.
+- Ein fertiger Welle-30-Build lässt damit stets drei Vertiefungen aus.
 - Der Baum erhält nur zwei zusätzliche kompakte Knoten: `Klingenmodul` und
   `Machtmodul`, jeweils mit zwei mechanischen Rängen. Ihre konkrete Wirkung passt
   sich an gewählte Klingenform beziehungsweise Hauptmacht an.
-- Partner, Machtmeisterschaft und Orbitresonanz öffnen den Folgepfad bereits mit
-  Rang 1. Rang 2 und 3 werden freiwillige, deutlich sichtbare Vertiefungen.
+- Machtmeisterschaft und Orbitresonanz öffnen den Folgepfad bereits mit Rang 1;
+  ihre weiteren Ränge sind freiwillige, deutlich sichtbare Vertiefungen. Der Partner
+  hat seit dem 17.08. nur noch zwei Ränge: Rang 1 aktiviert die Passive, Rang 2 löst
+  ihren mechanischen Sprung auf Stufe 4 aus (etwa den dritten Splitter). Vorher endete
+  er auf Rang 3 bei Stufe 3 — der Sprung war dadurch nie erreichbar.
 - Keine der neuen Investitionen ist ein bloßer Prozentfüller. Jeder Rang verändert
   innerhalb von 30 Sekunden sichtbar Verhalten, Rhythmus oder Trefferbild.
 
@@ -332,7 +342,7 @@ Kosten eines vollständig angebotenen Pfads:
 
 1. Klingenführung A/B – 1;
 2. Hauptmacht-Mutation A/B – 1;
-3. Partnerpassiv – 3;
+3. Partnerpassiv – 2;
 4. Klingenmodul – 2;
 5. Charakterhaltung A/B – 1;
 6. Machtmeisterschaft – 3;
@@ -342,7 +352,7 @@ Kosten eines vollständig angebotenen Pfads:
 10. Orbitresonanz – 3;
 11. Orbitkrone – 1.
 
-Summe: 19 mögliche Investitionen bei 15 regulären Punkten.
+Summe: 18 mögliche Investitionen bei 15 regulären Punkten.
 
 ### Garantierte Orbitkrone
 
@@ -690,7 +700,7 @@ statt sie zu erraten.
 
 ## Umgesetzter Stand vom 13.08.2026
 
-- Orbitpfad v2 besitzt 14 sichtbare reguläre Knoten, 19 mögliche Investitionen und
+- Orbitpfad v2 besitzt 14 sichtbare reguläre Knoten, 18 mögliche Investitionen und
   maximal 15 reguläre Levelpunkte. `Startimpuls` bleibt ein separater Punkt 16.
 - Partner, Haltung, Meisterschaft, Synergie, Evolution und Resonanz öffnen den
   Hauptpfad jeweils ab Rang 1. Ein dynamischer Budgetschutz reserviert nur dann die
