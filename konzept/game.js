@@ -453,7 +453,7 @@ function treeNodes(){
     {id:'blade_single',stage:0,col:5,kind:'major',name:'Präzisionsorbit',short:'SWEET ×1,45',desc:'1 Klinge, Länge ×1,20, Sweet-Bogen ×0,68; nur Sweet durchschlägt Panzer.',icon:'┃',exclusiveGroup:'orbit',spine:'blade',apply:()=>{treeFlags.singularorbit=true;}},
     {id:power+'_a',stage:1,col:3,kind:'major',name:ABILITIES[id].name+' · A',short:ACTIVE_MOD_SHORT[id][0],desc:ACTIVE_MODS[id][0],icon:'A',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='a'},
     {id:power+'_b',stage:1,col:5,kind:'major',name:ABILITIES[id].name+' · B',short:ACTIVE_MOD_SHORT[id][1],desc:ACTIVE_MODS[id][1],icon:'B',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='b'},
-    {id:partner,stage:2,col:3,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'RANG +1',desc:ABILITIES[evo.req].desc+'; Rang 1 öffnet den Pfad, Rang 2/3 vertiefen die Mechanik.',icon:'✦',maxRank:3,reqAny:[power+'_a',power+'_b'],spine:'partner',apply:rank=>runAbilities[evo.req]=rank},
+    {id:partner,stage:2,col:3,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'SPRUNG',desc:ABILITIES[evo.req].desc+'; Rang 1 aktiviert die Passive, Rang 2: '+STUFEN[evo.req].sprung+'.',icon:'✦',maxRank:2,reqAny:[power+'_a',power+'_b'],spine:'partner',apply:rank=>runAbilities[evo.req]=(rank>=2?SPRUNG_STUFE:1)},
     {id:'blade_module',stage:2,col:5,kind:'buff',name:bm[0],short:bm[1],desc:bm[2],icon:'◒',maxRank:2,reqAny:[power+'_a',power+'_b'],apply:rank=>treeFlags.bladeModule=rank},
     {id:'char_route_a',stage:3,col:3,kind:'major',name:figur().id==='held'?'Wächter':'Verschlinger',short:figur().id==='held'?'BARRIERE':'LEBENSRAUB',desc:figur().id==='held'?'Fokus: 8% Barriere, 150 px Slow 1200 ms.':'Besiegte Gegner heilen einen kleinen Teil deines Lebens.',icon:figur().id==='held'?'◈':'◆',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.waechter=true;waechterLadung=false;}else treeFlags.leerenHeilung=.006;}},
     {id:'char_route_b',stage:3,col:5,kind:'major',name:figur().id==='held'?'Sonnenjäger':'Abgrund',short:figur().id==='held'?'3 SWEET':'RISIKO-DMG',desc:figur().id==='held'?'3 Sweet-Pulse starten 3 s Sonnentempo ×1,22.':'Fehlendes Leben steigert den Sweet-Spot-Schaden stark.',icon:figur().id==='held'?'☀':'▼',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.sonnenjaeger=true;sonnenSerie=0;sonnenTempoUntil=0;}else treeFlags.leerenRisikoBonus=.28;}},
@@ -461,7 +461,7 @@ function treeNodes(){
     {id:'power_module',stage:4,col:6,kind:'buff',name:pm[0],short:pm[1],desc:pm[2],icon:'◉',maxRank:2,reqAny:['char_route_a','char_route_b'],apply:rank=>treeFlags.powerModule=rank},
     {id:'blade_synergy',stage:5,col:3,kind:'major',name:figur().id==='held'?(treeRang('char_route_a')?'Leuchtfeuer':'Sonnenorbit'):(treeRang('char_route_a')?'Satter Abgrund':'Ereignishorizont'),short:figur().id==='held'?(treeRang('char_route_a')?'LICHTPFAD':'SONNENBAHN'):(treeRang('char_route_a')?'HEIL-KOMBO':'3 KLINGEN'),desc:figur().id==='held'?(treeRang('char_route_a')?'Barriere: kurze Lichtspuren bremsen Gegner.':'Fokussierter Wirbel setzt 3 Sonnenpulse.'): (treeRang('char_route_a')?'Klingen-Kills heilen stärker, solange du angeschlagen bist.':'Unter 35 % Leben kreisen drei Klingen um dich.'),icon:'✦',reqAll:['power_master'],reqRanks:{power_master:1},spine:'synergy',apply:()=>{if(figur().id==='held'){if(treeRang('char_route_a'))treeFlags.leuchtfeuer=true;else treeFlags.sonnenorbit=true;}else{if(treeRang('char_route_a'))treeFlags.satterAbgrund=true;else treeFlags.ereignishorizont=true;}}},
     {id:'evo_'+evoId,stage:5,col:5,kind:'evo',power:id,name:evo.name,short:'SUPER-MACHT',desc:evo.desc,icon:'✹',reqAll:['power_master'],reqRanks:{power_master:1,[partner]:1},spine:'evolution',evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}},
-    {id:'orbit_resonance',stage:6,col:4,kind:'buff',name:'Orbitresonanz',short:'KOMBO +1',desc:'Rang 1 öffnet die Krone; weitere Ränge verbinden Klinge und Mächte sichtbar.',icon:'◎',maxRank:3,reqAll:['blade_synergy','evo_'+evoId],spine:'resonance',apply:rank=>{treeFlags.aktiveCdMult=Math.pow(.94,rank);treeFlags.fokusRabatt=rank;if(rank>=2)treeFlags.fokusMachtBonus=.15;if(rank>=3)treeFlags.orbitResonanz=true;}},
+    {id:'orbit_resonance',stage:6,col:4,kind:'buff',name:'Orbitresonanz',short:'KOPPLUNG',desc:'Rang 1 koppelt Klinge und Mächte: ein Machteinsatz kürzt die andere Macht. Rang 2: ein fokussierter Einsatz macht sie sofort bereit. Rang 3: ein fokussierter Einsatz lässt 4 s eine Zusatzklinge mitkreisen.',icon:'◎',maxRank:3,reqAll:['blade_synergy','evo_'+evoId],spine:'resonance',apply:rank=>{treeFlags.orbitResonanz=true;if(rank>=2)treeFlags.resonanzSofort=true;if(rank>=3)treeFlags.resonanzKlinge=true;}},
     {id:'orbit_crown',stage:7,col:4,kind:'capstone',name:'Orbitkrone',short:treeRang('orbit_crown')?'KERNRESERVE':'FINALE',desc:treeRang('orbit_crown')?'Kernreserve gibt +10 % maximales Leben und vollen Fokus bei jedem Bossbeginn.':(treeRang('blade_multi')?'Machtechos wechseln sauber zwischen 2 Zielklingen.':'3 Sweet-Pulse verkürzen Aktiv 1 um 1600 ms.'),icon:'★',maxRank:metaLevel('startimpuls')?2:1,reqAll:['orbit_resonance','evo_'+evoId],reqRanks:{orbit_resonance:1},minInvested:14,spine:'crown',apply:rank=>{if(rank===1){treeFlags.orbitKrone=true;treeFlags.kronenform=treeRang('blade_multi')?'dopp':'praez';praezSerie=0;kronenZielklinge=0;kronenMachtId='';kronenMachtUntil=0;}else{const vorher=player.maxHp;treeFlags.kernreserve=true;player.maxHp=Math.round(player.maxHp*1.1);player.hp=Math.min(player.maxHp,player.hp+player.maxHp-vorher);}}},
   ];
   if(regularTreeFrozen){
@@ -1110,7 +1110,7 @@ function tutorialSweetSpotTreffer(){
 function bladeLength(){ return CONFIG.bladeBaseLen * (1 + bonuses.range) * figur().reichweite * (treeFlags.singularorbit?1.20:1); }
 function effektiveKlingen(){
   const basis=treeFlags.ereignishorizont && player.hp/player.maxHp<.35 ? Math.max(3,bonuses.blades) : bonuses.blades;
-  return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0);
+  return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0)+(treeFlags.resonanzKlingeUntil>Date.now()?1:0);
 }
 // Winkel aller aktiven Klingen (Doppelklinge = zweite Klinge gegenüber)
 function bladeAngles(){
@@ -1172,9 +1172,9 @@ function resetMissedOrbit(){
    Balken, der sich füllt, statt einer Prozentrechnung. */
 let fokus=0, fokusBereit=false, fokusAktiv=false;
 // Der Bonus gilt genau für den einen Einsatz und wird dabei aufgebraucht
-function fokusFaktor(){ return fokusAktiv? CONFIG.fokusBonus+(treeFlags.fokusMachtBonus||0) : 1; }
+function fokusFaktor(){ return fokusAktiv? CONFIG.fokusBonus : 1; }
 // Wie viele Sweet-Spot-Treffer die Leiste braucht — der Charakter verschiebt das
-function fokusZiel(){ return Math.max(4, Math.round(CONFIG.fokusZiel*figur().fokusZiel)-(treeFlags.fokusRabatt||0)); }
+function fokusZiel(){ return Math.max(4, Math.round(CONFIG.fokusZiel*figur().fokusZiel)); }
 function fokusVoll(quelle){
   if(fokusBereit) return false;
   fokus=fokusZiel(); fokusBereit=true;
@@ -1433,7 +1433,7 @@ function abilUnlocked(id){ return isAvailable('ability', id); }
 function activeCdMax(id){
   if(!id) return 0;
   const basis=id==='bombe'? CONFIG.bombeCooldown : id==='nova'? CONFIG.novaCooldown : id==='sog'? CONFIG.sog.cooldown : id==='stoss'? CONFIG.stossCooldown : CONFIG.wirbelCooldown;
-  return basis*(treeFlags.aktiveCdMult||1)*(treeFlags['powerCd_'+id]||1);
+  return basis*(treeFlags['powerCd_'+id]||1);
 }
 const ACTIVE_COLORS={ wirbel:['#ffb340','255,179,64'], stoss:['#6ec8ff','110,200,255'], bombe:['#ff7a5a','255,122,90'], nova:['#c77dff','199,125,255'], sog:['#4de0a0','77,224,160'] };
 // Aktiven-Buttons passend zu den gewählten Slots neu aufbauen (Icon, Name, Farbe)
@@ -2756,9 +2756,13 @@ function doActive(slot){
   }
   if(treeFlags.kronenform==='dopp'){ kronenMachtId=id; kronenMachtUntil=Date.now()+4000; }
   if(treeFlags.orbitResonanz){
+    const sofort=treeFlags.resonanzSofort && fokusAktiv;
     const anderes=slot===1?activeSlot2:activeSlot1;
-    if(anderes) activeCd[anderes]=Math.max(0,(activeCd[anderes]||0)*.78);
-    else treeFlags.resonanzUntil=Date.now()+1300;
+    if(anderes){
+      if(sofort) activeCd[anderes]=0;
+      else activeCd[anderes]=Math.max(0,(activeCd[anderes]||0)*.78);
+    } else treeFlags.resonanzUntil=Date.now()+(sofort?3000:1300);
+    if(treeFlags.resonanzKlinge && fokusAktiv) treeFlags.resonanzKlingeUntil=Date.now()+4000;
   }
   fokusAktiv=false;
 }
