@@ -90,6 +90,7 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
   -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 0);mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 0);
   filter:drop-shadow(0 0 5px rgba(199,125,255,.7));transition:background .1s linear}
 .focus-value{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font-size:8px;font-weight:850;letter-spacing:.08em;color:#dcb5ff;white-space:nowrap;text-shadow:0 1px 3px #05070d}
+.crown-series{position:absolute;left:50%;top:7px;transform:translateX(-50%);font-size:8px;font-weight:900;letter-spacing:1px;color:#ffd257;white-space:nowrap;text-shadow:0 0 5px #8a5a00;pointer-events:none}
 .special-btn.focus-ready{border-color:#e8d1ff;box-shadow:0 0 0 3px rgba(199,125,255,.28),0 0 28px rgba(199,125,255,.65)}
 .special-btn.focus-ready .focus-ring{background:#f2e5ff;filter:drop-shadow(0 0 8px #c77dff)}
 .special-btn.focus-ready .focus-value{color:#fff}

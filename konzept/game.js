@@ -339,7 +339,7 @@ const MAX_ABIL_LEVEL=5;
    gesenkt: Stufe 5 liegt damit bei +40 % statt +48 %, der Sprung kommt obendrauf. */
 const SPRUNG_STUFE=4;
 const ACTIVE_MODS={
-  wirbel:['Zieht Gegner während des Wirbels heran','Hinterlässt kurz eine rotierende Schadenszone'],
+  wirbel:['A: Positioniert bis 70 px an die Klingenbahn, kein Zusatzschaden','B: Ortsgebundener Nachlauf, 1550 ms, 12 % Snapshot-Schaden'],
   stoss:['Weggestoßene Gegner verursachen Kollisionsschaden','Hinterlässt ein verlangsamendes Feld'],
   bombe:['Haftet automatisch am nächsten Gegner','Erneutes Drücken zündet die Bombe vorzeitig'],
   nova:['Treffer laden etwas Barriere','Gezielte Energiebögen treffen nahe Gegner'],
@@ -379,7 +379,7 @@ function naechsteStufeText(id, lv){
    deterministisch: im Codex nachlesbar, man kann darauf hinspielen. */
 const EVOLUTIONS={
   sturmwirbel:   { base:'wirbel', req:'splitter',    name:'Sturmwirbel',
-                   desc:'Der Wirbel reißt deine Splitter mit und schleudert sie nach außen' },
+                   desc:'Zwei gegenläufige Ringe; danach 8 Radialprojektile mit 35 % Snapshot-Schaden' },
   kettengewitter:{ base:'stoss',  req:'kettenblitz', name:'Kettengewitter',
                    desc:'Die Schockwelle springt als Blitz auf alle Getroffenen über' },
   streubombe:    { base:'bombe',  req:'konterstoss', name:'Streubombe',
@@ -449,20 +449,20 @@ function treeNodes(){
   const evoId=pair[0], evo=pair[1], power='power_'+id, partner='partner_'+id;
   const bm=moduleText('blade',id), pm=moduleText('power',id);
   const n=[
-    {id:'blade_multi',stage:0,col:3,kind:'major',name:'Doppelorbit',short:'2 KLINGEN',desc:'Zwei gegenüberliegende Klingen geben sichere Rundum-Kontrolle.',icon:'Ⅱ',exclusiveGroup:'orbit',spine:'blade',apply:()=>{bonuses.blades=2;earnBadge('doppel');}},
-    {id:'blade_single',stage:0,col:5,kind:'major',name:'Präzisionsorbit',short:'ZONE +45%',desc:'Eine schmalere Trefferzone verursacht dort +45 % Schaden und bricht Panzerung.',icon:'┃',exclusiveGroup:'orbit',spine:'blade',apply:()=>{treeFlags.singularorbit=true;treeFlags.sweetBonus=.45;treeFlags.panzerbrecher=true;}},
+    {id:'blade_multi',stage:0,col:3,kind:'major',name:'Doppelorbit',short:'2 KLINGEN',desc:'2 Klingen π-versetzt: Sweet je ×0,72, Zone ×0,75, Schub 16 px.',icon:'Ⅱ',exclusiveGroup:'orbit',spine:'blade',apply:()=>{bonuses.blades=2;treeFlags.doppelorbit=true;earnBadge('doppel');}},
+    {id:'blade_single',stage:0,col:5,kind:'major',name:'Präzisionsorbit',short:'SWEET ×1,45',desc:'1 Klinge, Länge ×1,20, Sweet-Bogen ×0,68; nur Sweet durchschlägt Panzer.',icon:'┃',exclusiveGroup:'orbit',spine:'blade',apply:()=>{treeFlags.singularorbit=true;}},
     {id:power+'_a',stage:1,col:3,kind:'major',name:ABILITIES[id].name+' · A',short:ACTIVE_MOD_SHORT[id][0],desc:ACTIVE_MODS[id][0],icon:'A',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='a'},
     {id:power+'_b',stage:1,col:5,kind:'major',name:ABILITIES[id].name+' · B',short:ACTIVE_MOD_SHORT[id][1],desc:ACTIVE_MODS[id][1],icon:'B',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='b'},
     {id:partner,stage:2,col:3,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'RANG +1',desc:ABILITIES[evo.req].desc+'; Rang 1 öffnet den Pfad, Rang 2/3 vertiefen die Mechanik.',icon:'✦',maxRank:3,reqAny:[power+'_a',power+'_b'],spine:'partner',apply:rank=>runAbilities[evo.req]=rank},
     {id:'blade_module',stage:2,col:5,kind:'buff',name:bm[0],short:bm[1],desc:bm[2],icon:'◒',maxRank:2,reqAny:[power+'_a',power+'_b'],apply:rank=>treeFlags.bladeModule=rank},
-    {id:'char_route_a',stage:3,col:3,kind:'major',name:figur().id==='held'?'Wächter':'Verschlinger',short:figur().id==='held'?'BARRIERE':'LEBENSRAUB',desc:figur().id==='held'?'Fokus erzeugt mehr Barriere und stoppt nahe Gegner.':'Besiegte Gegner heilen einen kleinen Teil deines Lebens.',icon:figur().id==='held'?'◈':'◆',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.waechter=true;treeFlags.fokusBarriereBonus=.08;}else treeFlags.leerenHeilung=.006;}},
-    {id:'char_route_b',stage:3,col:5,kind:'major',name:figur().id==='held'?'Sonnenjäger':'Abgrund',short:figur().id==='held'?'BEWEGUNGS-DMG':'RISIKO-DMG',desc:figur().id==='held'?'Bewegung verstärkt präzise Klingentreffer zusätzlich.':'Fehlendes Leben steigert den Sweet-Spot-Schaden stark.',icon:figur().id==='held'?'☀':'▼',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held')treeFlags.duellantBonus=.18;else treeFlags.leerenRisikoBonus=.28;}},
+    {id:'char_route_a',stage:3,col:3,kind:'major',name:figur().id==='held'?'Wächter':'Verschlinger',short:figur().id==='held'?'BARRIERE':'LEBENSRAUB',desc:figur().id==='held'?'Fokus: 8% Barriere, 150 px Slow 1200 ms.':'Besiegte Gegner heilen einen kleinen Teil deines Lebens.',icon:figur().id==='held'?'◈':'◆',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.waechter=true;waechterLadung=false;}else treeFlags.leerenHeilung=.006;}},
+    {id:'char_route_b',stage:3,col:5,kind:'major',name:figur().id==='held'?'Sonnenjäger':'Abgrund',short:figur().id==='held'?'3 SWEET':'RISIKO-DMG',desc:figur().id==='held'?'3 Sweet-Pulse starten 3 s Sonnentempo ×1,22.':'Fehlendes Leben steigert den Sweet-Spot-Schaden stark.',icon:figur().id==='held'?'☀':'▼',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.sonnenjaeger=true;sonnenSerie=0;sonnenTempoUntil=0;}else treeFlags.leerenRisikoBonus=.28;}},
     {id:'power_master',stage:4,col:4,kind:'buff',name:'Machtmeisterschaft',short:'MACHT +1',desc:'Rang 1 öffnet Super-Macht und Synergie; Rang 2/3 vertiefen die Mechanik.',icon:'⬡',maxRank:3,reqAny:['char_route_a','char_route_b'],spine:'master',apply:rank=>{steigereMacht(id,rank+1);treeFlags.powerMaster=rank;}},
     {id:'power_module',stage:4,col:6,kind:'buff',name:pm[0],short:pm[1],desc:pm[2],icon:'◉',maxRank:2,reqAny:['char_route_a','char_route_b'],apply:rank=>treeFlags.powerModule=rank},
-    {id:'blade_synergy',stage:5,col:3,kind:'major',name:figur().id==='held'?(treeRang('char_route_a')?'Leuchtfeuer':'Sonnenorbit'):(treeRang('char_route_a')?'Satter Abgrund':'Ereignishorizont'),short:figur().id==='held'?(treeRang('char_route_a')?'FOKUS-SCHILD':'3. TREFFER'):(treeRang('char_route_a')?'HEIL-KOMBO':'3 KLINGEN'),desc:figur().id==='held'?(treeRang('char_route_a')?'Volle Fokusladung erzeugt eine besonders starke Barriere.':'Jeder dritte Zonentreffer schlägt ein zweites Mal zu.'):(treeRang('char_route_a')?'Klingen-Kills heilen stärker, solange du angeschlagen bist.':'Unter 35 % Leben kreisen drei Klingen um dich.'),icon:'✦',reqAll:['power_master'],reqRanks:{power_master:1},spine:'synergy',apply:()=>{if(figur().id==='held'){if(treeRang('char_route_a'))treeFlags.leuchtfeuer=true;else treeFlags.klingentakt=true;}else{if(treeRang('char_route_a'))treeFlags.satterAbgrund=true;else treeFlags.ereignishorizont=true;}}},
+    {id:'blade_synergy',stage:5,col:3,kind:'major',name:figur().id==='held'?(treeRang('char_route_a')?'Leuchtfeuer':'Sonnenorbit'):(treeRang('char_route_a')?'Satter Abgrund':'Ereignishorizont'),short:figur().id==='held'?(treeRang('char_route_a')?'LICHTPFAD':'SONNENBAHN'):(treeRang('char_route_a')?'HEIL-KOMBO':'3 KLINGEN'),desc:figur().id==='held'?(treeRang('char_route_a')?'Barriere: kurze Lichtspuren bremsen Gegner.':'Fokussierter Wirbel setzt 3 Sonnenpulse.'): (treeRang('char_route_a')?'Klingen-Kills heilen stärker, solange du angeschlagen bist.':'Unter 35 % Leben kreisen drei Klingen um dich.'),icon:'✦',reqAll:['power_master'],reqRanks:{power_master:1},spine:'synergy',apply:()=>{if(figur().id==='held'){if(treeRang('char_route_a'))treeFlags.leuchtfeuer=true;else treeFlags.sonnenorbit=true;}else{if(treeRang('char_route_a'))treeFlags.satterAbgrund=true;else treeFlags.ereignishorizont=true;}}},
     {id:'evo_'+evoId,stage:5,col:5,kind:'evo',power:id,name:evo.name,short:'SUPER-MACHT',desc:evo.desc,icon:'✹',reqAll:['power_master'],reqRanks:{power_master:1,[partner]:1},spine:'evolution',evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}},
     {id:'orbit_resonance',stage:6,col:4,kind:'buff',name:'Orbitresonanz',short:'KOMBO +1',desc:'Rang 1 öffnet die Krone; weitere Ränge verbinden Klinge und Mächte sichtbar.',icon:'◎',maxRank:3,reqAll:['blade_synergy','evo_'+evoId],spine:'resonance',apply:rank=>{treeFlags.aktiveCdMult=Math.pow(.94,rank);treeFlags.fokusRabatt=rank;if(rank>=2)treeFlags.fokusMachtBonus=.15;if(rank>=3)treeFlags.orbitResonanz=true;}},
-    {id:'orbit_crown',stage:7,col:4,kind:'capstone',name:'Orbitkrone',short:treeRang('orbit_crown')?'KERNRESERVE':'FINALE',desc:treeRang('orbit_crown')?'Kernreserve gibt +10 % maximales Leben und vollen Fokus bei jedem Bossbeginn.':(treeRang('blade_multi')?'Drei Klingen vollenden deinen Rundum-Orbit.':'Zonentreffer laden Fokus doppelt und entfesseln die Hauptmacht.'),icon:'★',maxRank:metaLevel('startimpuls')?2:1,reqAll:['orbit_resonance','evo_'+evoId],reqRanks:{orbit_resonance:1},minInvested:14,spine:'crown',apply:rank=>{if(rank===1){if(treeRang('blade_multi'))bonuses.blades=3;else treeFlags.perfekterOrbit=true;treeFlags.orbitKrone=true;}else{const vorher=player.maxHp;treeFlags.kernreserve=true;player.maxHp=Math.round(player.maxHp*1.1);player.hp=Math.min(player.maxHp,player.hp+player.maxHp-vorher);}}},
+    {id:'orbit_crown',stage:7,col:4,kind:'capstone',name:'Orbitkrone',short:treeRang('orbit_crown')?'KERNRESERVE':'FINALE',desc:treeRang('orbit_crown')?'Kernreserve gibt +10 % maximales Leben und vollen Fokus bei jedem Bossbeginn.':(treeRang('blade_multi')?'Machtechos wechseln sauber zwischen 2 Zielklingen.':'3 Sweet-Pulse verkürzen Aktiv 1 um 1600 ms.'),icon:'★',maxRank:metaLevel('startimpuls')?2:1,reqAll:['orbit_resonance','evo_'+evoId],reqRanks:{orbit_resonance:1},minInvested:14,spine:'crown',apply:rank=>{if(rank===1){treeFlags.orbitKrone=true;treeFlags.kronenform=treeRang('blade_multi')?'dopp':'praez';praezSerie=0;kronenZielklinge=0;kronenMachtId='';kronenMachtUntil=0;}else{const vorher=player.maxHp;treeFlags.kernreserve=true;player.maxHp=Math.round(player.maxHp*1.1);player.hp=Math.min(player.maxHp,player.hp+player.maxHp-vorher);}}},
   ];
   if(regularTreeFrozen){
     n.push(
@@ -822,6 +822,10 @@ loadSave();
 let state='menu', raf=0, lastTime=0;
 let player, enemies=[], stars=[], particles=[], floats=[], shots=[], orbs=[];
 let swordAngle=0, spinHitTimer=0;
+// Gemeinsamer Orbitimpuls: genau ein Impuls pro vollständigem Winkelumlauf.
+let orbitRoundSweet=false, orbitRoundLight=false, orbitRoundDistance=0, orbitLastX=0, orbitLastY=0;
+let waechterLadung=false, sonnenSerie=0, sonnenTempoUntil=0, praezSerie=0;
+let kronenMachtId='', kronenMachtUntil=0, kronenZielklinge=0;
 let wave=1, waveEnemiesToSpawn=0, waveSpawned=0, spawnTimer=0, killCount=0, hpKillCount=0;
 let shake=0, activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}, phaserCd=0;
 let dmgBoostUntil=0, shieldUntil=0, moveBoostUntil=0;
@@ -995,6 +999,9 @@ function perfBericht(){
       sparmodus, effekte:fxAn, messlauf, ebenenAus:ebenenAus.length? ebenenAus : 'keine' }
   };
 }
+function orbitSliceState(){
+  return {fokus:Math.round(fokus*100)/100,fokusBereit,lichtbundDistanz:Math.round(orbitRoundDistance),lichtbundBereit:orbitRoundLight,waechterLadung,sonnenSerie,sonnenTempoRest:Math.max(0,sonnenTempoUntil-Date.now()),praezSerie,kronenZielklinge,active1Cd:Math.round(activeCd[activeSlot1]||0),form:treeFlags.kronenform||(treeFlags.singularorbit?'praez':treeFlags.doppelorbit?'dopp':'basis'),felder:powerFields.length,eigeneSchuesse:pShots.length,stormSchuesse:pShots.filter(s=>s.stormWirbel).length,debug:{orbitPulse:treeFlags.debugOrbitPulse||0,lichtbund:treeFlags.debugLichtbund||0,praezReduktionen:treeFlags.debugPraezReduktionen||0,praezCdGesamt:Math.round(treeFlags.debugPraezCdGesamt||0),kronenEchos:treeFlags.debugKronenEchos||0,wirbelBPulse:treeFlags.debugWirbelBPulse||0,sturmSchuesse:treeFlags.debugSturmSchuesse||0}};
+}
 if(PERF_DEBUG && typeof window!=='undefined'){
   window.perfDump=()=>{ const b=perfBericht(); console.log(JSON.stringify(b,null,2)); return b; };
   window.perfReset=perfReset;
@@ -1012,6 +1019,7 @@ if(PERF_DEBUG && typeof window!=='undefined'){
     zeichenEbenen[k]=!zeichenEbenen[k];
     perfReset();                    // nach dem Umschalten zählt nur noch der neue Zustand
   });
+  window.orbitSliceDump=orbitSliceState;
 }
 let counterCd=0, counterFx=0, shards=[]; // Konterstoß-Cooldown/Effekt, kreisende Splitter
 // Nur EINE Macht am Start — der zweite Slot wird im Shop freigeschaltet und ist
@@ -1099,7 +1107,7 @@ function tutorialSweetSpotTreffer(){
 }
 
 // Klingenlänge: multiplikativ, damit "+15% Reichweite" auch wirklich +15% bedeutet
-function bladeLength(){ return CONFIG.bladeBaseLen * (1 + bonuses.range) * figur().reichweite * (treeFlags.singularorbit?1.18:1); }
+function bladeLength(){ return CONFIG.bladeBaseLen * (1 + bonuses.range) * figur().reichweite * (treeFlags.singularorbit?1.20:1); }
 function effektiveKlingen(){
   const basis=treeFlags.ereignishorizont && player.hp/player.maxHp<.35 ? Math.max(3,bonuses.blades) : bonuses.blades;
   return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0);
@@ -1121,9 +1129,41 @@ function angleDiff(a,b){ let d=Math.abs(a-b)%(Math.PI*2); return d>Math.PI ? Mat
    Gesamtabdeckung WÄCHST weiter (16 % → 24 % → 27 %), nur langsamer. Sonst wären
    Doppel- und Dreifachklinge wertlos, und das sind die stärksten Karten im Spiel. */
 function sweetArcHalf(){
-  const singular=treeFlags.singularorbit?0.72:1;
+  const singular=treeFlags.singularorbit?0.68:1;
   const sync=treeFlags.sweetWeite||0;
-  return CONFIG.spinArcHalf * singular * Math.pow(0.75+sync, Math.max(0, effektiveKlingen()-1));
+  const sonne=sonnenTempoUntil>Date.now() && treeFlags.sonnenorbit ? .78 : 1;
+  return CONFIG.spinArcHalf * singular * sonne * Math.pow(0.75+sync, Math.max(0, effektiveKlingen()-1));
+}
+
+function sweetKlingenFaktor(){
+  let f=treeFlags.singularorbit?1.45:1;
+  if(treeFlags.doppelorbit) f*=.72;
+  if(sonnenTempoUntil>Date.now() && treeFlags.sonnenorbit) f*=1.30;
+  return f;
+}
+function orbitSweetPulse(){
+  if(orbitRoundSweet) return false;
+  orbitRoundSweet=true;
+  if(PERF_DEBUG) treeFlags.debugOrbitPulse=(treeFlags.debugOrbitPulse||0)+1;
+  if(treeFlags.sonnenjaeger){
+    sonnenSerie++;
+    if(sonnenSerie>=3){ sonnenSerie=0; sonnenTempoUntil=Date.now()+3000; pushFloat(player.x,player.y-42,'SONNENTEMPO','#ffd257',1.1); }
+  }
+  if(treeFlags.kronenform==='praez' && activeCd[activeSlot1]>0){
+    praezSerie++;
+    if(praezSerie>=3){
+      const cdVorher=activeCd[activeSlot1]; activeCd[activeSlot1]=Math.max(0,cdVorher-1600); praezSerie=0;
+      if(PERF_DEBUG){ treeFlags.debugPraezReduktionen=(treeFlags.debugPraezReduktionen||0)+1; treeFlags.debugPraezCdGesamt=(treeFlags.debugPraezCdGesamt||0)+cdVorher-activeCd[activeSlot1]; }
+      pushFloat(player.x,player.y-42,'PRÄZISION −1600','#ffd257',1.0);
+    }
+  }
+  fokus=Math.min(fokusZiel(),fokus+2);
+  if(fokus>=fokusZiel()) fokusVoll('orbit');
+  return true;
+}
+function resetMissedOrbit(){
+  if(!orbitRoundSweet){ sonnenSerie=0; praezSerie=0; }
+  orbitRoundSweet=false;
 }
 
 /* FOKUS — Sweet-Spot-Treffer laden eine Leiste. Ist sie voll, schlägt die nächste
@@ -1140,9 +1180,10 @@ function fokusVoll(quelle){
   fokus=fokusZiel(); fokusBereit=true;
   const barriereVorFokus=barriere;
   if(figur().id==='held'){
-    const anteil=(treeFlags.leuchtfeuer?0.14:0.05)+(treeFlags.fokusBarriereBonus||0);
-    barriere=Math.min(barriereMax(),barriere+player.maxHp*anteil*figur().barriereMal);
-    if(treeFlags.waechter) enemies.forEach(en=>{if(Math.hypot(en.x-player.x,en.y-player.y)<150) en.stunT=Math.max(en.stunT||0,260);});
+    const basis=player.maxHp*.08, ohneLadung=Math.min(barriereMax(),barriere+basis);
+    barriere=Math.min(barriereMax(),barriere+basis+(waechterLadung?basis:0));
+    const ladungHatGewirkt=waechterLadung && barriere>ohneLadung+.01;
+    if(treeFlags.waechter){ enemies.forEach(en=>{if(Math.hypot(en.x-player.x,en.y-player.y)<150) en.slowT=Math.max(en.slowT||0,1200);}); if(ladungHatGewirkt) waechterLadung=false; }
   }
   if(figur().id==='held' && barriere>barriereVorFokus+.01) orbitFortschritt('held_lichtbund');
   if(figur().id==='konstrukt' && player.hp/player.maxHp<.45) orbitFortschritt('leere_hunger');
@@ -1164,12 +1205,6 @@ function synchronisiereFokus(){
   fokus=Math.min(fokus,ziel);
   if(!fokusBereit && fokus>=ziel) fokusVoll('ziel');
 }
-function fokusTreffer(){
-  if(fokusBereit) return;
-  fokus++;
-  if(fokus>=fokusZiel()) fokusVoll('treffer');
-}
-
 function currentSkin(){ const s=SKINS[save.skin]; return isAvailable('skin',save.skin)? s : SKINS.rubin; }
 function currentForm(){ return isAvailable('form', save.klingenform)? FORMEN[save.klingenform] : FORMEN.strahl; }
 function currentFigur(){ return isAvailable('figur', save.figur)? FIGUREN[save.figur] : FIGUREN.held; }
@@ -1409,7 +1444,7 @@ function activeBtnHTML(key,keyLabel){
     ${key==='a'?'<span class="focus-ring" aria-hidden="true"></span>':''}
     <svg class="s-icon" viewBox="0 0 24 24" aria-hidden="true">${abilIcon(id)}</svg>
     <span class="s-label">${m.name}</span>
-    ${key==='a'?'<span class="focus-value">1 · F 0/'+fokusZiel()+'</span>':'<span class="s-key">'+keyLabel+'</span>'}`;
+    ${key==='a'?'<span class="focus-value">1 · F 0/'+fokusZiel()+'</span><span class="crown-series" aria-hidden="true"></span>':'<span class="s-key">'+keyLabel+'</span>'}`;
 }
 function updateActiveButtons(){
   const c1=ACTIVE_COLORS[activeSlot1]||['#6ec8ff','110,200,255'];
@@ -1683,6 +1718,8 @@ function resetGame(){
   bombs=[]; pShots=[]; powerFields=[]; powerEchoes=[]; novaFx=0; novaEcho=0; barriere=0;
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
   wiederaufBenutzt=false; nachhallZaehler=0; splitterSweetZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false;
+  swordAngle=0; orbitRoundSweet=false; orbitRoundLight=false; orbitRoundDistance=0; orbitLastX=player.x; orbitLastY=player.y;
+  waechterLadung=false; sonnenSerie=0; sonnenTempoUntil=0; praezSerie=0; kronenMachtId=''; kronenMachtUntil=0; kronenZielklinge=0;
   toasts=[]; banner=null;
   tutStep=0; tutT=0; tutorialCircleUntil=0; tutorialBladeUntil=0; unlockFx=0; combatResumeUntil=0; combatResumeStep=''; setzeHelfer();
   if(metaLevel('startimpuls')>0) skillPoints=1;
@@ -2582,6 +2619,14 @@ function handleBladeEchoSweet(en,toEnemy,dmg){
     particles.push({ring:true,x:player.x,y:player.y,color:'#c77dff',life:.34,max:.34});
   }
 }
+function handleOrbitCrownSweet(en,toEnemy,bladeIndex){
+  if(treeFlags.kronenform!=='dopp' || !kronenMachtId || Date.now()>kronenMachtUntil || bladeIndex!==kronenZielklinge) return;
+  powerEchoes.push({id:kronenMachtId,x:en.x,y:en.y,t:0,rank:1,crown:true});
+  if(powerEchoes.length>4) powerEchoes.splice(0,powerEchoes.length-4);
+  kronenZielklinge=1-kronenZielklinge; kronenMachtId=''; kronenMachtUntil=0;
+  if(PERF_DEBUG) treeFlags.debugKronenEchos=(treeFlags.debugKronenEchos||0)+1;
+  pushFloat(en.x,en.y-38,'KRONENECHO','#ffd257',1.0); particles.push({ring:true,x:en.x,y:en.y,color:'#ffd257',life:.3,max:.3});
+}
 function handlePowerModule(id){
   const rank=treeFlags.powerModule||0;if(!rank)return;
   if(id==='wirbel'){
@@ -2625,7 +2670,10 @@ function resolvePowerEcho(e){
     for(const en of enemies){const dx=e.x-en.x,dy=e.y-en.y,d=Math.hypot(dx,dy);if(d>r+en.radius||d<1)continue;en.hp-=base;
       hits++;
       if(id==='wirbel'||id==='sog'){
-        const ziel=Math.max(0,d-(player.radius+bladeLength()*.78)),zug=rank>=2&&mutation==='a'?64:rank>=2?52:35;en.x+=dx/d*Math.min(ziel,zug);en.y+=dy/d*Math.min(ziel,zug);
+        const ziel=Math.max(0,d-(player.radius+bladeLength()*.78));
+        const keinZug=e.crown&&id==='wirbel'&&mutation==='b';
+        const zug=keinZug?0:rank>=2&&mutation==='a'?64:rank>=2?52:35;
+        en.x+=dx/d*Math.min(ziel,zug);en.y+=dy/d*Math.min(ziel,zug);
         if(id==='sog'&&rank>=2){
           if(mutation==='a')en.stunT=Math.max(en.stunT||0,650);
           else {const a=Math.atan2(en.y-player.y,en.x-player.x)+.7,rr=player.radius+bladeLength()*.78;en.x=player.x+Math.cos(a)*rr;en.y=player.y+Math.sin(a)*rr;}
@@ -2635,7 +2683,7 @@ function resolvePowerEcho(e){
       if(id==='nova')en.stunT=Math.max(en.stunT||0,rank>=2?480:260);
     }
     particles.push({ring:true,x:e.x,y:e.y,color,life:.42,max:.42});
-    if(rank>=2&&id==='wirbel'&&mutation==='b')powerFields.push({kind:'nachlauf',x:e.x,y:e.y,r:r*.66,dmg:Math.round(base*.28),t:950,tick:0,color});
+    if((rank>=2||e.crown)&&id==='wirbel'&&mutation==='b')powerFields.push({kind:'nachlauf',x:e.x,y:e.y,r:r*(e.crown?.55:.66),dmg:Math.round(base*(e.crown?.18:.28)),t:e.crown?650:950,tick:0,color});
     if(rank>=2&&id==='stoss'&&mutation==='b')powerFields.push({kind:'stase',x:e.x,y:e.y,r:r*.62,dmg:0,t:900,tick:0,color});
     if(id==='nova'&&rank>=2){
       if(mutation==='a'&&hits)barriere=Math.min(barriereMax(),barriere+Math.min(player.maxHp*.07,hits));
@@ -2684,11 +2732,13 @@ function doActive(slot){
     queueEndlessPowerEcho(id,fokusAktiv);
     if(treeRang('echo_blade')>=3) treeFlags.echoBladeBurst=3;
   }
+  if(treeFlags.kronenform==='dopp'){ kronenMachtId=id; kronenMachtUntil=Date.now()+4000; }
   if(treeFlags.orbitResonanz){
     const anderes=slot===1?activeSlot2:activeSlot1;
     if(anderes) activeCd[anderes]=Math.max(0,(activeCd[anderes]||0)*.78);
     else treeFlags.resonanzUntil=Date.now()+1300;
   }
+  fokusAktiv=false;
 }
 function executeWirbel(){
   const lv=abilityLevel('wirbel');
@@ -2701,10 +2751,11 @@ function executeWirbel(){
     const dist=Math.hypot(en.x-player.x,en.y-player.y);
     if(dist < r + en.radius){
       en.hp-=dmg; spawnParticles(en.x,en.y,en.color,8); pushFloat(en.x,en.y-20,'-'+dmg,'#ffcc33');
-      if(treeFlags.mod_wirbel==='a' && dist>1){ en.x+=(player.x-en.x)/dist*42; en.y+=(player.y-en.y)/dist*42; }
+      if(treeFlags.mod_wirbel==='a' && dist>1){ const ziel=player.radius+bladeLength()*.82,zug=Math.min(70,Math.max(0,dist-ziel)); en.x+=(player.x-en.x)/dist*zug; en.y+=(player.y-en.y)/dist*zug; }
     }
   }
-  if(treeFlags.mod_wirbel==='b') powerFields.push({kind:'nachlauf',x:player.x,y:player.y,r:r*.78,dmg:Math.round(dmg*.18),t:1900,tick:0,color:'#ffb340'});
+  if(treeFlags.mod_wirbel==='b') powerFields.push({kind:'nachlauf',x:player.x,y:player.y,r:r*.78,dmg:Math.round(dmg*.12),t:1550,tick:300,interval:300,sliceWirbelB:true,color:'#ffb340',snapshotDmg:dmg});
+  if(fokusAktiv && treeFlags.sonnenorbit) powerFields.push({kind:'sunOrbit',x:player.x,y:player.y,r:player.radius+bladeLength(),dmg:Math.round(dmg*.10),t:900,tick:0,pulses:3,color:'#ffd257'});
   if(master>=2){
     const kernDmg=Math.round(dmg*.42);
     for(const en of enemies) if(Math.hypot(en.x-player.x,en.y-player.y)<r*.48+en.radius){
@@ -2724,14 +2775,13 @@ function executeWirbel(){
     }
     r=r2;   // die Optik zeigt den tatsächlich getroffenen Außenrand
   }
-  // Sturmwirbel schleudert die Splitter als Geschosse nach außen
+  // Sturmwirbel: zwei gegenläufige Ringe, danach ein gedeckeltes verzögertes Feld.
   if(evo){
-    const n=8;
-    for(let i=0;i<n;i++){
-      const a=i/n*Math.PI*2 + Math.random()*0.2;
-      pShots.push({ x:player.x, y:player.y, vx:Math.cos(a)*380, vy:Math.sin(a)*380,
-        r:5, life:0.9, dmg:Math.round(dmg*0.35), storm:true });
-    }
+    particles.push({stormRing:true,x:player.x,y:player.y,life:.7,max:.7,r});
+    const praezBoost=treeFlags.kronenform==='praez'?Math.min(2,praezSerie):0;
+    const stormDmg=Math.round(dmg*.35*(1+.10*praezBoost));
+    powerFields.push({kind:'storm_projectiles',x:player.x,y:player.y,r:8,hidden:true,t:700,tick:700,dmg:stormDmg,color:'#ffd257',snapshotDmg:dmg,slow:!!(treeFlags.orbitKrone&&figur().id==='held'&&barriere>0)});
+    if(treeFlags.kronenform==='praez') praezSerie=0;
   }
   spawnParticles(player.x,player.y,'#ffcc33',evo?26:14);
   wirbelT=1; wirbelShownR=r;   // Optik nutzt exakt den Trefferradius
@@ -3047,7 +3097,8 @@ function killEnemy(en,i){
   if(dropped) killCount=0;
   // Lebenskugeln unabhängig davon, mit eigenem Pity-Zähler
   hpKillCount++;
-  if(player.hp < player.maxHp && (hpKillCount>=CONFIG.hpOrb.pity || Math.random()<CONFIG.hpOrb.chance)){
+  const hpOrbAllowed=(player.hp < player.maxHp) || (treeFlags.waechter && !waechterLadung);
+  if(hpOrbAllowed && (hpKillCount>=CONFIG.hpOrb.pity || Math.random()<CONFIG.hpOrb.chance)){
     dropHpOrb(en.x,en.y); hpKillCount=0;
   }
   spawnParticles(en.x,en.y,en.color,en.type==='boss'?24:10);
@@ -3217,6 +3268,7 @@ function updateHUD(force=false){
   // 10 Aktualisierungen pro Sekunde sind für Balken und Zahlen flüssig genug.
   if(!force && jetzt<naechstesHudUpdate) return;
   naechstesHudUpdate=jetzt+CONFIG.render.hudIntervall;
+  if(PERF_DEBUG){ const debug=document.getElementById('orbit-slice-debug'); if(debug) debug.textContent=JSON.stringify(orbitSliceState()); }
   const pct=Math.max(0, player.hp/player.maxHp*100);
   synchronisiereFokus();
   healthBar.style.width=pct+'%';
@@ -3238,6 +3290,7 @@ function updateHUD(force=false){
     btnWirbel.style.setProperty('--focus',prozent.toFixed(1));
     btnWirbel.classList.toggle('focus-ready',fokusBereit);
     const f=btnWirbel.querySelector('.focus-value'); if(f) f.textContent=fokusBereit?'1 · FOKUS':'1 · F '+wert+'/'+ziel;
+    const cs=btnWirbel.querySelector('.crown-series'); if(cs) cs.textContent=treeFlags.kronenform==='praez'?'▰'.repeat(praezSerie)+'···'.slice(Math.min(3,praezSerie)):'';
     const macht=ABILITIES[activeSlot1]?.name||'Hauptmacht';
     btnWirbel.setAttribute('aria-label',macht+' · Taste 1 · '+(fokusBereit?'Fokus bereit':'Fokus '+wert+' von '+ziel));
   }
@@ -3348,6 +3401,12 @@ function update(dt){
   const pspeed=CONFIG.playerBaseSpeed*(1+bonuses.speed)*(moveBoostUntil>Date.now()?1.25:1)*figur().tempo;
   player.x += ix*pspeed*dt/1000;
   player.y += iy*pspeed*dt/1000;
+  const moved=Math.hypot(player.x-orbitLastX,player.y-orbitLastY);
+  orbitLastX=player.x; orbitLastY=player.y;
+  if(figur().id==='held'){
+    orbitRoundDistance=Math.min(110,orbitRoundDistance+moved);
+    if(moved>0 && orbitRoundDistance>=110) orbitRoundLight=true;
+  }
   // Lebensregeneration (schwächer auf höheren Schwierigkeiten) + Meta-Upgrade
   // Sprung ab Stufe 4 beim Lebensregen: heilt nicht mehr nur pro Kill, sondern laufend
   const regenAbil = (hatSprung('lebensregen')? 1.6 : 0) + (bonuses.regen||0);
@@ -3362,8 +3421,8 @@ function update(dt){
   // Plasmaklinge rotiert permanent um den Spieler
   const fehlendesLeben=1-player.hp/player.maxHp;
   const leerenTempo=figur().id==='konstrukt' ? 1+fehlendesLeben*0.28 : 1;
-  swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * dt/1000;
-  if(swordAngle>Math.PI*2) swordAngle-=Math.PI*2;
+  swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * (sonnenTempoUntil>Date.now()?1.22:1) * dt/1000;
+  if(swordAngle>Math.PI*2){ swordAngle-=Math.PI*2; resetMissedOrbit(); }
   player.face = swordAngle;
   // Effekt-Timer
   if(stossWaveT>0){ stossWaveT -= dt/380; if(stossWaveT<0) stossWaveT=0; }
@@ -3374,12 +3433,26 @@ function update(dt){
   if(spinHitTimer<=0){
     spinHitTimer = CONFIG.spinHitInterval;
     const bladeLen = bladeLength();
+    if(barriere>0 && treeFlags.leuchtfeuer && powerFields.length<14 && powerFields.filter(f=>f.kind==='lightTrail').length<6){
+      const ta=swordAngle, tx=player.x+Math.cos(ta)*(player.radius+bladeLen), ty=player.y+Math.sin(ta)*(player.radius+bladeLen);
+      powerFields.push({kind:'lightTrail',x:tx,y:ty,r:28,t:260,tick:0,color:'#ffd257',shown:false});
+    }
     const boost = dmgBoostUntil>Date.now()?2:1;
     const resonanz=treeFlags.resonanzUntil>Date.now()?1.25:1;
     const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz);
-    const duellBonus=(figur().id==='held' && moving ? (0.22+(treeFlags.duellantBonus||0)) : 0);
     const leerenBonus=figur().id==='konstrukt' ? fehlendesLeben*(0.32+(treeFlags.leerenRisikoBonus||0)) : 0;
-    const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+(treeFlags.sweetBonus||0)+duellBonus+leerenBonus));
+    const anglesNow=bladeAngles();
+    const sweetTargets=enemies.filter(en=>{
+      const dx=en.x-player.x,dy=en.y-player.y,d=Math.hypot(dx,dy);
+      return d<player.radius+bladeLen+en.radius && anglesNow.some(a=>angleDiff(a,Math.atan2(dy,dx))<sweetArcHalf());
+    });
+    const tickSweet=sweetTargets.length>0;
+    // Lichtbund ist absichtlich vom Orbitimpuls entkoppelt: Wird die Ladung nach
+    // dem ersten Sweet derselben Runde voll, verstärkt bereits der nächste Sweet-Tick.
+    const lightTick=figur().id==='held' && tickSweet && orbitRoundLight;
+    if(tickSweet && !orbitRoundSweet) orbitSweetPulse();
+    const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+leerenBonus) * sweetKlingenFaktor() * (lightTick?1.35:1));
+    if(lightTick){ orbitRoundDistance=0; orbitRoundLight=false; if(PERF_DEBUG)treeFlags.debugLichtbund=(treeFlags.debugLichtbund||0)+1; pushFloat(player.x,player.y-38,'LICHTBUND ×1.35','#ffd257',1.05); }
     for(const en of enemies){
       const dx=en.x-player.x, dy=en.y-player.y;
       const d = Math.hypot(dx,dy);
@@ -3389,29 +3462,32 @@ function update(dt){
       if(d >= player.radius + bladeLen + en.radius) continue;
       // Trifft eine der Klingen den Gegner gerade wirklich?
       const toEnemy = Math.atan2(dy,dx);
-      const treffer = bladeAngles().some(a=>angleDiff(a,toEnemy) < sweetArcHalf());
+      let trefferIndex=-1;
+      for(let bi=0;bi<anglesNow.length;bi++) if(angleDiff(anglesNow[bi],toEnemy)<sweetArcHalf()){trefferIndex=bi;break;}
+      const treffer=trefferIndex>=0;
       let dmg = treffer ? dmgArc : dmgBase;
-      /* Panzergegner: außerhalb der Zone prallt die Klinge weitgehend ab. Sie holen die
-         Kernmechanik spät im Lauf zurück, wo sie sonst verschwindet. Bewusst NICHT
-         unverwundbar — auf „Entdecker" kommen 55 % durch, sonst wäre es für ein Kind
-         eine Wand statt einer Aufgabe. Aktive Mächte gehen ohnehin durch die Panzerung:
-         Die Antwort auf einen Panzer ist entweder Position oder ein Einsatz. */
+      /* Panzergegner holen die Formentscheidung spät im Lauf zurück: Präzisions-Sweet
+         und Schneide Rang 4 durchschlagen, Doppelorbit bezahlt seine sichere Abdeckung
+         mit gedämpftem Schaden. Bewusst NICHT unverwundbar — auf „Entdecker" kommen
+         55 % durch, sonst wäre es für ein Kind eine Wand statt einer Aufgabe. Aktive
+         Mächte gehen ohnehin durch die Panzerung. */
       // Schneide: belohnt genau das Treffen der Zone, statt Schaden pauschal zu heben
       if(treffer && runAbilities.schneide){
         dmg = Math.round(dmg * (1 + CONFIG.schneide.proStufe*runAbilities.schneide));
       }
-      // Panzerung greift nicht mehr, sobald Schneide ihren Sprung erreicht hat
-      const durchschlag = treeFlags.panzerbrecher || runAbilities.schneide>=SPRUNG_STUFE;
-      const abgeprallt = en.panzer && !(en.panzerAusUntil>Date.now()) && !treffer && !durchschlag;
+      // Präzisions-Sweet und Schneide Rang 4 durchschlagen Panzer vollständig.
+      // Doppelorbit bezahlt seine Verlässlichkeit: Seine Sweet Hits werden von
+      // aktiver Panzerung weiterhin gedämpft.
+      const durchschlag = runAbilities.schneide>=SPRUNG_STUFE || !!(treeFlags.singularorbit && treffer);
+      const abgeprallt = en.panzer && !(en.panzerAusUntil>Date.now()) && !durchschlag;
       if(abgeprallt) dmg = Math.max(1, Math.round(dmg*hilfe().panzerDurchlass));
       en.hp -= dmg;
       if(treffer){
         tutorialSweetSpotTreffer();
-        fokusTreffer();
         if(en.panzer) orbitFortschritt('panzer_sweet');
-        if(treeFlags.perfekterOrbit) fokusTreffer();
         handleBladeModuleSweet(en,toEnemy,dmg);
         handleBladeEchoSweet(en,toEnemy,dmg);
+        handleOrbitCrownSweet(en,toEnemy,trefferIndex);
         if(en.shockMarkUntil>Date.now()){
           const bonus=Math.round(dmg*.38); en.hp-=bonus; en.shockMarkUntil=0;
           if((treeFlags.powerMaster||0)>=2) en.stunT=Math.max(en.stunT||0,520);
@@ -3436,10 +3512,6 @@ function update(dt){
               dmg:Math.round(CONFIG.abil.splitterDamage*(slv>=3?2.2:1.8)),life:1.0,hitsLeft:slv>=3?2:1,storm:true});
           }
           pushFloat(en.x,en.y-34,'SPLITTER!','#9ad0ff',1.1); if(sfx)sfx('laserPlayer');
-        }
-        if(treeFlags.klingentakt){
-          treeFlags.klingentaktHits=(treeFlags.klingentaktHits||0)+1;
-          if(treeFlags.klingentaktHits%3===0){ en.hp-=Math.round(dmg*.55); pushFloat(en.x,en.y-28,'TAKT','#ffd257'); if(treeFlags.perfekterOrbit) fokusTreffer(); }
         }
         // Nachhall: jeder n-te Zonentreffer löst eine kleine Druckwelle aus
         if(runAbilities.nachhall){
@@ -3507,8 +3579,9 @@ function update(dt){
       }
       if(en.hp<=0) continue;
       const ang = Math.atan2(dy,dx);
-      en.x += Math.cos(ang)*(treffer?14:6);
-      en.y += Math.sin(ang)*(treffer?14:6);
+      const sweetSchub=treeFlags.doppelorbit?16:treeFlags.singularorbit?10:14;
+      en.x += Math.cos(ang)*(treffer?sweetSchub:6);
+      en.y += Math.sin(ang)*(treffer?sweetSchub:6);
     }
   }
   perfMark('klinge');
@@ -3703,6 +3776,7 @@ function update(dt){
       if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+5){
         const shotColor=s.moduleColor||(s.spectral?'#c77dff':'#9ad0ff');
         en.hp-=s.dmg; spawnParticles(s.x,s.y,shotColor,5); pushFloat(s.x,s.y-12,'-'+s.dmg,shotColor);
+        if(s.stormSlow) en.slowT=Math.max(en.slowT||0,600);
         if(s.moduleNova>=2) modulePulse(en.x,en.y,55,Math.round(s.dmg*.52),'#c77dff',210);
         if(!s.hitIds)s.hitIds=[]; s.hitIds.push(en);
         s.hitsLeft=(s.hitsLeft||1)-1; hit=s.hitsLeft<=0; break;
@@ -3760,19 +3834,37 @@ function update(dt){
   // Mutationen sollen nicht nur Zahlen verändern: Stase hält einen Bereich
   // sichtbar langsam, der Wirbel-Nachlauf pulsiert mehrfach Schaden.
   for(let i=powerFields.length-1;i>=0;i--){
-    const f=powerFields[i]; f.tick-=dt;
-    if(f.delay>0){f.delay-=dt;if(f.delay>0)continue;}
-    f.t-=dt;
+    const f=powerFields[i];
+    let feldDt=dt;
+    if(f.delay>0){
+      const delayRest=f.delay-dt;
+      if(delayRest>0){ f.delay=delayRest; continue; }
+      // Nur der Rest des Bildes nach Ablauf der Verzögerung zählt für Feld und Tick.
+      feldDt=Math.max(0,-delayRest); f.delay=0;
+    }
+    f.tick-=feldDt; f.t-=feldDt;
     if(f.kind==='stase'){
       for(const en of enemies) if(Math.hypot(en.x-f.x,en.y-f.y)<f.r+en.radius)
         en.slowT=Math.max(en.slowT||0,260);
+    } else if(f.kind==='lightTrail'){
+      for(const en of enemies) if(Math.hypot(en.x-f.x,en.y-f.y)<f.r+en.radius) en.slowT=Math.max(en.slowT||0,220);
+      if(!f.shown){ f.shown=true; particles.push({ring:true,x:f.x,y:f.y,color:f.color,life:.12,max:.12}); }
+    } else if(f.kind==='sunOrbit' && f.tick<=0 && f.pulses>0){
+      for(const en of enemies) if(Math.hypot(en.x-f.x,en.y-f.y)<f.r+en.radius) en.hp-=f.dmg;
+      f.pulses--; f.tick=300; particles.push({ring:true,x:f.x,y:f.y,color:f.color,life:.2,max:.2});
     } else if(f.kind==='nachlauf' && f.tick<=0){
-      let getroffen=0;
-      for(const en of enemies) if(Math.hypot(en.x-f.x,en.y-f.y)<f.r+en.radius){
-        en.hp-=f.dmg; getroffen++; spawnParticles(en.x,en.y,f.color,3);
+      const interval=f.interval||310;
+      let pulse=0;
+      // Restzeit behalten: auch ein langsames Bild darf keinen fälligen Puls schlucken.
+      while(f.tick<=0 && pulse<7){
+        let getroffen=0;
+        for(const en of enemies) if(Math.hypot(en.x-f.x,en.y-f.y)<f.r+en.radius){
+          en.hp-=f.dmg; getroffen++; spawnParticles(en.x,en.y,f.color,3);
+        }
+        if(getroffen) particles.push({ring:true,x:f.x,y:f.y,color:f.color,life:.18,max:.18});
+        if(PERF_DEBUG&&f.sliceWirbelB) treeFlags.debugWirbelBPulse=(treeFlags.debugWirbelBPulse||0)+1;
+        f.tick+=interval; pulse++;
       }
-      if(getroffen) particles.push({ring:true,x:f.x,y:f.y,color:f.color,life:.18,max:.18});
-      f.tick=310;
     } else if(f.kind==='module_follow'&&f.tick<=0){
       f.x=player.x;f.y=player.y;
       for(const en of enemies){const dx=player.x-en.x,dy=player.y-en.y,d=Math.hypot(dx,dy);if(d<f.r+85&&d>f.r){const zug=Math.min(10,(d-f.r)*.18);en.x+=dx/d*zug;en.y+=dy/d*zug;}}
@@ -3792,6 +3884,11 @@ function update(dt){
       f.x=player.x;f.y=player.y;
       for(const en of enemies){const dx=en.x-f.x,dy=en.y-f.y,d=Math.hypot(dx,dy);if(d<f.r+en.radius&&d>1){en.hp-=f.dmg;const schub=f.mode==='a'?48:-34;en.x+=dx/d*schub;en.y+=dy/d*schub;en.moduleOrbitUntil=0;}}
       particles.push({ring:true,x:f.x,y:f.y,color:f.color,life:.4,max:.4});pushFloat(f.x,f.y-42,'KERNBRUCH','#4de0a0',1.0);
+    } else if(f.kind==='storm_projectiles'&&!f.fired && f.t<=0){
+      f.fired=true;
+      for(let k=0;k<8;k++){ const a=k*Math.PI/4; moduleShot(f.x,f.y,a,f.dmg,1,{vx:Math.cos(a)*380,vy:Math.sin(a)*380,life:.9,storm:true,stormWirbel:true,moduleColor:f.color,stormSlow:f.slow}); }
+      if(PERF_DEBUG) treeFlags.debugSturmSchuesse=(treeFlags.debugSturmSchuesse||0)+8;
+      particles.push({ring:true,x:f.x,y:f.y,color:f.color,life:.42,max:.42});
     }
     if(f.t<=0) powerFields.splice(i,1);
   }
@@ -3867,11 +3964,14 @@ function update(dt){
       if(o.hp){
         // Bei vollem Leben wird die Kugel nicht verschenkt, sondern zur Barriere
         if(player.hp >= player.maxHp-0.5){
-          const vorher=barriere;
-          barriere=Math.min(barriereMax(), barriere+player.maxHp*CONFIG.barriere.proKugel*figur().barriereMal);
-          const zuwachs=Math.round(barriere-vorher);
-          if(zuwachs>0){ pushFloat(o.x,o.y-10,'+'+zuwachs+' Barriere','#7cc8ff'); if(sfx) sfx('unlock'); }
-          else { pushFloat(o.x,o.y-10,'Barriere voll','#7cc8ff'); }
+          if(treeFlags.waechter && !waechterLadung){ waechterLadung=true; pushFloat(o.x,o.y-10,'WÄCHTERLADUNG','#ffd257',1.05); if(sfx) sfx('unlock'); }
+          else if(!treeFlags.waechter){
+            const vorher=barriere;
+            barriere=Math.min(barriereMax(),barriere+player.maxHp*CONFIG.barriere.proKugel*figur().barriereMal);
+            const zuwachs=Math.round(barriere-vorher);
+            if(zuwachs>0){ pushFloat(o.x,o.y-10,'+'+zuwachs+' Barriere','#7cc8ff'); if(sfx) sfx('unlock'); }
+            else pushFloat(o.x,o.y-10,'Barriere voll','#7cc8ff');
+          } else { pushFloat(o.x,o.y-10,'Wächterladung voll','#7cc8ff'); }
         } else {
           const heal=Math.round(player.maxHp*CONFIG.hpOrb.heilAnteil);
           player.hp=Math.min(player.maxHp, player.hp+heal);
@@ -3889,7 +3989,7 @@ function update(dt){
   // particles
   for(let i=particles.length-1;i>=0;i--){
     const p=particles[i]; p.life-=dt/1000; if(p.life<=0){particles.splice(i,1); continue;}
-    if(!p.sword && !p.bolt && !p.ring){ p.x+=p.vx*dt/1000; p.y+=p.vy*dt/1000; p.vy+= 300*dt/1000; }
+    if(!p.sword && !p.bolt && !p.ring && !p.stormRing){ p.x+=p.vx*dt/1000; p.y+=p.vy*dt/1000; p.vy+= 300*dt/1000; }
   }
   for(let i=floats.length-1;i>=0;i--){ const f=floats[i]; f.life-=dt/1000; f.y+=f.vy*dt/1000; if(f.life<=0) floats.splice(i,1); }
   perfMark('beute');
@@ -4731,6 +4831,7 @@ function draw(){
   // Anhaltende Machtfelder: dezent genug für Lesbarkeit, aber als neue
   // Mechanik sofort erkennbar.
   for(const f of powerFields){
+    if(f.hidden || !Number.isFinite(f.r)) continue;
     if(!sichtbar(f.x,f.y,f.r+16)) continue;
     const rest=Math.max(0,Math.min(1,f.t/1900));
     ctx.save(); ctx.globalAlpha=.18+.22*rest; ctx.fillStyle=f.color; ctx.strokeStyle=f.color;
@@ -4769,13 +4870,15 @@ function draw(){
     ctx.restore();
   }
   // — Spieler —
-  const skin=currentSkin(), KLINGE=skin.blade, KLINGE_KERN=skin.core;
+  const skin=currentSkin(), KLINGE=skin.blade;
+  const KLINGE_KERN=figur().id==='held'&&orbitRoundLight?'#fff1ae':skin.core;
+  const SPUR=sonnenTempoUntil>now?'#ffd257':KLINGE;
   // Nachleuchten jeder Klinge
   ctx.save(); ctx.translate(player.x,player.y);
   for(const a of angles){
     for(let i=1;i<=5;i++){
       ctx.save(); ctx.rotate(a - i*0.16);
-      ctx.globalAlpha=0.12*(1-i/6); ctx.fillStyle=KLINGE;
+      ctx.globalAlpha=0.12*(1-i/6); ctx.fillStyle=SPUR;
       ctx.beginPath(); ctx.roundRect(player.radius, -2.5, bladeLen, 5, 2.5); ctx.fill();
       ctx.restore();
     }
@@ -4804,6 +4907,17 @@ function draw(){
     ctx.fillStyle='rgba(124,200,255,'+(0.05+0.08*anteil).toFixed(2)+')';
     ctx.beginPath(); ctx.arc(0,0,player.radius+8,0,Math.PI*2); ctx.fill();
   }
+  if(waechterLadung){ ctx.fillStyle='#ffd257'; ctx.shadowColor='#ffd257'; sb(8); ctx.beginPath(); ctx.arc(player.radius+8,-player.radius-3,3,0,Math.PI*2); ctx.fill(); sb(0); }
+  if(treeFlags.sonnenjaeger && sonnenSerie>0){
+    ctx.strokeStyle='rgba(255,210,87,.9)'; ctx.lineWidth=2;
+    for(let si=0;si<Math.min(2,sonnenSerie);si++){ const sa=-1.2+si*2.4; ctx.beginPath(); ctx.arc(0,0,player.radius+13,sa-.28,sa+.28); ctx.stroke(); }
+  }
+  if(figur().id==='held' && orbitRoundDistance>0){
+    ctx.strokeStyle=orbitRoundLight?'rgba(255,241,174,.98)':'rgba(255,210,87,.78)'; ctx.lineWidth=orbitRoundLight?2.4:1.5;
+    if(orbitRoundLight){ ctx.shadowColor='#ffd257'; sb(10); }
+    ctx.beginPath(); ctx.arc(0,0,player.radius+19,-Math.PI/2,-Math.PI/2+Math.PI*2*(orbitRoundDistance/110)); ctx.stroke();
+    if(orbitRoundLight) sb(0);
+  }
   // Voller Fokus bleibt bis zum Einsatz direkt am Spieler sichtbar. Das verbindet
   // den violetten Button-Ring mit dem Geschehen in der Arena, ohne neue HUD-Zeile.
   if(fokusBereit){
@@ -4828,8 +4942,14 @@ function draw(){
   if(schwebt) zeichneLeerenklingeNeu(ctx, lean, KLINGE, KLINGE_KERN, sb);
   else zeichneLichthueterNeu(ctx, moving, lean, player.bobPhase||0, KLINGE, sb);
   // Plasmaklinge(n) – rotieren permanent, Form kommt aus der Sammlung
-  for(const a of angles){
+  for(let bi=0;bi<angles.length;bi++){
+    const a=angles[bi];
     ctx.save(); ctx.rotate(a);
+    if(treeFlags.kronenform==='dopp'&&kronenMachtId&&kronenMachtUntil>now&&bi===kronenZielklinge){
+      ctx.strokeStyle='#ffd257';ctx.lineWidth=3;ctx.shadowColor='#ffd257';sb(14);
+      ctx.beginPath();ctx.roundRect(player.radius-2,-5,bladeLen+4,10,5);ctx.stroke();
+      ctx.fillStyle='#fff1ae';ctx.beginPath();ctx.arc(player.radius+bladeLen+4,0,3.5,0,Math.PI*2);ctx.fill();sb(0);
+    }
     zeichneKlinge(ctx, player.radius, bladeLen, currentForm(), KLINGE, KLINGE_KERN, sb);
     ctx.restore();
   }
@@ -4897,6 +5017,13 @@ function draw(){
       ctx.strokeStyle=p.color; ctx.lineWidth=3*(1-t)+0.5;
       sbc(p.color,12);
       ctx.beginPath(); ctx.arc(p.x,p.y,rr,0,Math.PI*2); ctx.stroke(); sb(0); continue;
+    }
+    if(p.stormRing){
+      const t=1-p.life/p.max, rr=p.r*(.52+.48*t);
+      ctx.strokeStyle='#ffd257'; ctx.lineWidth=2.5; ctx.setLineDash([12,8]); ctx.lineDashOffset=now/90;
+      ctx.beginPath(); ctx.arc(p.x,p.y,rr,0,Math.PI*2); ctx.stroke();
+      ctx.lineDashOffset=-now/75; ctx.globalAlpha*=.72;
+      ctx.beginPath(); ctx.arc(p.x,p.y,rr*.76,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); continue;
     }
     ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
   }

@@ -990,8 +990,9 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 - Gerätemessung der Performance ist auf den neuen Gesamtstand verschoben. Die
   Desktop-Messung vom 16.08.2026 weist den Einbruch dem Zeichnen zu; die Bestätigung
   auf echter Hardware steht aus.
-- Die unveränderte Fokus-Ladegeschwindigkeit schwankt vermutlich stark mit der
-  Gegnerdichte und wird im nächsten echten Standard-/Endloslauf mitbeobachtet.
+- Fokus lädt dichteunabhängig: Nur der erste Sweet-Hit-Tick eines vollständigen
+  Klingenumlaufs erzeugt einen Orbitimpuls und gibt exakt zwei Fokus. Gruppen geben
+  dadurch nicht mehr Fokus als ein einzelnes sauber getroffenes Ziel.
 - Orbitauftrag v1 ist umgesetzt; sein Fortschritt und Lohn werden in einem echten
   Standard-/Endloslauf noch praktisch geprüft.
 - Ein realer Lauf bis Welle 26 lief spielerisch gut und bestätigte den besseren
@@ -1014,3 +1015,37 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 - Keine Dateien aus `archive/` zurückkopieren, ohne den Nutzer zu fragen.
 - Entscheidungen knapp in diesem Dokument aktualisieren.
 - Keine Geheimnisse, Tokens oder personenbezogenen Daten einchecken.
+
+## Orbitblade-Vertikalschnitt: Lichthüter, Wirbel und Orbitkrone (16.08.2026)
+
+Der aktive Stand in `konzept/game.js` nutzt einen gemeinsamen Orbitimpuls: pro
+vollständigem `swordAngle`-Umlauf löst nur der erste Sweet-Hit-Tick `orbitSweetPulse`
+aus. Er gibt zwei Fokus, steuert Lichtbund, Sonnenserie und Präzisionsserie; ein
+verfehlter Umlauf setzt nur die beiden Serien zurück. Lichtbund lädt ausschließlich
+über tatsächlich zurückgelegte Strecke (maximal 110 px) und verstärkt den nächsten
+Sweet-Hit-Tick mit Faktor 1,35.
+
+Doppelorbit besitzt zwei π-versetzte Klingen (Sweet je ×0,72, Mehrklingen-Zone ×0,75,
+Schub 16 px). Präzisionsorbit besitzt eine 1,20-fache Klingenlänge, einen 0,68-fachen
+Sweet-Halbbogen, Sweet ×1,45 und durchschlägt Panzerung nur mit echten Sweet Hits.
+Wächter erzeugt beim Fokusübergang 8 % maximale Barriere, verlangsamt 150 px/1200 ms
+und kann eine Lebenskugel als `WÄCHTERLADUNG` für die nächste Barriere speichern.
+Sonnenjäger nutzt drei Orbitimpulse für drei Sekunden Rotation ×1,22; Sonnenorbit
+verstärkt den Sweet-Bogen zusätzlich ×0,78 und Sweet ×1,30.
+
+Wirbel A zieht initiale Ziele maximal 70 px bis zur Klingendistanz ohne Zusatzschaden;
+Wirbel B setzt am Cast-Ort ein 1550-ms-Feld mit 300-ms-Ticks zu 12 % Snapshot-Schaden.
+Sturmwirbel behält seine Radius-/Schadensfaktoren, zeigt 700 ms zwei gegenläufige Ringe
+und feuert danach einmalig acht radial begrenzte Projektile. Neue Lichtspuren sind auf
+sechs begrenzt und werden bei 14 bereits aktiven Feldern gar nicht erst ergänzt; bestehende
+Machtfelder werden dafür nie verworfen. Unter `?perf=1` liefert `window.orbitSliceDump()` einen read-only
+Snapshot für Fokus, Lichtbund, Serien, Form und Feldzahl.
+
+Die Doppelorbit-Krone merkt nach jedem Machteinsatz vier Sekunden lang abwechselnd eine
+der beiden Klingen gold sichtbar vor; ihr nächster Sweet Hit löst genau ein reduziertes
+Machtecho aus. Wirbel-B-Echos bleiben dabei ohne Zug und setzen stattdessen einen kleinen
+ortsfesten Nachlauf. Die Präzisionskrone verkürzt Aktiv 1 nach drei lückenlos erfolgreichen
+Orbitimpulsen während des Cooldowns um 1600 ms; ein verfehlter Umlauf setzt ihre Serie
+zurück. Beim Sturmwirbel überträgt vorhandene Barriere mit Krone 600 ms Verlangsamung auf
+die acht Projektile, während ein oder zwei Präzisionsstriche deren Schaden um 10/20 %
+erhöhen und beim Einsatz verbraucht werden.
