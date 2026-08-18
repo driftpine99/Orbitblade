@@ -276,8 +276,45 @@ const HILFEN = {
                schaden:1.4, gegner:1.25, panzerDurchlass:0.10, wiederauf:false, panzerAb:5 },
 };
 const HILF_IDS=['entdecker','standard','meister'];
-function hilfe(){ return HILFEN[save.hilfe] || HILFEN.standard; }
-function hilfeId(){ return HILFEN[save.hilfe] ? save.hilfe : 'standard'; }
+/* PRÜFSTUFEN — freiwillige, GESTAPELTE Erschwernisse OBERHALB von Meister, nach dem
+   Endspiel-Muster von Hades/Slay the Spire/Dead Cells: nicht gekauft, sondern durch
+   den Sieg der vorherigen Stufe freigeschaltet (siehe sieg()). Sie kosten nichts und
+   geben — anders als Hilfen — NIE Kampfkraft, nur Erschwernis, Bestmarke und später
+   Kosmetik. Nur Stufen 1–4; 5–8 folgen nach einem echten Spieltest dieser Fassung. */
+const PRUEFSTUFEN=[
+  {id:'pruef1', name:'Prüfstufe 1', kurz:'Dichte',      desc:'Gegnerzahl +12 %'},
+  {id:'pruef2', name:'Prüfstufe 2', kurz:'Härte',       desc:'Panzerdurchlass halbiert'},
+  {id:'pruef3', name:'Prüfstufe 3', kurz:'Knappe Wahl', desc:'Die Auslese bietet nur zwei Karten'},
+  {id:'pruef4', name:'Prüfstufe 4', kurz:'Zäher Kern',  desc:'Bosse haben 25 % mehr Leben'},
+];
+// -1 für alles, was keine (bekannte) Prüfstufen-Id ist — auch für manipulierte Werte.
+function pruefstufeIndex(id){ return PRUEFSTUFEN.findIndex(p=>p.id===id); }
+let _pruefCache=[];
+// Baut Stufe n (1-basiert): Meister-Basis plus die Bedingungen der Stufen 1..n
+// GESTAPELT — Stufe 3 ist also Meister plus Dichte plus Härte plus Knappe Wahl.
+// Zwischengespeichert, weil hilfe() sehr oft je Bild aufgerufen wird (Schaden, Panzer)
+// und das Ergebnis für ein gegebenes n nie variiert.
+function pruefstufeObjekt(n){
+  if(_pruefCache[n]) return _pruefCache[n];
+  const h=Object.assign({}, HILFEN.meister, { name:PRUEFSTUFEN[n-1].name });
+  if(n>=1) h.gegner *= 1.12;                    // Dichte
+  if(n>=2) h.panzerDurchlass *= 0.5;             // Härte
+  if(n>=3) h.ausleseKarten = 2;                  // Knappe Wahl (Standard ist 3)
+  if(n>=4) h.bossHp = 1.25;                      // Zäher Kern (Standard ist 1)
+  return _pruefCache[n]=h;
+}
+function hilfe(){
+  const idx=pruefstufeIndex(save.hilfe);
+  // Nur freigeschaltete Stufen liefern das zusammengesetzte Objekt — sonst könnte ein
+  // manipulierter Spielstand direkt eine ungespielte hohe Stufe wählen.
+  if(idx>=0 && idx<(save.pruefFrei||0)) return pruefstufeObjekt(idx+1);
+  return HILFEN[save.hilfe] || HILFEN.standard;
+}
+function hilfeId(){
+  const idx=pruefstufeIndex(save.hilfe);
+  if(idx>=0 && idx<(save.pruefFrei||0)) return save.hilfe;
+  return HILFEN[save.hilfe] ? save.hilfe : 'standard';
+}
 function bestFuer(id){ return (save.best && save.best[id||hilfeId()]) || 0; }
 // Hilfen verändern die Gegnerzahl, aber nicht den Build-Fortschritt. Ohne diesen
 // Ausgleich hätte Entdecker deutlich weniger Tree-Punkte und Meister deutlich mehr.
@@ -521,7 +558,7 @@ const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=9;
 // opts: Bedien-Einstellungen (Seite und Anordnung der Fähigkeiten-Knöpfe)
 // best ist jetzt je Hilfsstufe getrennt — sonst wäre die Bestmarke nicht vergleichbar
 const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin', muted:false, bossKills:0, stars:0, meta:{}, tutorialDone:false, tutorialVersion:0, focusTutorialSeen:false,
-  hilfe:'standard', gewonnen:false, endlosFrei:false,
+  hilfe:'standard', gewonnen:false, endlosFrei:false, pruefFrei:0,
   opts:{ seite:'rechts', anordnung:'nebeneinander' },
   // Mit welchen aktiven Mächten jeder Lauf beginnt. Vorher war das fest verdrahtet,
   // sodass später freigeschaltete Mächte nie am Start standen.
@@ -1766,10 +1803,11 @@ function ausleseTopf(){
   }
   return out;
 }
-// Bis zu drei verschiedene Karten, ohne Gewichtung; ein kleinerer Topf zeigt entsprechend weniger.
+// Bis zu drei verschiedene Karten, ohne Gewichtung; ein kleinerer Topf zeigt entsprechend
+// weniger. Prüfstufe „Knappe Wahl" senkt das Ziel auf zwei (hilfe().ausleseKarten).
 function ausleseZiehen(){
-  const pool=ausleseTopf(), gezogen=[];
-  while(pool.length && gezogen.length<3) gezogen.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
+  const pool=ausleseTopf(), gezogen=[], ziel=hilfe().ausleseKarten||3;
+  while(pool.length && gezogen.length<ziel) gezogen.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
   return gezogen;
 }
 function auslesePreis(){ return AUSLESE_PREISE[Math.min(ausleseBezahlteWuerfe,AUSLESE_PREISE.length-1)]; }
@@ -1979,6 +2017,10 @@ function spawnBoss(){
   const k=bossKindFor(wave);
   const e=makeEnemy('boss');
   e.kind=k.id; e.color=k.color; e.rgb=k.rgb; e.leit=k.leit;   // Variante prägt Aussehen und Verhalten
+  // Prüfstufe „Zäher Kern" multipliziert zuerst auf die Basiswerte; der Finalbonus
+  // ×2.2 kommt danach obendrauf, damit sich beide Faktoren multiplizieren statt ersetzen.
+  const pruefHp=hilfe().bossHp||1;
+  if(pruefHp!==1) e.hp=e.maxHp=Math.round(e.maxHp*pruefHp);
   if(finale){
     /* Der Zerbrochene Mond — der Kampf, der das Spiel gewinnbar macht. Ohne einen
        solchen Punkt lief das Spiel endlos weiter, ohne Sieg und ohne Abspann; damit
@@ -2482,7 +2524,8 @@ function renderCharakterWahl(){
   const d=document.getElementById('charakter-detail'), f=figur();
   if(d) d.innerHTML=`<h3>${f.name}</h3><p class="wahl-staerke">${f.staerke}</p><p class="wahl-fuer">${f.fuer}</p><div class="wahl-werte"><span>Leben ${Math.round(f.hp*100)} %</span><span>Tempo ${Math.round(f.tempo*100)} %</span><span>Reichweite ${Math.round(f.reichweite*100)} %</span></div>`;
 }
-// Hilfsstufe: dieselben Schalter, drei Voreinstellungen
+// Hilfsstufe: dieselben Schalter, drei Voreinstellungen — plus freigeschaltete
+// Prüfstufen und ein Ausblick auf die nächste noch gesperrte Stufe.
 function renderHilfeWahl(){
   const box=document.getElementById('hilfe-wahl');
   if(!box) return;
@@ -2502,6 +2545,39 @@ function renderHilfeWahl(){
       </div>
       <div class="wahl-best">Bestmarke: ${best? 'Welle '+best : 'noch keine'}</div>`;
     b.onclick=()=>{ save.hilfe=id; persist(); if(sfx) sfx('pick'); renderHilfeWahl(); };
+    box.appendChild(b);
+  }
+  // Freigeschaltete Prüfstufen: gleiches Kartenformat, aber mit den GESTAPELTEN
+  // Bedingungen bis zur jeweiligen Stufe — sonst kann niemand einschätzen, worauf
+  // er sich einlässt (Stufe 3 bedeutet z. B. auch schon Dichte und Härte).
+  const frei=save.pruefFrei||0;
+  for(let n=1; n<=Math.min(frei,PRUEFSTUFEN.length); n++){
+    const p=PRUEFSTUFEN[n-1], id=p.id, best=bestFuer(id);
+    const bedingungen=PRUEFSTUFEN.slice(0,n).map(x=>x.desc).join('<br>');
+    const b=document.createElement('button');
+    b.className='wahl-karte pruef'+(hilfeId()===id?' an':'');
+    b.innerHTML=`<div class="wahl-kopf"><h3>${p.name} · ${p.kurz}</h3>
+        ${hilfeId()===id?'<span class="wahl-marke">gewählt</span>':''}</div>
+      <p class="wahl-fuer">${bedingungen}</p>
+      <div class="wahl-best">Bestmarke: ${best? 'Welle '+best : 'noch keine'}</div>`;
+    b.onclick=()=>{ save.hilfe=id; persist(); if(sfx) sfx('pick'); renderHilfeWahl(); };
+    box.appendChild(b);
+  }
+  // Ausblick auf die nächste gesperrte Stufe: gedämpft, nicht antippbar. Ohne diesen
+  // Hinweis wüsste niemand, dass es nach Meister überhaupt weitergeht.
+  /* Der Ausblick erscheint erst NACH dem ersten Sieg. Wer noch nie Welle 30 geschafft
+     hat, sieht exakt die drei Voreinstellungen wie bisher — eine gesperrte achte
+     Schwierigkeitskarte wäre für ihn nur Rauschen. */
+  if(frei>=1 && frei<PRUEFSTUFEN.length){
+    const next=PRUEFSTUFEN[frei];
+    const bedingungen=PRUEFSTUFEN.slice(0,frei+1).map(x=>x.desc).join('<br>');
+    const vorherige=frei===0? 'Standard oder Meister' : PRUEFSTUFEN[frei-1].name;
+    const b=document.createElement('button');
+    b.className='wahl-karte pruef locked'; b.disabled=true;
+    b.innerHTML=`<div class="wahl-kopf"><h3>${next.name} · ${next.kurz}</h3>
+        <span class="wahl-marke aus">gesperrt</span></div>
+      <p class="wahl-fuer">${bedingungen}</p>
+      <p class="wahl-fuer">Gewinne Welle 30 auf ${vorherige}, um sie freizuschalten.</p>`;
     box.appendChild(b);
   }
 }
@@ -3631,6 +3707,20 @@ function sieg(){
   state='sieg'; setMusicLevel();
   updateTreeButton();
   recordBest();
+  // Prüfstufen schalten sich durch Sieg frei, nicht durch Kauf: Standard/Meister
+  // schalten Stufe 1 frei, ein Sieg auf Stufe N schaltet N+1 frei (gedeckelt), aber
+  // nur wenn die gespielte Stufe bereits die höchste freigeschaltete war — ein Sieg
+  // auf einer längst übertroffenen Stufe darf pruefFrei nicht zurückdrehen oder erneut
+  // "freischalten". Ein Messlauf ist keine Leistung (siehe recordBest()) und schaltet
+  // nichts frei.
+  let neuFrei=null;
+  if(!messlauf){
+    const id=hilfeId();
+    let n=0;
+    if(id==='standard'||id==='meister') n=1;
+    else { const idx=pruefstufeIndex(id); if(idx>=0) n=Math.min(PRUEFSTUFEN.length, idx+2); }
+    if(n>(save.pruefFrei||0)){ save.pruefFrei=n; neuFrei=PRUEFSTUFEN[n-1]; }
+  }
   const verdient=bucheFragmente();
   const ersterSieg=!save.gewonnen;
   save.gewonnen=true; save.endlosFrei=true; persist();
@@ -3639,6 +3729,7 @@ function sieg(){
     `Du hast den Zerbrochenen Mond bezwungen — auf <b>${hilfe().name}</b>.<br>`+
     `Level ${player.level} · Orbitpfad abgeschlossen`+
     (finalePunkte? `<br><b style="color:var(--gold)">+${finalePunkte} Finale-${finalePunkte===1?'Punkt':'Punkte'}</b> · Orbit jetzt abschließen` : '')+
+    (neuFrei? `<br><b style="color:var(--gold)">${neuFrei.name} freigeschaltet</b> · ${neuFrei.kurz}` : '')+
     (verdient>0? `<br><b style="color:var(--gold)">+${verdient} ◆</b> Fragmente` : '');
   hideAll();
   document.getElementById('overlay-sieg').classList.remove('hidden');

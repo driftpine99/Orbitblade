@@ -364,6 +364,12 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .wahl-portrait{position:absolute;left:1px;top:7px;width:76px;height:64px;pointer-events:none}
 #charakter-detail{margin-top:8px;padding:9px;border:1px solid var(--line);border-radius:7px;background:rgba(10,18,32,.55)}#charakter-detail h3{font-size:13px;margin-bottom:4px}
 #hilfe-wahl{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#hilfe-wahl .wahl-karte{padding:7px;min-width:0}#hilfe-wahl .wahl-werte{display:grid}#hilfe-wahl .wahl-fuer{display:none}
+/* Prüfstufen liegen in derselben Liste, brauchen aber ihre gestapelten Bedingungen
+   im Klartext. Deshalb je eine volle Zeile statt einer Drittelspalte — bei 393 px
+   waeren drei Spalten nur 120 px breit und der Text unlesbar. Das trennt zugleich
+   sichtbar die drei Voreinstellungen von der Leiter darunter. */
+#hilfe-wahl .wahl-karte.pruef{grid-column:1/-1;padding:10px 12px}
+#hilfe-wahl .wahl-karte.pruef .wahl-fuer{display:block;margin:3px 0 5px;line-height:1.45}
 .compact-overlay .slot-reihe{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.compact-overlay .slot-kachel{padding:8px;min-height:82px}
 #orbit-presets{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}.preset-card{display:grid;grid-template-columns:1fr auto;gap:5px;align-items:center;padding:7px;border:1px solid var(--line);border-radius:6px;background:rgba(10,18,32,.6);font-size:10px}.preset-card b,.preset-card small{display:block}.preset-card small{color:var(--muted);margin-top:2px}.preset-card button{min-height:34px;padding:4px 7px;border:1px solid var(--line);border-radius:5px;background:rgba(110,200,255,.1);color:var(--text);font-size:10px}.preset-card .preset-save{grid-column:1/3;min-height:28px;color:var(--muted)}
 .hangar-tabs{grid-template-columns:1fr 1fr;grid-auto-flow:row}.guthaben{margin:6px 0!important}.compact-overlay #metashop-grid{display:flex;flex-direction:column;gap:7px;margin:0;width:100%;max-width:none}

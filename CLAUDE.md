@@ -1182,7 +1182,7 @@ gegen Bosse leicht bremst —, kein Fehler.
 Noch offen: die zustandsabhängige Gewichtung nach Hades-Vorbild. Sie ergibt erst Sinn,
 seit der Topf groß genug ist, und ist die nächste Etappe.
 
-## Konzept: Prüfstufen als Endspiel (entworfen 18.08.2026, noch nicht gebaut)
+## Prüfstufen als Endspiel (Stufen 1–4 umgesetzt 18.08.2026)
 
 Antwort auf den letzten offenen Befund: „kaum Langfristnutzen vom wiederholten Spielen".
 Nach neun bis fünfzehn Siegen sind alle 16 Werkstattprojekte gebaut, danach sind
@@ -1262,6 +1262,38 @@ bleibt, lassen sich Stufen ergänzen, ohne die unteren anzufassen.
 tut, nicht *wie viel* auf ihn zukommt — genau das Hades-Prinzip. Ihre Wirkung lässt sich
 nur im Spieltest beurteilen. Die Stufenzahl acht ist deshalb ein begründeter Startwert,
 kein bewiesenes Optimum.
+
+### Umgesetzt: Stufen 1 bis 4
+
+Die Stufen 5 bis 8 folgen erst nach einem echten Prüflauf — acht Stufen blind zu
+balancieren wäre geraten.
+
+- `PRUEFSTUFEN` hält die vier Stufen, `save.pruefFrei` den Freischaltstand. Er wird
+  überall als `save.pruefFrei||0` gelesen, deshalb bleibt `SAVE_VERSION` bei 9 und alte
+  Spielstände funktionieren unverändert.
+- **`hilfe()` liefert ein zusammengesetztes Objekt.** Es beginnt bei `HILFEN.meister` und
+  wendet die Bedingungen 1..N gestapelt an. Weil `hilfe()` nur an acht Stellen gelesen
+  wird und nur die Felder `gegner`, `name`, `panzerAb`, `panzerDurchlass`, `schaden` und
+  `wiederauf`, musste **keine einzige Aufrufstelle** angefasst werden. Zwei neue Felder
+  kamen dazu: `ausleseKarten` und `bossHp`.
+- `hilfeId()` weist Stufen ab, die nicht freigeschaltet sind — ein manipulierter
+  Spielstand kann Stufe 4 nicht erzwingen.
+- Freigeschaltet wird in `sieg()`: Sieg auf Standard oder Meister öffnet Stufe 1, Sieg
+  auf Stufe N öffnet N+1, gedeckelt bei vier. Ein Messlauf schaltet nichts frei.
+- `Zäher Kern` multipliziert das Bossleben **vor** dem Finalbonus ×2,2, damit sich beide
+  Faktoren multiplizieren statt zu ersetzen. Nachgemessen: Finalboss Welle 30 steigt von
+  12.091 auf 15.114, Verhältnis exakt 1,25.
+- Gegnerzahl bei Welle 25: Meister 136 → Prüfstufe 4 152.
+
+Anzeige: Die Stufen setzen die Liste in der Vorbereitung fort, die vorher nur die drei
+Hilfsstufen zeigte. Der Reiter heißt jetzt `Stufe` statt `Hilfe`. Jede Prüfstufenkarte
+belegt eine volle Zeile und nennt **alle gestapelten** Bedingungen, nicht nur die neue —
+bei drei Spalten wären es auf 393 px nur 120 px je Karte und der Text unlesbar.
+
+**Wer noch nie gewonnen hat, sieht exakt die drei Karten wie bisher.** Erst nach dem
+ersten Sieg erscheinen die freigeschalteten Stufen und ein gedämpfter Ausblick auf die
+nächste. Ohne diese Regel hätte ein Neuling eine gesperrte achte Schwierigkeitskarte
+gesehen, die ihn nichts angeht.
 
 ## Ideen aus dem Spieltest (17.08.2026)
 
