@@ -325,7 +325,7 @@ const ABILITIES = {
   // Neu in der Konzeptfassung — zwei davon zahlen direkt auf den Sweet Spot ein
   sog:           { name:'Sog',             desc:'Zieht alle Gegner heran — bringt sie in deine Klinge',       slot:'active',  iconKey:'reichweite' },
   schneide:      { name:'Schneide',        desc:'Sweet-Spot-Treffer richten deutlich mehr Schaden an',        slot:'passive', iconKey:'schaden' },
-  nachhall:      { name:'Nachhall',        desc:'Jeder vierte Sweet-Spot-Treffer löst eine Druckwelle aus',   slot:'passive', iconKey:'boost' },
+  nachhall:      { name:'Nachhall',        desc:'Jeder vierte Sweet-Spot-Treffer löst eine Druckwelle aus',   slot:'passive', iconKey:'nachhall' },
 };
 const ACTIVE_IDS=['wirbel','stoss','bombe','nova','sog'];
 const MAX_ABIL_LEVEL=5;
@@ -1711,7 +1711,12 @@ function renderAuslese(){
     const text=karte.kind==='verstaerkt'? STUFEN[karte.id].sprung : ABILITIES[karte.id].desc;
     const b=document.createElement('button');
     b.className='auslese-karte'+(karte.kind==='verstaerkt'?' stark':'');
-    b.innerHTML='<span class="ak-titel">'+ABILITIES[karte.id].name+'</span><span class="ak-text">'+text+'</span><span class="ak-stufe">'+stufe+'</span>';
+    // Das Symbol kommt aus derselben Quelle wie Vorbereitung und Sammlung, damit
+    // eine Faehigkeit ueberall gleich aussieht und man sie wiedererkennt.
+    b.innerHTML='<span class="ak-icon">'+svg(abilIcon(karte.id))+'</span>'
+      +'<span class="ak-body"><span class="ak-titel">'+ABILITIES[karte.id].name+'</span>'
+      +'<span class="ak-text">'+text+'</span></span>'
+      +'<span class="ak-stufe">'+stufe+'</span>';
     b.onclick=()=>waehleAuslese(karte);
     wrap.appendChild(b);
   }
@@ -1812,7 +1817,7 @@ const META_UPGRADES=[
   {gruppe:'Begleiter',id:'begleiter3',name:'Jägerlogik',desc:'Priorisiert gepanzerte Gegner und erhält mehr Reichweite.',icon:'schaden',base:3600,req:'begleiter2'},
   {gruppe:'Begleiter',id:'begleiter4',name:'Schildprotokoll',desc:'Volle Fokusladung löst einen kleinen Schildpuls aus.',icon:'leben',base:5200,req:'begleiter3'},
   {gruppe:'Begleiter',id:'begleiter5',name:'Bossüberladung',desc:'Bei Bossbeginn arbeitet der Begleiter 10 Sekunden schneller.',icon:'tempo',base:7500,req:'begleiter4'},
-  {gruppe:'Kosmetik',id:'farblabor',name:'Farblabor',desc:'Schaltet alle Klingenfarben in der Sammlung frei.',icon:'schneide',base:1200},
+  {gruppe:'Kosmetik',id:'farblabor',name:'Farblabor',desc:'Schaltet alle Klingenfarben in der Sammlung frei.',icon:'farbe',base:1200},
   {gruppe:'Kosmetik',id:'spurenlabor',name:'Spurenlabor',desc:'Bewegungsspuren leuchten in deiner Klingenfarbe.',icon:'nachhall',base:2200},
   {gruppe:'Kosmetik',id:'formarchiv',name:'Formarchiv',desc:'Schaltet alle Klingenformen in der Sammlung frei.',icon:'dreifach',base:3500},
   {gruppe:'Kosmetik',id:'hangarprojektion',name:'Hangarprojektion',desc:'Projiziert einen feinen kosmetischen Orbit um deinen Träger.',icon:'kette',base:5000},
@@ -3265,7 +3270,7 @@ function sparkRing(x,y,color){
 
 /* Icons — schlichte Linien-Symbole, passend zum futuristischen Stil */
 const ICON={
-  schaden:'<path d="M4 20 16 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M14.5 6.5 19 4l-2.5 4.5z" fill="currentColor"/><circle cx="5" cy="19" r="2" fill="currentColor"/>',
+  schaden:'<path d="M4.6 19.4 14.6 9.4" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M13.2 8 20 4l-4 6.8z" fill="currentColor"/><path d="M17.4 14.6l1.05 2.35 2.35 1.05-2.35 1.05-1.05 2.35-1.05-2.35L14 18.05l2.35-1.05z" fill="currentColor"/>',
   reichweite:'<circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 3"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   tempo:'<path d="M13 2 5 13h6l-2 9 8-11h-6z" fill="currentColor"/>',
   doppel:'<path d="M6 21 11 9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M18 21 13 9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="6" r="2.6" fill="currentColor"/>',
@@ -3281,7 +3286,11 @@ const ICON={
   stoss:'<circle cx="12" cy="12" r="2.4" fill="currentColor"/><path d="M12 6.8a5.2 5.2 0 0 1 0 10.4M12 6.8a5.2 5.2 0 0 0 0 10.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   bombe:'<circle cx="12" cy="14" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8V6M14.5 4.5a2 2 0 0 0 2-2 2 2 0 0 1 2 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10.2 13.6a2.2 2.2 0 0 1 2.2-2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   nova:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/>',
-  phaser:'<path d="M13 2 5 13h6l-2 9 8-11h-6z" fill="currentColor"/>'
+  phaser:'<circle cx="5.5" cy="12" r="3" fill="currentColor"/><rect x="10" y="6.6" width="6.4" height="2.4" rx="1.2" fill="currentColor"/><rect x="10" y="15" width="6.4" height="2.4" rx="1.2" fill="currentColor"/><path d="M18.6 7.8h2.6M18.6 16.2h2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>',
+  // Nachhall ist eine Druckwelle vom Treffer aus. Vorher lieh er sich ICON.boost,
+  // eine Flamme — die sagte nichts ueber die Wirkung.
+  farbe:'<path d="M12 3a9 9 0 0 0 0 18c1.4 0 2-.8 2-1.8 0-.6-.4-1-.4-1.6 0-.9.7-1.5 1.6-1.5H17a4.4 4.4 0 0 0 4-4.4C21 6.6 17 3 12 3z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="7.6" cy="11" r="1.3" fill="currentColor"/><circle cx="11" cy="7.4" r="1.3" fill="currentColor"/><circle cx="15.4" cy="8.6" r="1.3" fill="currentColor"/>',
+  nachhall:'<circle cx="6" cy="12" r="2.4" fill="currentColor"/><path d="M10.2 7.6a6.2 6.2 0 0 1 0 8.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.2 5a9.9 9.9 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".62"/><path d="M18.2 2.6a13.6 13.6 0 0 1 0 18.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".34"/>'
 };
 function svg(paths){ return `<svg class="card-icon" viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`; }
 

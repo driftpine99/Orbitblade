@@ -1011,6 +1011,20 @@ Läufen etwas anderes passiert.
   zehnsekündige Begleiter-Überladung über `Date.now()`; die Restzeit wird beim
   Schließen um die Lesedauer verschoben, sonst verstriche sie im Overlay.
 
+Jede Karte trägt links das SVG-Symbol ihrer Fähigkeit aus derselben `ICON`-Tabelle,
+die auch Vorbereitung, Sammlung und Werkstatt nutzen — eine Fähigkeit sieht überall
+gleich aus. Drei Symbole waren dabei falsch oder fehlten und sind mitkorrigiert:
+
+- `phaser` trug denselben Blitz wie `tempo`, obwohl er automatisch schießt; jetzt
+  Emitter mit zwei Geschossen. Das Begleiterprojekt `Impulsauge` nutzt denselben
+  Schlüssel und profitiert mit.
+- `nachhall` lieh sich `boost`, eine Flamme; jetzt eine Druckwelle. Das Kosmetikprojekt
+  `Spurenlabor` zeigte dadurch bisher gar kein Symbol und hat nun eins.
+- `schaden` (von `schneide` genutzt) war bei 26 px nur ein dünner Strich; jetzt Klinge
+  mit hellem Aufschlag.
+- `Farblabor` verwies auf den nie existierenden Schlüssel `schneide` und blieb leer;
+  es hat jetzt ein Palettensymbol. Damit hat jedes der 16 Werkstattprojekte ein Symbol.
+
 Gemessen an 2.000 simulierten Kartenfolgen:
 
 - Der Topf trägt über alle neun Auslesen. Bis zur achten liegen immer drei Karten zur

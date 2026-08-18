@@ -412,17 +412,25 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
    Karten stehen auf dem Handy untereinander und passen ohne Scrollen; ab
    601px (siehe Mobile-first-Block oben) dürfen sie nebeneinander stehen. */
 #auslese-karten{display:flex;flex-direction:column;gap:10px;width:100%;max-width:520px;margin:2px 0 8px}
-.auslese-karte{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%;
+/* Raster statt Spalte, seit das Symbol dazugekommen ist: Es steht links ueber die
+   volle Kartenhoehe, Titel und Wirkungszeile rechts daneben, das Stufenabzeichen
+   darunter. So bleibt der Text auch bei 360 px breit genug zum Umbrechen. */
+.auslese-karte{display:grid;grid-template-columns:auto 1fr;
+  grid-template-areas:"icon body" "icon stufe";align-items:center;column-gap:14px;row-gap:6px;width:100%;
   min-height:var(--tap);padding:14px 16px;border-radius:8px;border:1px solid var(--line);
   background:rgba(10,18,32,.65);color:var(--text);text-align:left;cursor:pointer;
   transition:border-color .15s,box-shadow .15s,transform .1s}
+.ak-body{grid-area:body;display:flex;flex-direction:column;gap:5px;min-width:0}
+.ak-icon{grid-area:icon;display:grid;place-items:center;width:44px;height:44px;border-radius:10px;
+  border:1px solid rgba(110,200,255,.32);background:rgba(110,200,255,.09);color:var(--accent)}
+.ak-icon .card-icon{width:26px;height:26px}
 .auslese-karte:hover{border-color:rgba(110,200,255,.55);box-shadow:0 0 18px rgba(110,200,255,.2)}
 .auslese-karte:active{transform:scale(.98)}
 .auslese-karte:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .ak-titel{font-size:var(--fs-lg);font-weight:700;letter-spacing:.02em;color:#fff}
 /* kein Ellipsis: die Wirkungszeile darf umbrechen, statt abgeschnitten zu werden */
 .ak-text{font-size:var(--fs-sm);color:var(--muted);line-height:1.45;flex:1}
-.ak-stufe{align-self:flex-end;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+.ak-stufe{grid-area:stufe;justify-self:end;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
   color:var(--accent);border:1px solid rgba(110,200,255,.45);border-radius:999px;padding:3px 10px;
   background:rgba(110,200,255,.08);white-space:nowrap}
 /* .stark = "Verstärkt": setzt das JS zusätzlich zur Klasse — erkennbar hochwertiger, Gold statt Akzentblau */
@@ -432,6 +440,7 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .auslese-karte.stark:hover{border-color:var(--gold);box-shadow:0 0 28px rgba(255,210,87,.34)}
 .auslese-karte.stark:focus-visible{outline-color:var(--gold)}
 .auslese-karte.stark .ak-titel{color:var(--gold)}
+.auslese-karte.stark .ak-icon{color:var(--gold);border-color:rgba(255,210,87,.5);background:rgba(255,210,87,.13)}
 .auslese-karte.stark .ak-stufe{color:var(--gold);border-color:rgba(255,210,87,.55);background:rgba(255,210,87,.14)}
 @keyframes ausleseGlow{50%{box-shadow:0 0 30px rgba(255,210,87,.4)}}
 @media(prefers-reduced-motion:reduce){.auslese-karte.stark{animation:none}}
@@ -442,7 +451,9 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 #auslese-reroll:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 @media(min-width:601px){
   #auslese-karten{flex-direction:row;align-items:stretch;max-width:760px}
-  .auslese-karte{flex:1;min-width:0}
+  .auslese-karte{flex:1;min-width:0;grid-template-columns:1fr;
+    grid-template-areas:"icon" "body" "stufe";align-items:start;justify-items:start;row-gap:9px}
+  .auslese-karte .ak-body{align-self:stretch}
 }
 
 /* Status auf der Level-Up-Karte: sagt, ob die Macht schon wirkt */
