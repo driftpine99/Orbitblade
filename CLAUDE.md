@@ -1182,6 +1182,87 @@ gegen Bosse leicht bremst —, kein Fehler.
 Noch offen: die zustandsabhängige Gewichtung nach Hades-Vorbild. Sie ergibt erst Sinn,
 seit der Topf groß genug ist, und ist die nächste Etappe.
 
+## Konzept: Prüfstufen als Endspiel (entworfen 18.08.2026, noch nicht gebaut)
+
+Antwort auf den letzten offenen Befund: „kaum Langfristnutzen vom wiederholten Spielen".
+Nach neun bis fünfzehn Siegen sind alle 16 Werkstattprojekte gebaut, danach sind
+Fragmente wertlos und es gibt keinen Grund mehr für den nächsten Lauf.
+
+### Warum keine Währungssenke
+
+Die naheliegende Lösung wäre eine neue Senke gewesen, in die man Fragmente kippt. Die
+Recherche bei den erfolgreichsten Roguelites zeigt, dass diese Gattung das Problem
+**anders** löst:
+
+- **Hades — Pakt der Strafe:** Der Spieler schaltet selbst Erschwernisse zu, jede erhöht
+  einen Wert namens „Hitze". Jede Hitzestufe macht die bereits verdienten Belohnungen
+  erneut verdienbar. Gezählt wird pro Waffe: sechs Waffen mal 20 Stufen ergeben hunderte
+  sinnvolle Läufe aus vorhandenem Material. Bei Hitze 20 ist Schluss — bewusst endlich.
+- **Slay the Spire — Aufstieg:** 20 gestapelte Erschwernisse, jede erst freigeschaltet,
+  wenn die vorherige geschafft ist. Keine Währung im Spiel. Selbst Experten gewinnen auf
+  Aufstieg 20 nur noch rund 30 % ihrer Läufe.
+- **Dead Cells — Bosszellen:** dasselbe Muster in fünf Stufen.
+
+Das Muster: **Der Endspielinhalt ist selbstgewählte Schwierigkeit, freigeschaltet durch
+Können statt gekauft.** Damit erübrigt sich die Senke — Fragmente dürfen wertlos werden,
+wenn der Antrieb nicht mehr an ihnen hängt.
+
+### Form
+
+- `Prüfstufe 1` erscheint nach dem ersten Welle-30-Sieg auf Standard oder Meister.
+- Stufe N wird erst sichtbar, wenn N−1 gewonnen wurde. Kein Rosinenpicken.
+- Jede Stufe **stapelt** auf alle vorherigen.
+- Acht Stufen. Begründung siehe Messung unten.
+- Bestmarke je Prüfstufe, getrennt wie heute schon je Hilfsstufe.
+- Die Sammlung zeigt, welche der zehn Kombinationen aus zwei Charakteren und fünf
+  Hauptmächten auf welcher Stufe geschafft wurden — das ist Hades' Waffen-Multiplikator
+  als Anzeige, ohne Zwang, alle durchzuspielen.
+
+### Die acht Bedingungen
+
+Alle nutzen vorhandene Regler; es braucht keine neuen. Neun sitzen in `diffAt(wave)`,
+fünf in `HILFEN`.
+
+1. `Dichte` — Gegnerzahl +12 %
+2. `Härte` — Panzerdurchlass halbiert
+3. `Knappe Wahl` — die Auslese bietet nur noch zwei Karten statt drei
+4. `Zäher Kern` — Bosse +25 % Leben
+5. `Wachsamkeit` — Boss-Vorwarnung −20 %
+6. `Ausgeblutet` — Lebensregeneration halbiert, Lebenskugeln seltener
+7. `Früher Druck` — Panzergegner ab Welle 3, Bosse alle vier statt fünf Wellen
+8. `Zwei Phasen` — Bosse wechseln schon bei 70 % statt 50 % Leben in Phase 2
+
+### Belohnung
+
+Ausschließlich Kosmetik und Abzeichen, **niemals Kampfkraft** — sonst würde aus dem
+freiwilligen Regler eine Pflicht. Freigeschaltet wird direkt durch das Bestehen, nicht
+gekauft; das ist das Modell von Slay the Spire und macht die Senkenfrage gegenstandslos.
+
+Achtung, das berührt eine bestehende Leitplanke: In diesem Dokument steht „Hilfen sperren
+keine Inhalte". Prüfstufen schalten sehr wohl etwas frei. Vereinbar ist das nur, weil sie
+die **Gegenrichtung** der Hilfen sind und ausschließlich Kosmetik vergeben.
+
+### Gemessene Größenordnung
+
+Druck bei Welle 25, definiert als Gegnerzahl × Schaden × Tempo:
+
+| | Gegner | Druck | Panzerdurchlass |
+|---|---|---|---|
+| Entdecker | 76 | 70 | 55 % |
+| Standard | 109 | 200 | 25 % |
+| Meister | 136 | 350 | 10 % |
+| **Prüfstufe 8** | 152 | **494 (141 % von Meister)** | 5 % |
+
+Der Sprung von Standard zu Meister ist mit +75 % größer als die gesamte Achterleiter mit
++41 %. Die Leiter ist damit bewusst konservativ; falls der Spieltest zeigt, dass oben Luft
+bleibt, lassen sich Stufen ergänzen, ohne die unteren anzufassen.
+
+**Grenze dieser Messung:** Vier der acht Bedingungen bewegen den Druckwert gar nicht
+(`Knappe Wahl`, `Zäher Kern`, `Zwei Phasen`, teils `Härte`). Sie ändern, *was* der Spieler
+tut, nicht *wie viel* auf ihn zukommt — genau das Hades-Prinzip. Ihre Wirkung lässt sich
+nur im Spieltest beurteilen. Die Stufenzahl acht ist deshalb ein begründeter Startwert,
+kein bewiesenes Optimum.
+
 ## Ideen aus dem Spieltest (17.08.2026)
 
 Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.
