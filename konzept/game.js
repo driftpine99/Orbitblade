@@ -394,8 +394,8 @@ const EVOLUTIONS={
    eine eigene Farbe und eine eigene Silhouette. Vorher sahen alle Bosse gleich aus,
    sodass nach dem ersten Kampf optisch nichts Neues mehr kam. */
 const BOSS_KINDS=[
-  { id:'waechter', name:'Wächter',      color:'#c77dff', rgb:'199,125,255', leit:'shock',
-    tip:'Meide den lila Ring!',            form:'hex'   },
+  { id:'waechter', name:'Wächter',      color:'#c77dff', rgb:'199,125,255', leit:'shock', exklusiv:'schild',
+    tip:'Lauf um seinen Schild herum!',    form:'hex'   },
   { id:'brutmutter',name:'Brutmutter',  color:'#4de0a0', rgb:'77,224,160',  leit:'minions',
     tip:'Sie ruft ständig Verstärkung!',   form:'organic'},
   { id:'rammbock', name:'Rammbock',     color:'#ff7a3d', rgb:'255,122,61',  leit:'ram',
@@ -1066,6 +1066,11 @@ function startMaechte(){
 function evolvedOf(id){ return runEvolutions[id]||null; }
 let runAbilities={};                            // getragene Fähigkeiten: id -> Stufe (1..10)
 let bombs=[], pShots=[], powerFields=[], powerEchoes=[], novaFx=0; // Bomben, Projektile und sichtbare Machtfelder
+/* Boss-Gefahrenzonen: gemeinsame Infrastruktur für Raumhebel, die den Spieler aus dem
+   56–72-px-Sicherheitsband zwischen Kontaktschaden und Klingenreichweite vertreiben.
+   kind:'brand' = ortsfester Kreis (Rammbock-Brandspur). kind:'arm' = rotierender Balken
+   vom Ursprung nach außen, folgt erst in einer späteren Etappe. */
+let bossHazards=[]; // {kind,x,y,r,until,dmg,farbe,ang,len,drehen,tick}
 let novaEcho=0, novaEchoDmg=0, novaEchoRange=0; // nachzündende zweite Nova-Welle (ab Stufe 4)
 let toasts=[], banner=null;              // kleine Hinweise oben, große Ansage in der Mitte
 let bossActive=false, bossHitClean=true; // für das Abzeichen "Makellos"
@@ -1847,7 +1852,7 @@ function resetGame(){
   activeSlot1=vw.slot1; activeSlot2 = hasSlot2()? vw.slot2 : null;
   runAbilities={}; runEvolutions={}; runTree={}; skillPoints=0; treeFlags={}; treeUndo=null;
   regularPointsEarned=0; regularTreeFrozen=false; echoPoints=0; echoMilestones=0; treeReturnState='playing';
-  bombs=[]; pShots=[]; powerFields=[]; powerEchoes=[]; novaFx=0; novaEcho=0; barriere=0;
+  bombs=[]; pShots=[]; powerFields=[]; powerEchoes=[]; novaFx=0; novaEcho=0; barriere=0; bossHazards=[];
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
   wiederaufBenutzt=false; nachhallZaehler=0; splitterSweetZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false;
   // Auslese ist laufgebunden: sonst wirkt der Freiwurf, die Preissteigerung oder eine
@@ -1926,14 +1931,25 @@ function bossAbilitiesEnabled(wave, leit){
   // Die Leitfähigkeit der Variante ist immer erlaubt — sonst wäre ein „Rammbock",
   // der nicht rammen darf, sinnlos.
   if(leit && !list.includes(leit)) list.push(leit);
+  // Die Exklusivmechanik der Variante kennt nur sie selbst.
+  const ex=(BOSS_KINDS.find(k=>k.leit===leit)||{}).exklusiv;
+  if(ex && !list.includes(ex)) list.push(ex);
   return list;
 }
 function pickBossAbility(wave, leit){
   const erlaubt=bossAbilitiesEnabled(wave, leit);
   // Die Leitfähigkeit der Variante kommt doppelt so oft — dadurch fühlt sich jeder
   // Boss-Typ im Kampf anders an, nicht nur optisch.
+  /* Gemessen: Ohne eigene Gewichtung kam der Spiegelschild bei Welle 25 nur in 17 %
+     der Angriffe, der generische Schockring in 33 % — die Signatur des Bosses war
+     seltener als die Allerweltsattacke. Die Exklusivmechanik traegt jetzt den
+     Charakter (rund 37 %), die Leitfaehigkeit steht dahinter. */
   const gewichtet=[...erlaubt];
-  if(leit && erlaubt.includes(leit)) gewichtet.push(leit, leit);
+  const ex=(BOSS_KINDS.find(k=>k.leit===leit)||{}).exklusiv;
+  if(ex && erlaubt.includes(ex)){
+    gewichtet.push(ex, ex);
+    if(leit && erlaubt.includes(leit)) gewichtet.push(leit);
+  } else if(leit && erlaubt.includes(leit)) gewichtet.push(leit, leit);
   const list=gewichtet.filter(a=>a!==lastBossAbility);
   const a=list[Math.floor(Math.random()*list.length)] || leit || 'shock';
   lastBossAbility=a;
@@ -1971,12 +1987,19 @@ function fireBossAbility(en){
         dmg:Math.round(en.dmg*0.6), color:'#c77dff', r:CONFIG.shots.radius, life:CONFIG.shots.life});
     }
     if(sfx) sfx('laserEnemy');
+  } else if(a==='schild'){
+    // Spiegelschild: reine Verdrängung. Es gibt keine zentrale Schadensfunktion und
+    // damit keinen echten Schadensblock — die Zeit bis zum Umrunden ist der Raumhebel.
+    en.schildT=en.phase2?4000:3000;
+    en.schildDir=Math.atan2(player.y-en.y, player.x-en.x);
+    en.schildHitCd=0;
   }
   return false;
 }
 // Boss besiegt -> Etappe geschafft: Abzeichen, Freischaltung, Statistik
 function onBossDefeated(){
   bossActive=false;
+  bossHazards=[];   // sonst blieben Brandspuren nach dem Kampf sichtbar liegen
   save.bossKills=(save.bossKills||0)+1;
   // Boss-Sauberkeit bleibt bewusst an echten Lebensschaden gebunden (siehe hurtPlayer).
   if(bossHitClean) orbitFortschritt('boss_makellos');
@@ -2025,7 +2048,8 @@ function makeEnemy(type){
   // Minions, Spiralen), nicht aus reinem Hinterherlaufen.
   let spd = t.speed*diff.enemySpeed*(type==='boss' ? (diff.bossSpeed!==undefined?diff.bossSpeed:1) : 1);
   if(type==='boss') spd = Math.min(spd, CONFIG.playerBaseSpeed*0.6);
-  return { type, x,y, hp, maxHp:hp, dmg:Math.round(t.dmg*dScale*diff.enemyDmg), speed:spd, radius:t.radius, color:t.color, panzer:!!t.panzer, hitCd:0, bossTimer:0, shootRange:t.shootRange||0, chargeT:0, shootCd:0, bossPhase:'', ability:'', ramT:0, ramRecoverT:0, shockFx:0, warnT:0 };
+  return { type, x,y, hp, maxHp:hp, dmg:Math.round(t.dmg*dScale*diff.enemyDmg), speed:spd, radius:t.radius, color:t.color, panzer:!!t.panzer, hitCd:0, bossTimer:0, shootRange:t.shootRange||0, chargeT:0, shootCd:0, bossPhase:'', ability:'', ramT:0, ramRecoverT:0, shockFx:0, warnT:0,
+           phase2:false, phaseT:0, hpDavor:0, schildT:0, schildDir:0, schildHitCd:0, brandTick:0 };
 }
 function randomEnemyType(){
   const d=curDiff();
@@ -3779,7 +3803,7 @@ function update(dt){
     }
     // Distanz-Gegner halten Reichweite, zündende Exploder bleiben stehen; Stun (Nova) friert ein
     const keepRange = en.type==='jaeger' && d<en.shootRange;
-    if(d>1 && !modulOrbit && !keepRange && !en.exploding && !(en.stunT>0) && !(en.type==='boss' && en.ramT>0)){
+    if(d>1 && !modulOrbit && !keepRange && !en.exploding && !(en.stunT>0) && !(en.type==='boss' && en.ramT>0) && !(en.type==='boss' && en.phaseT>0)){
       const langsam=en.slowT>0?.55:1, erholung=en.ramRecoverT>0?.32:1;
       en.x+=dx/d*en.speed*langsam*erholung*dt/1000;en.y+=dy/d*en.speed*langsam*erholung*dt/1000;
     }
@@ -3811,19 +3835,60 @@ function update(dt){
     }
     // Boss: Fähigkeiten mit Vorwarnung – je später die Welle, desto mehr; „Schüler" sieht die heftigen später
     if(en.type==='boss'){
+      /* Phasenwechsel bei 50 % Leben: kurze Unverwundbarkeit. Es gibt keine zentrale
+         Schadensfunktion — 32 Stellen ziehen direkt von en.hp ab. Deshalb wird der
+         Schaden hier zentral zurückgesetzt, solange phaseT läuft; das betrifft auch
+         den Finalboss, der denselben Boss-Code nutzt (nur mit 2,2× Leben). */
+      if(en.phaseT>0){
+        if(en.hp<en.hpDavor) en.hp=en.hpDavor;
+        en.phaseT-=dt;
+        if(en.phaseT<0) en.phaseT=0;
+      } else if(!en.phase2 && en.hp>0 && en.hp/en.maxHp<=0.5){
+        en.phase2=true; en.phaseT=900; en.hpDavor=en.hp;
+        const bk=BOSS_KINDS.find(k=>k.id===en.kind)||BOSS_KINDS[0];
+        announce(bk.name+' — Phase 2', 'Er wird gefährlicher', en.color||bk.color);
+        spawnParticles(en.x,en.y,en.color||bk.color,22); shake=Math.max(shake,10);
+      }
       if(en.stunT>0){ en.stunT-=dt; en.warnT=0; en.shockFx=0; }   // Nova-Stun unterbricht jede Boss-Aktion
+      else if(en.phaseT>0){ en.warnT=0; en.shockFx=0; }           // Unverwundbarkeit: steht still, startet nichts
       else {
       if(en.ramT>0){                                             // Ramme: geradliniger Sprint mit Trefferschaden
         en.ramT-=dt;
         en.x+=Math.cos(en.ramDir)*CONFIG.boss.ramSpeed*dt/1000;
         en.y+=Math.sin(en.ramDir)*CONFIG.boss.ramSpeed*dt/1000;
+        // Brandspur: alle ~90 ms ein Brandfeld an der aktuellen Position — verknappt den Fluchtraum
+        en.brandTick=(en.brandTick||0)-dt;
+        if(en.brandTick<=0){
+          en.brandTick=90;
+          if(bossHazards.length<40) bossHazards.push({kind:'brand',x:en.x,y:en.y,r:34,until:en.phase2?5000:4000,dmg:6,farbe:'#ff7a3d',tick:0});
+        }
         const rd=Math.hypot(player.x-en.x,player.y-en.y);
         if(rd<en.radius+player.radius+6){ if(hurtPlayer(Math.round(en.dmg*0.65))) return; en.ramT=0; en.ramRecoverT=CONFIG.boss.ramRecovery; }
         if(en.ramT<=0){ en.ramRecoverT=Math.max(en.ramRecoverT,CONFIG.boss.ramRecovery); en.bossPhase='cooldown'; en.bossTimer=0; }
       }
+      if(en.schildT>0){                                          // Spiegelschild: dreht sich langsam zur Spielerseite
+        en.schildT-=dt;
+        const ziel=Math.atan2(player.y-en.y, player.x-en.x);
+        const dreh=Math.atan2(Math.sin(ziel-en.schildDir),Math.cos(ziel-en.schildDir));
+        const maxDreh=1.1*dt/1000;                                // Deckel: bei 175 px/s Lauftempo umrundbar — nicht verändern
+        en.schildDir+=Math.max(-maxDreh,Math.min(maxDreh,dreh));
+        const pdx=player.x-en.x, pdy=player.y-en.y, pd=Math.hypot(pdx,pdy);
+        const bogen=en.phase2?Math.PI/2:(70*Math.PI/180);
+        const winkel=Math.atan2(pdy,pdx)-en.schildDir;
+        const awinkel=Math.atan2(Math.sin(winkel),Math.cos(winkel));
+        if(pd>0.001 && pd<110 && Math.abs(awinkel)<=bogen){
+          // Verdrängt kräftig nach außen; blockiert keinen Schaden — Verdrängung ist der Raumhebel
+          player.x+=pdx/pd*420*dt/1000; player.y+=pdy/pd*420*dt/1000;
+          en.schildHitCd=(en.schildHitCd||0)-dt;
+          if(en.schildHitCd<=0){ en.schildHitCd=500; if(hurtPlayer(10)) return; }
+        }
+        if(en.schildT<=0){ en.schildT=0; en.bossPhase='cooldown'; en.bossTimer=0; }
+      }
       en.bossTimer=(en.bossTimer||0)+dt;
       if(en.bossPhase==='ram'){
         // Bewegung übernimmt der ramT-Block oben
+      } else if(en.bossPhase==='schild'){
+        // Drehung und Verdrängung übernimmt der schildT-Block oben
       } else if(en.bossPhase==='warn'){
         if(en.ability==='ram') en.ramDir=Math.atan2(player.y-en.y, player.x-en.x);   // Band zeigt stets auf dich
         const bw=CONFIG.boss.warn*curDiff().bossWarn;
@@ -3831,12 +3896,12 @@ function update(dt){
         if(en.bossTimer>=bw){ en.bossPhase='fire'; en.bossTimer=0; en.warnT=0; }
       } else if(en.bossPhase==='fire'){
         if(fireBossAbility(en)) return;
-        en.bossPhase = en.ability==='ram' ? 'ram' : 'cooldown';
+        en.bossPhase = en.ability==='ram' ? 'ram' : (en.ability==='schild' ? 'schild' : 'cooldown');
         en.bossTimer=0;
-        if(en.ability!=='ram') en.bossNext='';
+        if(en.ability!=='ram' && en.ability!=='schild') en.bossNext='';
       } else if(en.bossPhase==='cooldown'){
         en.warnT=0;
-        const bcd=CONFIG.boss.cooldown*curDiff().bossCd;
+        const bcd=CONFIG.boss.cooldown*curDiff().bossCd*(en.phase2?0.75:1);   // Phase 2: dauerhaft schnellere Fähigkeiten
         if(en.bossTimer>=bcd){ en.bossNext=''; en.bossPhase=''; en.bossTimer=0; }
       } else {                                                    // neuer Zyklus beginnt
         en.bossNext = en.bossNext || pickBossAbility(wave, en.leit);
@@ -4059,6 +4124,21 @@ function update(dt){
   }
   if(counterCd>0) counterCd-=dt;
   if(counterFx>0){ counterFx-=dt/300; if(counterFx<0) counterFx=0; }
+  // Boss-Gefahrenzonen: eigener Tick-Zähler je Eintrag (~400 ms), sonst würde
+  // hurtPlayer() jedes Bild feuern und die Zone wäre sofort tödlich statt verknappend.
+  for(let i=bossHazards.length-1;i>=0;i--){
+    const hz=bossHazards[i];
+    hz.until-=dt;
+    if(hz.until<=0){ bossHazards.splice(i,1); continue; }
+    if(hz.kind==='brand'){
+      const d=Math.hypot(player.x-hz.x, player.y-hz.y);
+      if(d<hz.r+player.radius){
+        hz.tick=(hz.tick||0)-dt;
+        if(hz.tick<=0){ hz.tick=400; if(hurtPlayer(hz.dmg)) return; }
+      }
+    }
+    // kind:'arm' folgt in einer späteren Etappe
+  }
   perfMark('felder');
   // remove dead – Exploder zünden erst nach einem sichtbaren Zünd-Puls
   for(let i=enemies.length-1;i>=0;i--){
@@ -4690,6 +4770,22 @@ function draw(){
     ctx.beginPath(); ctx.arc(player.x,player.y,rr,0,Math.PI*2); ctx.stroke();
     ctx.restore();
   }
+  // Boss-Gefahrenzonen (z. B. Rammbock-Brandspur): kräftiger Rand, gefüllte Fläche,
+  // blinkt in der letzten Sekunde vor Ablauf sichtbar aus.
+  for(const hz of bossHazards){
+    if(!sichtbar(hz.x,hz.y,hz.r+20)) continue;
+    const blink = hz.until<1000 ? (0.35+0.65*Math.abs(Math.sin(now/90))) : 1;
+    ctx.save(); ctx.translate(hz.x,hz.y);
+    const farbe=hz.farbe||'#ff7a3d';
+    if(hz.kind==='brand'){
+      ctx.globalAlpha=blink*0.30; ctx.fillStyle=farbe;
+      ctx.beginPath(); ctx.arc(0,0,hz.r,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha=blink; ctx.strokeStyle=farbe; ctx.lineWidth=3;
+      ctx.shadowColor=farbe; sb(14);
+      ctx.stroke(); sb(0);
+    }
+    ctx.restore();
+  }
   // Boss-Vorwarnung je Fähigkeit: Gefahrenring (Schockwelle/Spirale) bzw. Ramm-Band
   for(const en of enemies){
     if(en.type!=='boss') continue;
@@ -4718,6 +4814,23 @@ function draw(){
       ctx.save(); ctx.translate(en.x,en.y); ctx.globalCompositeOperation='lighter';
       ctx.strokeStyle='rgba('+(en.rgb||'199,125,255')+','+(0.7*en.shockFx).toFixed(3)+')'; ctx.lineWidth=10*en.shockFx+2;
       ctx.beginPath(); ctx.arc(0,0,130,0,Math.PI*2); ctx.stroke();
+      ctx.restore();
+    }
+    if(en.schildT>0){
+      // Spiegelschild: deutlicher heller Bogen auf der gesperrten Seite, direkt am Bossrand
+      ctx.save(); ctx.translate(en.x,en.y); ctx.globalCompositeOperation='lighter';
+      const bogen=en.phase2?Math.PI/2:(70*Math.PI/180);
+      ctx.strokeStyle=en.color||'#c77dff'; ctx.lineWidth=9; ctx.lineCap='round';
+      ctx.shadowColor=en.color||'#c77dff'; sb(20);
+      ctx.beginPath(); ctx.arc(0,0,en.radius+8, en.schildDir-bogen, en.schildDir+bogen); ctx.stroke();
+      sb(0); ctx.restore();
+    }
+    if(en.phaseT>0){
+      // Kurze Unverwundbarkeit sichtbar machen: heller Pulsring statt stiller Pause
+      ctx.save(); ctx.translate(en.x,en.y); ctx.globalCompositeOperation='lighter';
+      const t=1-en.phaseT/900;
+      ctx.strokeStyle='rgba(255,255,255,'+(0.8*(1-t)).toFixed(3)+')'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(0,0,en.radius+6+t*30,0,Math.PI*2); ctx.stroke();
       ctx.restore();
     }
   }
