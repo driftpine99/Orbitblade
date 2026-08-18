@@ -50,7 +50,10 @@ const CONFIG = {
     panzer: { hp:145, dmg:18, speed:86, radius:23, color:'#93a6c2', star:6, xp:38, panzer:true },
     jaeger: { hp:45, dmg:14, speed:165, radius:16, color:'#ffd257', star:2, xp:22, shootRange:300 },
     exploder:{ hp:55, dmg:26, speed:132, radius:19, color:'#ff5aa2', star:3, xp:24 },
-    boss:   { hp:1150, dmg:19, speed:115, radius:34, color:'#b84dff', star:12, xp:80 }
+    boss:   { hp:1150, dmg:19, speed:115, radius:34, color:'#b84dff', star:12, xp:80 },
+    // Brutknoten (Brutmutter-Exklusivfähigkeit): unbeweglicher Speiser statt Angreifer.
+    // hp wird bei der Erzeugung relativ zum aktuellen Bosslebens überschrieben.
+    knoten: { hp:1, dmg:0, speed:0, radius:16, color:'#4de0a0', star:0, xp:0 }
   },
   shots: { speed:340, radius:5, life:3.2 },        // Projektile der Distanz-Gegner
   jaeger: { shootRange:300, chargeMs:850, cooldown:700 },
@@ -396,11 +399,11 @@ const EVOLUTIONS={
 const BOSS_KINDS=[
   { id:'waechter', name:'Wächter',      color:'#c77dff', rgb:'199,125,255', leit:'shock', exklusiv:'schild',
     tip:'Lauf um seinen Schild herum!',    form:'hex'   },
-  { id:'brutmutter',name:'Brutmutter',  color:'#4de0a0', rgb:'77,224,160',  leit:'minions',
+  { id:'brutmutter',name:'Brutmutter',  color:'#4de0a0', rgb:'77,224,160',  leit:'minions', exklusiv:'brut',
     tip:'Sie ruft ständig Verstärkung!',   form:'organic'},
   { id:'rammbock', name:'Rammbock',     color:'#ff7a3d', rgb:'255,122,61',  leit:'ram',
     tip:'Er nimmt Anlauf — geh zur Seite!',form:'wedge' },
-  { id:'spiralwerfer',name:'Spiralwerfer',color:'#5ac8e0', rgb:'90,200,224',leit:'spiral',
+  { id:'spiralwerfer',name:'Spiralwerfer',color:'#5ac8e0', rgb:'90,200,224',leit:'spiral', exklusiv:'sperre',
     tip:'Die Spirale dreht sich — lauf mit!',form:'ring' },
 ];
 // Reihum, damit jeder Boss-Kampf anders aussieht (Welle 5,10,15,20 -> 0,1,2,3)
@@ -1069,7 +1072,8 @@ let bombs=[], pShots=[], powerFields=[], powerEchoes=[], novaFx=0; // Bomben, Pr
 /* Boss-Gefahrenzonen: gemeinsame Infrastruktur für Raumhebel, die den Spieler aus dem
    56–72-px-Sicherheitsband zwischen Kontaktschaden und Klingenreichweite vertreiben.
    kind:'brand' = ortsfester Kreis (Rammbock-Brandspur). kind:'arm' = rotierender Balken
-   vom Ursprung nach außen, folgt erst in einer späteren Etappe. */
+   vom Bossmittelpunkt nach außen (Spiralwerfer-Drehsperre) — x/y folgen dem Boss,
+   ang/len/drehen bestimmen Winkel, Länge und Drehgeschwindigkeit in rad/s. */
 let bossHazards=[]; // {kind,x,y,r,until,dmg,farbe,ang,len,drehen,tick}
 let novaEcho=0, novaEchoDmg=0, novaEchoRange=0; // nachzündende zweite Nova-Welle (ab Stufe 4)
 let toasts=[], banner=null;              // kleine Hinweise oben, große Ansage in der Mitte
@@ -1993,6 +1997,41 @@ function fireBossAbility(en){
     en.schildT=en.phase2?4000:3000;
     en.schildDir=Math.atan2(player.y-en.y, player.x-en.x);
     en.schildHitCd=0;
+  } else if(a==='brut'){
+    // Brutknoten: als echte Gegner in enemies eingetragen, damit die Klinge sie ohne
+    // Sonderweg trifft. Winkel kamen schon in der Warnphase fest (en.brutTargets),
+    // hier nur noch die konkreten Positionen daraus ableiten.
+    // Aufgefüllt statt addiert: Ignoriert ein Spieler ältere Knoten dauerhaft, würden
+    // sonst mit jedem weiteren Wurf mehr Knoten liegen bleiben, als die Heilungsdeckelung
+    // vorsieht — unnötiger Wildwuchs im Feld ohne zusätzlichen Nutzen für den Boss.
+    const knotenMax=en.phase2?3:2;
+    const vorhandene=enemies.reduce((n,o)=>n+((o.brutknoten&&o.hp>0)?1:0),0);
+    const zuErzeugen=Math.max(0, knotenMax-vorhandene);
+    const ziele = (en.brutTargets && en.brutTargets.length) ? en.brutTargets.slice(0,zuErzeugen)
+      : Array.from({length:zuErzeugen},(_,k)=>({ang:Math.random()*Math.PI*2+k*Math.PI, dist:180}));
+    for(const z of ziele){
+      const e=makeEnemy('knoten');
+      e.x=en.x+Math.cos(z.ang)*z.dist; e.y=en.y+Math.sin(z.ang)*z.dist;
+      e.hp=e.maxHp=Math.max(1,Math.round(en.maxHp*0.12));
+      e.brutknoten=true; e.bossMinion=true;
+      enemies.push(e);
+    }
+    en.brutTargets=null;
+    if(ziele.length){ spawnParticles(en.x,en.y,'#4de0a0',14); announce('Brutknoten!','Zerstöre sie oder weiche der Heilung aus','#4de0a0'); }
+    if(sfx) sfx('boss');
+  } else if(a==='sperre'){
+    // Drehsperre: zwei (Phase 2: drei) Balken überstreichen das sichere Band. 0,9 rad/s
+    // ist bewusst langsamer als das Lauftempo auf 70 px (~2,5 rad/s) — überholbar.
+    const n=en.phase2?3:2;
+    const dreh=en.phase2?1.3:0.9;
+    const basis=en.sperreAng!=null ? en.sperreAng : Math.atan2(player.y-en.y, player.x-en.x);
+    for(let k=0;k<n;k++){
+      if(bossHazards.length>=40) break;
+      bossHazards.push({kind:'arm', x:en.x, y:en.y, r:130, until:3500, dmg:14, farbe:en.color,
+        ang:basis+k*(Math.PI*2/n), len:130, drehen:dreh, tick:0});
+    }
+    en.sperreAng=null;
+    spawnParticles(en.x,en.y,en.color,10); if(sfx) sfx('boss');
   }
   return false;
 }
@@ -2000,6 +2039,10 @@ function fireBossAbility(en){
 function onBossDefeated(){
   bossActive=false;
   bossHazards=[];   // sonst blieben Brandspuren nach dem Kampf sichtbar liegen
+  // Übrige Brutknoten überleben ihren Boss nicht — sonst stünde eine sinnlose Heilquelle
+  // weiter im Feld. hp=0 statt Splice: die aufrufende Sweep-Schleife entfernt tote
+  // Gegner ohnehin gleich selbst und mutiert dabei nicht die gerade laufende Indizierung.
+  for(const e of enemies) if(e.brutknoten) e.hp=0;
   save.bossKills=(save.bossKills||0)+1;
   // Boss-Sauberkeit bleibt bewusst an echten Lebensschaden gebunden (siehe hurtPlayer).
   if(bossHitClean) orbitFortschritt('boss_makellos');
@@ -3233,7 +3276,10 @@ function killEnemy(en,i){
   // Ihr Tod schadet stattdessen dem Beschwörer: Wegräumen lohnt sich weiterhin,
   // absichtliches Verlängern des Bosskampfs aber nicht.
   if(en.bossMinion){
-    const boss=enemies.find(o=>o.type==='boss' && o.hp>0);
+    // Brutknoten sind eine Heilquelle, keine Farm-Drohne: ihr Tod darf den Boss nicht
+    // zusätzlich schwächen, sonst würde Stehenbleiben-und-alles-töten wieder belohnt
+    // und der Raumhebel der Knoten wäre sinnlos.
+    const boss=en.brutknoten ? null : enemies.find(o=>o.type==='boss' && o.hp>0);
     if(boss){
       const rueckschlag=Math.max(1,Math.round(boss.maxHp*.018));
       boss.hp-=rueckschlag; pushFloat(boss.x,boss.y-34,'RÜCKSCHLAG '+rueckschlag,'#4de0a0',1.05);
@@ -3849,6 +3895,19 @@ function update(dt){
         announce(bk.name+' — Phase 2', 'Er wird gefährlicher', en.color||bk.color);
         spawnParticles(en.x,en.y,en.color||bk.color,22); shake=Math.max(shake,10);
       }
+      // Brutknoten-Heilung: 0,6 % Bossleben/s je lebendem Knoten — der Raumhebel, der
+      // reines Ankleben im sicheren Band bestraft. Läuft unabhängig von Stun/phaseT,
+      // die Knoten selbst kennen keine Unverwundbarkeit.
+      /* Gedeckelt wird die GESAMTE Heilung bei 1,2 %/s, nicht die Zahl der zählenden
+         Knoten. Nachgemessen mit einem Spieler, der die Knoten dauerhaft ignoriert und
+         nur am Boss klebt: bei ungedeckelten 1,8 %/s (drei Knoten in Phase 2) kippte
+         Welle 30 von Nettoschaden auf Nettoheilung und wurde nie besiegt. Ein Deckel auf
+         die Knotenzahl hätte denselben Effekt, aber der dritte Knoten wäre wirkungslose
+         Deko — und die pulsierende Leitung zu ihm würde den Spieler belügen. So trägt
+         jeder sichtbare Knoten bei, nur eben mit kleinerem Anteil. */
+      const lebendeKnoten=enemies.reduce((n,o)=>n+((o.brutknoten&&o.hp>0)?1:0),0);
+      const heilRate=Math.min(0.012, 0.006*lebendeKnoten);
+      if(lebendeKnoten>0 && en.hp<en.maxHp) en.hp=Math.min(en.maxHp, en.hp+en.maxHp*heilRate*dt/1000);
       if(en.stunT>0){ en.stunT-=dt; en.warnT=0; en.shockFx=0; }   // Nova-Stun unterbricht jede Boss-Aktion
       else if(en.phaseT>0){ en.warnT=0; en.shockFx=0; }           // Unverwundbarkeit: steht still, startet nichts
       else {
@@ -3891,6 +3950,8 @@ function update(dt){
         // Drehung und Verdrängung übernimmt der schildT-Block oben
       } else if(en.bossPhase==='warn'){
         if(en.ability==='ram') en.ramDir=Math.atan2(player.y-en.y, player.x-en.x);   // Band zeigt stets auf dich
+        if(en.ability==='schild') en.schildDir=Math.atan2(player.y-en.y, player.x-en.x);   // Bogen zeigt stets auf die künftige Sperrseite
+        if(en.ability==='sperre') en.sperreAng=(en.sperreAng!=null?en.sperreAng:Math.atan2(player.y-en.y, player.x-en.x))+(en.phase2?1.3:0.9)*dt/1000;   // Vorwarnung dreht schon mit
         const bw=CONFIG.boss.warn*curDiff().bossWarn;
         en.warnT=Math.min(1, en.bossTimer/bw);
         if(en.bossTimer>=bw){ en.bossPhase='fire'; en.bossTimer=0; en.warnT=0; }
@@ -3907,6 +3968,19 @@ function update(dt){
         en.bossNext = en.bossNext || pickBossAbility(wave, en.leit);
         en.ability = en.bossNext;
         en.bossPhase='warn'; en.bossTimer=0;
+        if(en.ability==='brut'){
+          // Zielwinkel jetzt würfeln, nicht bei jedem Warnframe neu — sonst zeigen die
+          // Vorwarnstrahlen woanders hin als die Knoten dann tatsächlich erscheinen.
+          const zumSpieler=Math.atan2(player.y-en.y, player.x-en.x);
+          const n=en.phase2?3:2;
+          en.brutTargets=[];
+          for(let k=0;k<n;k++){
+            let a; do{ a=Math.random()*Math.PI*2; } while(angleDiff(a,zumSpieler)<0.35);
+            en.brutTargets.push({ang:a, dist:150+Math.random()*70});
+          }
+        } else if(en.ability==='sperre'){
+          en.sperreAng=Math.atan2(player.y-en.y, player.x-en.x);
+        }
       }
       if(en.shockFx>0) en.shockFx-=dt/350;
       }
@@ -4136,8 +4210,19 @@ function update(dt){
         hz.tick=(hz.tick||0)-dt;
         if(hz.tick<=0){ hz.tick=400; if(hurtPlayer(hz.dmg)) return; }
       }
+    } else if(hz.kind==='arm'){
+      // Drehsperre: folgt dem Bossmittelpunkt und dreht mit drehen rad/s weiter.
+      const boss=enemies.find(o=>o.type==='boss' && o.hp>0);
+      if(boss){ hz.x=boss.x; hz.y=boss.y; }
+      hz.ang=(hz.ang||0)+hz.drehen*dt/1000;
+      // Gleicher Tick-Rhythmus wie brand, sonst würde hurtPlayer() jedes Bild feuern.
+      hz.tick=(hz.tick||0)-dt;
+      if(hz.tick<=0){
+        hz.tick=400;
+        const pdx=player.x-hz.x, pdy=player.y-hz.y, pd=Math.hypot(pdx,pdy);
+        if(pd<hz.len && angleDiff(Math.atan2(pdy,pdx), hz.ang)<=0.16){ if(hurtPlayer(hz.dmg)) return; }
+      }
     }
-    // kind:'arm' folgt in einer späteren Etappe
   }
   perfMark('felder');
   // remove dead – Exploder zünden erst nach einem sichtbaren Zünd-Puls
@@ -4783,10 +4868,39 @@ function draw(){
       ctx.globalAlpha=blink; ctx.strokeStyle=farbe; ctx.lineWidth=3;
       ctx.shadowColor=farbe; sb(14);
       ctx.stroke(); sb(0);
+    } else if(hz.kind==='arm'){
+      // Drehsperre: klar erkennbarer Balken mit weicher Kante an Pivot und Spitze.
+      ctx.rotate(hz.ang);
+      const grad=ctx.createLinearGradient(0,0,hz.len,0);
+      grad.addColorStop(0, hexA(farbe,0.05));
+      grad.addColorStop(0.18, hexA(farbe,0.5*blink));
+      grad.addColorStop(0.85, hexA(farbe,0.5*blink));
+      grad.addColorStop(1, hexA(farbe,0.08*blink));
+      ctx.globalAlpha=1; ctx.fillStyle=grad;
+      ctx.fillRect(0,-9,hz.len,18);
+      ctx.strokeStyle=hexA(farbe,0.85*blink); ctx.lineWidth=2;
+      ctx.shadowColor=farbe; sb(14);
+      ctx.strokeRect(0,-9,hz.len,18); sb(0);
     }
     ctx.restore();
   }
-  // Boss-Vorwarnung je Fähigkeit: Gefahrenring (Schockwelle/Spirale) bzw. Ramm-Band
+  // Brutknoten-Leitung: sichtbare, pulsierende Verbindung vom Boss zu jedem lebenden
+  // Knoten — ohne Text muss klar werden, dass sie ihn speisen.
+  for(const en of enemies){
+    if(en.type!=='boss' || en.hp<=0) continue;
+    for(const kn of enemies){
+      if(!kn.brutknoten || kn.hp<=0) continue;
+      if(!sichtbar((en.x+kn.x)/2,(en.y+kn.y)/2, Math.hypot(kn.x-en.x,kn.y-en.y)/2+30)) continue;
+      const puls=0.30+0.35*Math.abs(Math.sin(now/260));
+      ctx.save(); ctx.globalCompositeOperation='lighter';
+      ctx.strokeStyle=hexA('#4de0a0',puls); ctx.lineWidth=3;
+      ctx.shadowColor='#4de0a0'; sb(12);
+      ctx.beginPath(); ctx.moveTo(en.x,en.y); ctx.lineTo(kn.x,kn.y); ctx.stroke();
+      sb(0); ctx.restore();
+    }
+  }
+  // Boss-Vorwarnung je Fähigkeit: eigene Form pro Mechanik, damit klar wird, WELCHE
+  // Handlung ansteht — nicht nur, DASS etwas kommt.
   for(const en of enemies){
     if(en.type!=='boss') continue;
     if(!sichtbar(en.x,en.y,CONFIG.boss.shockOuter+28)) continue;
@@ -4800,7 +4914,51 @@ function draw(){
         ctx.beginPath(); ctx.moveTo(cd*(en.radius+6), sd*(en.radius+6)); ctx.lineTo(cd*260, sd*260); ctx.stroke();
         ctx.strokeStyle='rgba(255,170,90,'+(0.5*en.warnT).toFixed(3)+')'; ctx.lineWidth=2;
         ctx.beginPath(); ctx.arc(0,0,en.radius+10,0,Math.PI*2); ctx.stroke();
+      } else if(en.ability==='schild'){
+        // Wachsender Bogen genau auf der Seite, die gleich gesperrt wird — zeigt die
+        // Richtung, nicht nur "irgendetwas passiert".
+        const bogenZiel=en.phase2?Math.PI/2:(70*Math.PI/180), bogen=bogenZiel*en.warnT;
+        const dir=en.schildDir||0;
+        ctx.strokeStyle='rgba('+(en.rgb||'199,125,255')+','+(0.4+0.5*en.warnT).toFixed(3)+')';
+        ctx.lineWidth=7; ctx.lineCap='round'; ctx.shadowColor=en.color||'#c77dff'; sb(16);
+        ctx.beginPath(); ctx.arc(0,0,en.radius+9, dir-bogen, dir+bogen); ctx.stroke(); sb(0);
+      } else if(en.ability==='brut'){
+        // Kurze Strahlen dorthin, wo die Knoten gleich erscheinen — die Winkel stehen
+        // bereits fest (en.brutTargets), damit Vorwarnung und Spawn übereinstimmen.
+        ctx.strokeStyle='rgba(77,224,160,'+(0.45+0.45*en.warnT).toFixed(3)+')'; ctx.lineWidth=3; ctx.lineCap='round';
+        ctx.shadowColor='#4de0a0'; sb(12);
+        for(const zt of (en.brutTargets||[])){
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(zt.ang)*(en.radius+6), Math.sin(zt.ang)*(en.radius+6));
+          ctx.lineTo(Math.cos(zt.ang)*(en.radius+6+55*en.warnT), Math.sin(zt.ang)*(en.radius+6+55*en.warnT));
+          ctx.stroke();
+        }
+        sb(0);
+      } else if(en.ability==='sperre'){
+        // Kreuz/Doppelstrich in der künftigen Armstellung, dreht sich schon leicht mit
+        const n=en.phase2?3:2;
+        ctx.strokeStyle='rgba('+(en.rgb||'90,200,224')+','+(0.35+0.5*en.warnT).toFixed(3)+')';
+        ctx.lineWidth=5; ctx.lineCap='round';
+        for(let k=0;k<n;k++){
+          const a=(en.sperreAng||0)+k*(Math.PI*2/n);
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a)*(en.radius+4), Math.sin(a)*(en.radius+4));
+          ctx.lineTo(Math.cos(a)*(en.radius+30+40*en.warnT), Math.sin(a)*(en.radius+30+40*en.warnT));
+          ctx.stroke();
+        }
+      } else if(en.ability==='minions'){
+        // Kurze Ausbruchsmarken am Bossrand statt Vollring — "hier brechen sie aus"
+        const n=8;
+        ctx.strokeStyle='rgba(255,138,61,'+(0.4+0.5*en.warnT).toFixed(3)+')'; ctx.lineWidth=3; ctx.lineCap='round';
+        for(let k=0;k<n;k++){
+          const a=k*Math.PI*2/n + now/700;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a)*(en.radius+2), Math.sin(a)*(en.radius+2));
+          ctx.lineTo(Math.cos(a)*(en.radius+2+16*en.warnT), Math.sin(a)*(en.radius+2+16*en.warnT));
+          ctx.stroke();
+        }
       } else {
+        // Schockwelle/Spirale: unverändert der bekannte Trefferzonen-Ring
         ctx.fillStyle='rgba('+(en.rgb||'199,125,255')+','+(0.08+0.14*en.warnT).toFixed(3)+')';
         ctx.beginPath(); ctx.arc(0,0,CONFIG.boss.shockOuter,0,Math.PI*2); ctx.arc(0,0,CONFIG.boss.shockInner,0,Math.PI*2); ctx.fill('evenodd'); // Anzeige = exakt die Trefferzone
         ctx.globalCompositeOperation='source-over';
@@ -4965,6 +5123,13 @@ function draw(){
         sb(30); ctx.strokeStyle='rgba(255,90,162,'+(0.4+(1-ft)*0.6).toFixed(2)+')'; ctx.lineWidth=3;
         ctx.beginPath(); ctx.arc(0,0,r*0.9+(1-ft)*20,0,Math.PI*2); ctx.stroke();
       }
+    } else if(en.type==='knoten'){
+      // Brutknoten: unbewegliche Kapsel, pulsiert im Rhythmus der Bossheilung
+      ctx.fillStyle='#0a2018';
+      ctx.beginPath(); ctx.arc(0,0,r*0.9,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      const puls=1+0.18*Math.sin(tNow/220);
+      sb(10); ctx.fillStyle=en.color;
+      ctx.beginPath(); ctx.arc(0,0,r*0.42*puls,0,Math.PI*2); ctx.fill();
     } else { // boss — mehrteilige Erscheinung: gegenläufige Ringe, Panzerplatten, Auge
       const wob=1+0.05*Math.sin(tNow/200);
       const charging = en.warnT>0;               // lädt gerade eine Fähigkeit

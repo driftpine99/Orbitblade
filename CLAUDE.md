@@ -1045,6 +1045,80 @@ im Spiel hängen an `Date.now()` und laufen weiter, während ein Overlay offen i
 Orbitpfad hat dieselbe Eigenschaft. Eine gemeinsame pausierbare Zeitbasis wäre die
 saubere Lösung und steht im Backlog.
 
+## Bosse: Raumhebel, zweite Phase und eigene Telegrafie (umgesetzt 18.08.2026)
+
+Antwort auf den Befund „Boss-Mechaniken sehr ähnlich". Die Ursache war **nicht** der
+geteilte Bewegungsvorrat, sondern eine Reichweitenrechnung:
+
+- Kontaktschaden beginnt bei 56 px (Bossradius 34 + Spielerradius 18 + 4).
+- Die Orbitklinge trifft den Boss bis 72 px (Klingenlänge 38 + Bossradius 34).
+- In diesem **16-px-Band** trifft der Spieler, ohne getroffen zu werden.
+- Mit 175 gegen 105 px/s kann kein Boss das Band je schließen.
+- `CONFIG.boss.shockInner` liegt bei 95 und bedroht das Band nicht einmal.
+
+Ohne einen Hebel, der den Spieler dort vertreibt, wären neue Mechaniken nur neue Dinge
+zum Aussitzen gewesen. Die Fachliteratur sagt dasselbe: Ein Boss braucht zwingend eine
+Fähigkeit, sich Raum zu verschaffen, sonst ist der Kampf keine Prüfung (Mike Stout,
+Insomniac). Und eine Vorwarnung ist erst fair, wenn sie zeigt, **welche Handlung** nötig
+ist — nicht nur, dass etwas kommt.
+
+### Gemeinsame Grundlagen
+
+- `bossHazards` ist das gemeinsame Feld für Gefahrenzonen, `kind:'brand'` (ortsfester
+  Kreis) und `kind:'arm'` (rotierender Balken, folgt dem Bossmittelpunkt). Jeder Eintrag
+  hat einen eigenen Tick-Zähler von 400 ms; ohne den würde `hurtPlayer()` jedes Bild
+  feuern und die Zone wäre sofort tödlich statt raumverknappend. Deckel 40 Einträge.
+- **Phasenwechsel bei 50 % Leben:** 900 ms Unverwundbarkeit mit Ansage und Pulsring,
+  danach dauerhaft 25 % kürzere Abklingzeiten und die stärkere Fassung der
+  Exklusivmechanik. Weil es keine zentrale Schadensfunktion gibt — 32 Stellen ziehen
+  direkt von `en.hp` ab — wird der Schaden während der Unverwundbarkeit zentral in der
+  Boss-Aktualisierung zurückgesetzt.
+- Jede Variante trägt ihre Exklusivmechanik in `BOSS_KINDS.exklusiv`. `pickBossAbility`
+  gewichtet sie am höchsten. **Gemessen und korrigiert:** Ohne eigene Gewichtung kam der
+  Spiegelschild bei Welle 25 in nur 17 % der Angriffe vor, der generische Schockring in
+  33 % — die Signatur des Bosses war seltener als die Allerweltsattacke. Jetzt liegt die
+  Exklusivmechanik bei 31 bis 50 %.
+
+### Die vier Raumhebel
+
+- **Wächter · `Spiegelschild`** — Bogen zur Spielerseite, dreht mit höchstens 1,1 rad/s
+  mit und verdrängt jeden, der davor steht (110 px, ±70°, Phase 2 ±90°). Er blockiert
+  bewusst keinen Schaden; Verdrängung ist der Hebel. Gemessen: Ein Spieler, der auf 70 px
+  kreist, schafft 2,50 rad/s und ist damit 60 % der Zeit hinter dem Schild. Umrunden ist
+  die Antwort, Stehenbleiben nicht.
+- **Brutmutter · `Brutknoten`** — zwei (Phase 2: drei) ortsfeste Knoten, die den Boss
+  heilen. Sie sind echte `enemies`-Einträge vom Typ `knoten`, damit die Klinge sie ohne
+  Sonderweg trifft; `brutknoten` unterdrückt den 1,8-%-Rückschlag, den `bossMinion`
+  sonst auslöst. Antwort: Boss stehen lassen, Ziele priorisieren.
+- **Rammbock · `Brandspur`** — die Ramme legt alle 90 ms ein Brandfeld ab, sechs bei
+  voller Ramme, Lebensdauer 4 s. Antwort: früh die Seite wechseln.
+- **Spiralwerfer · `Drehsperre`** — zwei (Phase 2: drei) rotierende Balken mit 0,9 bzw.
+  1,3 rad/s, Länge 130 px. Sie überstreichen genau das sichere Band und sind mit 2,5 rad/s
+  überholbar. Antwort: mit der Drehrichtung mitlaufen.
+
+Dazu hat jede Fähigkeit jetzt eine eigene Vorwarnform statt des früheren Einheitsrings.
+
+### Nachgemessene Grenze der Knotenheilung
+
+Der ursprüngliche Entwurf (0,6 % je Knoten, drei Knoten in Phase 2 = 1,8 %/s) war
+**nicht sicher**: Ein Spieler, der die Knoten ignoriert und nur am Boss klebt, brachte
+Welle 30 von Nettoschaden auf Nettoheilung — der Boss wurde nie besiegt.
+
+Gedeckelt wird deshalb die **Gesamtheilung** bei 1,2 %/s, nicht die Zahl der zählenden
+Knoten. Ein Deckel auf die Knotenzahl hätte denselben Effekt, aber der dritte Knoten
+wäre wirkungslose Deko — und die pulsierende Leitung zu ihm würde den Spieler belügen.
+
+Gemessen mit ignorierten Knoten: Ein Spieler, der den Finalboss ohne Heilung in bis zu
+90 s schaffen würde, gewinnt weiterhin. Erst darunter friert der Kampf ein, und dann ist
+das Zerstören der Knoten die vorgesehene Antwort. Ein normaler Welle-30-Kampf dauert
+gemessen 20 bis 26 s, der Abstand ist also groß. Die Heilung ist an der Lebensleiste
+über dem Boss ablesbar.
+
+### Prüfkriterium für den Spieltest
+
+Der Kampf muss mit starkem Build durch schlechtes Laufen verlierbar und mit schwachem
+Build durch gutes Laufen gewinnbar sein. Vor dieser Änderung war beides nicht der Fall.
+
 ## Ideen aus dem Spieltest (17.08.2026)
 
 Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.
