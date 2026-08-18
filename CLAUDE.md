@@ -1229,6 +1229,28 @@ mehr, sondern zeigt die vollständige Beschreibung im Detailfenster.
 
 ## Bekannte Baustellen
 
+### Offene Spieltest-Prüfungen (18.08.2026)
+
+Nicht am Code prüfbar, brauchen einen echten Lauf:
+
+- **`Glasklinge`: Handel oder Falle?** Die Karte schneidet beim Kauf sofort 40 % der
+  Lebensleiste weg. Der Text sagt es, aber es passiert mitten im Kampf. Wenn es
+  überrascht statt bewusst gewählt zu wirken, braucht die Karte einen deutlicheren
+  Hinweis oder eine Rückfrage.
+- **`Gegenlauf`: sieht das gut aus?** Nur die Funktion ist geprüft; in dieser Sitzung
+  waren keine Bildschirmfotos möglich, weil der Browser-Bereich nicht kompositierte.
+  Zwei gegenläufige Klingen könnten auch schlicht unruhig wirken — besonders zusammen
+  mit Doppelorbit, wo dann drei Klingen kreisen.
+- **Reicht die Vorwarnzeit der Bosse noch?** Seit jede Fähigkeit eine eigene Form hat,
+  muss der Spieler mehr unterscheiden. `CONFIG.boss.warn` steht unverändert bei 1100 ms.
+- **`Spiegelschild` ist härter als gemessen.** Die Messung „Spieler kreist mit 2,50 rad/s
+  gegen 1,10 rad/s Schilddrehung, also 60 % der Zeit dahinter" ließ den Boss stillstehen.
+  Im echten Kampf fährt er mit 105 px/s nach und dreht mit; dazu drückt der Schild auf
+  über 110 px, während die Klinge nur 72 px weit reicht. Der Nutzer berichtet, dass man
+  kaum um ihn herumkommt, hält es aber für in Ordnung. Nicht angefasst, nur notiert.
+
+### Ältere Punkte
+
 - Wirkungszahlen der neuen Mechaniken sind Startwerte für die spätere Balancingrunde.
 - Klingen-/Machtmodule und beide Endlosechos sind technisch plausibilisiert, aber ihre
   Stärke und ihr subjektiver Spaß brauchen echte Läufe mit allen fünf Hauptmächten.
