@@ -835,12 +835,14 @@ let shake=0, activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}, phaserCd=0;
 let dmgBoostUntil=0, shieldUntil=0, moveBoostUntil=0;
 let wiederaufBenutzt=false;      // „Entdecker": das eine Wiederaufstehen pro Lauf
 let nachhallZaehler=0, splitterSweetZaehler=0; // sichtbare Partner-Kombos
+let taktschlagZaehler=0, nachfassenBereit=false; // Auslese-Module Taktschlag/Nachfassen
 /* Barriere: ein Puffer, der VOR den Trefferpunkten aufgebraucht wird. Er entsteht
    nur aus Lebenskugeln, die man bei vollem Leben einsammelt — vorher waren die
    schlicht verschenkt. Anders als das Schild (zeitbasiert, blockt alles) ist die
    Barriere eine Menge, die sich abnutzt. */
 let barriere=0;
-function barriereMax(){ return player.maxHp*CONFIG.barriere.max*(treeFlags.barriereMult||1); }
+// Glasklinge Rang 2 sperrt die Barriere ganz — das ist der zweite Teil ihres Preises
+function barriereMax(){ return runModule.glasklinge>=2 ? 0 : player.maxHp*CONFIG.barriere.max*(treeFlags.barriereMult||1); }
 let bonuses={ dmg:0, speed:0, range:0, fireRate:0, maxHp:0, blades:1, chain:false, counter:false, splitter:0 };
 let camX=0, camY=0, stossWaveT=0, wirbelT=0, wirbelShownR=0;
 let renderDpr=1, sichtbareGegner=0, naechstesHudUpdate=0;
@@ -1068,6 +1070,7 @@ function startMaechte(){
 }
 function evolvedOf(id){ return runEvolutions[id]||null; }
 let runAbilities={};                            // getragene Fähigkeiten: id -> Stufe (1..10)
+let runModule={};                     // Auslese-Module (zweite, unabhängige Kartenquelle): id -> Rang (1..2)
 let bombs=[], pShots=[], powerFields=[], powerEchoes=[], novaFx=0; // Bomben, Projektile und sichtbare Machtfelder
 /* Boss-Gefahrenzonen: gemeinsame Infrastruktur für Raumhebel, die den Spieler aus dem
    56–72-px-Sicherheitsband zwischen Kontaktschaden und Klingenreichweite vertreiben.
@@ -1120,13 +1123,17 @@ function tutorialSweetSpotTreffer(){
 function bladeLength(){ return CONFIG.bladeBaseLen * (1 + bonuses.range) * figur().reichweite * (treeFlags.singularorbit?1.20:1); }
 function effektiveKlingen(){
   const basis=treeFlags.ereignishorizont && player.hp/player.maxHp<.35 ? Math.max(3,bonuses.blades) : bonuses.blades;
-  return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0)+(treeFlags.resonanzKlingeUntil>Date.now()?1:0);
+  return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0)+(treeFlags.resonanzKlingeUntil>Date.now()?1:0)+(runModule.gegenlauf?1:0);
 }
 // Winkel aller aktiven Klingen (Doppelklinge = zweite Klinge gegenüber)
 function bladeAngles(){
   const out=[swordAngle];
-  const anzahl=effektiveKlingen();
+  // Gegenlauf zählt für effektiveKlingen()/sweetArcHalf() als zusätzliche Klinge (Preis:
+  // schmalerer Sweet Spot), läuft aber NICHT durch die Gleichverteilungsschleife der
+  // übrigen Klingen — sie kreist bewusst frei mit -swordAngle in Gegenrichtung.
+  const anzahl=effektiveKlingen()-(runModule.gegenlauf?1:0);
   for(let i=1;i<anzahl;i++) out.push(swordAngle + Math.PI*2*i/anzahl);
+  if(runModule.gegenlauf) out.push(-swordAngle);
   return out;
 }
 // kleinster Abstand zweier Winkel (0..PI)
@@ -1167,12 +1174,32 @@ function orbitSweetPulse(){
       pushFloat(player.x,player.y-42,'PRÄZISION −1600','#ffd257',1.0);
     }
   }
+  // Auslese-Modul Taktschlag: zählt volle (getroffene) Umläufe, stößt alle 3./2. eine Welle aus.
+  if(runModule.taktschlag){
+    taktschlagZaehler++;
+    if(taktschlagZaehler>=(runModule.taktschlag>=2?2:3)){
+      taktschlagZaehler=0;
+      const twDmg=Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus)*(1+bonuses.dmg)*0.6);
+      for(const en of enemies){
+        if(Math.hypot(en.x-player.x,en.y-player.y)<110+en.radius){
+          en.hp-=twDmg; pushFloat(en.x,en.y-16,'-'+twDmg,'#ffd257');
+          if(runModule.taktschlag>=2) en.slowT=Math.max(en.slowT||0,900);
+        }
+      }
+      particles.push({ring:true,x:player.x,y:player.y,color:'#ffd257',life:.34,max:.34});
+      if(sfx) sfx('counter');
+    }
+  }
   fokus=Math.min(fokusZiel(),fokus+2);
   if(fokus>=fokusZiel()) fokusVoll('orbit');
   return true;
 }
 function resetMissedOrbit(){
-  if(!orbitRoundSweet){ sonnenSerie=0; praezSerie=0; }
+  if(!orbitRoundSweet){
+    sonnenSerie=0; praezSerie=0;
+    // Auslese-Modul Nachfassen: ein verfehlter Umlauf verbreitert einmalig den nächsten Sweet-Bogen.
+    if(runModule.nachfassen) nachfassenBereit=true;
+  }
   orbitRoundSweet=false;
 }
 
@@ -1443,7 +1470,9 @@ function abilUnlocked(id){ return isAvailable('ability', id); }
 function activeCdMax(id){
   if(!id) return 0;
   const basis=id==='bombe'? CONFIG.bombeCooldown : id==='nova'? CONFIG.novaCooldown : id==='sog'? CONFIG.sog.cooldown : id==='stoss'? CONFIG.stossCooldown : CONFIG.wirbelCooldown;
-  return basis*(treeFlags['powerCd_'+id]||1);
+  // Auslese-Modul Kurzschluss: −35 %/−60 % Abklingzeit, bezahlt in doActive() mit Leben.
+  const kurzschluss=runModule.kurzschluss>=2?0.40:runModule.kurzschluss===1?0.65:1;
+  return basis*(treeFlags['powerCd_'+id]||1)*kurzschluss;
 }
 const ACTIVE_COLORS={ wirbel:['#ffb340','255,179,64'], stoss:['#6ec8ff','110,200,255'], bombe:['#ff7a5a','255,122,90'], nova:['#c77dff','199,125,255'], sog:['#4de0a0','77,224,160'] };
 // Aktiven-Buttons passend zu den gewählten Slots neu aufbauen (Icon, Name, Farbe)
@@ -1687,20 +1716,53 @@ document.getElementById('tree-back').addEventListener('click',closeSkillTree);
 const AUSLESE_PREISE=[50,100,200,400];   // Index = bereits bezahlte Würfe in diesem Lauf, gedeckelt bei 400
 let ausleseKarten=[], letzteAusleseWelle=0, ausleseReturnState='playing';
 let ausleseFreiwurfBenutzt=false, ausleseBezahlteWuerfe=0, ausleseOffenSeit=0;
+/* Zweite Auslese-Etappe (18.08.2026): fünf eigene Karteneffekte, bewusst NICHT in
+   ABILITIES — diese Tabelle speist nur die Auslese, nicht Vorbereitung, Sammlung
+   oder Orbitpfad. Getragener Stand liegt in runModule (id -> Rang 1..2), getrennt
+   von runAbilities. Wie bei den Passiven gibt es je Modul nur zwei Karten: "Neu"
+   (desc, Rang 1) und "Verstärkt" (sprung, Rang 2) — keine Zwischenstufen. */
+const AUSLESE_MODULE={
+  gegenlauf:  { name:'Gegenlauf',   icon:'gegenlauf',
+                desc:'Eine Klinge kreist gegenläufig mit',
+                sprung:'Kreuzende Klingen lösen einen Funkenstoß aus' },
+  taktschlag: { name:'Taktschlag',  icon:'taktschlag',
+                desc:'Jeder 3. volle Umlauf stößt eine Schadenswelle aus',
+                sprung:'Schon jeder 2. Umlauf; die Welle verlangsamt zusätzlich' },
+  nachfassen: { name:'Nachfassen',  icon:'nachfassen',
+                desc:'Verfehlter Umlauf: nächster Sweet-Bogen doppelt breit',
+                sprung:'Dieser breite Treffer durchschlägt zusätzlich Panzerung' },
+  glasklinge: { name:'Glasklinge',  icon:'glasklinge',
+                desc:'Klinge ×1,45, dafür nur noch 60 % maximales Leben',
+                sprung:'Klinge ×1,80; Barriere baut sich nicht mehr auf' },
+  kurzschluss:{ name:'Kurzschluss', icon:'kurzschluss',
+                desc:'Mächte laden 35 % schneller, Einsatz kostet 4 % Leben',
+                sprung:'60 % schneller; Einsatz bei vollem Fokus kostet nichts' },
+};
 // Die Passive, die der Orbitbaum für die aktuelle Hauptmacht als Partner ohnehin
 // vergibt (EVOLUTIONS[...].req) — sonst würde sie mit dem Baum kollidieren.
 function ausleseAusschluss(){
   const pair=Object.entries(EVOLUTIONS).find(([,e])=>e.base===activeSlot1);
   return pair? pair[1].req : null;
 }
-// Höchstens eine Karte je Passive: "Neu" solange ungetragen, "Verstärkt" nur exakt
-// auf Stufe 1 — danach (Stufe 2+) ist sie bereits über die reguläre Prozentleiter hinaus.
+// Anzeige-Infos einer Auslese-Karte, unabhängig davon ob Passive oder Modul.
+function ausleseKartenInfo(karte){
+  const mod=AUSLESE_MODULE[karte.id];
+  if(mod) return { name:mod.name, icon:ICON[mod.icon]||'', text: karte.kind==='verstaerkt'? mod.sprung : mod.desc };
+  return { name:ABILITIES[karte.id].name, icon:abilIcon(karte.id), text: karte.kind==='verstaerkt'? STUFEN[karte.id].sprung : ABILITIES[karte.id].desc };
+}
+// Höchstens eine Karte je Passive/Modul: "Neu" solange ungetragen, "Verstärkt" nur
+// exakt auf Stufe/Rang 1 — danach ist der jeweilige Höchststand erreicht.
 function ausleseTopf(){
   const ausschluss=ausleseAusschluss(), out=[];
   for(const id of PASSIVE_IDS){
     if(id===ausschluss) continue;
     if(!isCarried(id)) out.push({id,kind:'neu'});
     else if(abilityLevel(id)===1) out.push({id,kind:'verstaerkt'});
+  }
+  for(const id in AUSLESE_MODULE){
+    const rang=runModule[id]||0;
+    if(rang===0) out.push({id,kind:'neu'});
+    else if(rang===1) out.push({id,kind:'verstaerkt'});
   }
   return out;
 }
@@ -1717,14 +1779,14 @@ function renderAuslese(){
   const wrap=document.getElementById('auslese-karten'); wrap.innerHTML='';
   for(const karte of ausleseKarten){
     const stufe=karte.kind==='verstaerkt'?'Verstärkt':'Neu';
-    const text=karte.kind==='verstaerkt'? STUFEN[karte.id].sprung : ABILITIES[karte.id].desc;
+    const info=ausleseKartenInfo(karte);
     const b=document.createElement('button');
     b.className='auslese-karte'+(karte.kind==='verstaerkt'?' stark':'');
     // Das Symbol kommt aus derselben Quelle wie Vorbereitung und Sammlung, damit
     // eine Faehigkeit ueberall gleich aussieht und man sie wiedererkennt.
-    b.innerHTML='<span class="ak-icon">'+svg(abilIcon(karte.id))+'</span>'
-      +'<span class="ak-body"><span class="ak-titel">'+ABILITIES[karte.id].name+'</span>'
-      +'<span class="ak-text">'+text+'</span></span>'
+    b.innerHTML='<span class="ak-icon">'+svg(info.icon)+'</span>'
+      +'<span class="ak-body"><span class="ak-titel">'+info.name+'</span>'
+      +'<span class="ak-text">'+info.text+'</span></span>'
       +'<span class="ak-stufe">'+stufe+'</span>';
     b.onclick=()=>waehleAuslese(karte);
     wrap.appendChild(b);
@@ -1752,11 +1814,24 @@ function oeffneAuslese(){
 }
 function waehleAuslese(karte){
   if(state!=='auslese') return;
-  runAbilities[karte.id]=karte.kind==='verstaerkt'?SPRUNG_STUFE:1;
+  const info=ausleseKartenInfo(karte);
+  if(AUSLESE_MODULE[karte.id]){
+    const vorher=runModule[karte.id]||0;
+    runModule[karte.id]=karte.kind==='verstaerkt'?2:1;
+    /* Glasklinge senkt das maximale Leben genau einmal, beim ersten Kauf. Rang 2 legt
+       nur noch die Barriere lahm (siehe barriereMax) und hebt den Schaden — sonst
+       schrumpfte die Leiste ein zweites Mal und der Spieler stünde plötzlich vor dem Tod. */
+    if(karte.id==='glasklinge' && vorher===0){
+      const neuMax=Math.max(1,Math.round(player.maxHp*0.6));
+      player.hp=Math.max(1,Math.min(player.hp,neuMax));
+      player.maxHp=neuMax; barriere=Math.min(barriere,barriereMax());
+    }
+  }
+  else runAbilities[karte.id]=karte.kind==='verstaerkt'?SPRUNG_STUFE:1;
   // pushToast() klingt selbst — ein zusätzliches sfx('pick') gäbe zwei Töne hintereinander.
-  pushToast(ABILITIES[karte.id].name+' · '+(karte.kind==='verstaerkt'?'verstärkt':'neu'));
+  pushToast(info.name+' · '+(karte.kind==='verstaerkt'?'verstärkt':'neu'));
   updateHUD(true);
-  schliesseAuslese(ABILITIES[karte.id].name);
+  schliesseAuslese(info.name);
 }
 function wuerfleAusleseNeu(){
   if(state!=='auslese') return;
@@ -1854,11 +1929,12 @@ function resetGame(){
   counterCd=0; shards=[]; bossActive=false; bossHitClean=true; flashUntil=0; helferOverdriveUntil=0;
   const vw=startMaechte();
   activeSlot1=vw.slot1; activeSlot2 = hasSlot2()? vw.slot2 : null;
-  runAbilities={}; runEvolutions={}; runTree={}; skillPoints=0; treeFlags={}; treeUndo=null;
+  runAbilities={}; runEvolutions={}; runTree={}; skillPoints=0; treeFlags={}; treeUndo=null; runModule={};
   regularPointsEarned=0; regularTreeFrozen=false; echoPoints=0; echoMilestones=0; treeReturnState='playing';
   bombs=[]; pShots=[]; powerFields=[]; powerEchoes=[]; novaFx=0; novaEcho=0; barriere=0; bossHazards=[];
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
   wiederaufBenutzt=false; nachhallZaehler=0; splitterSweetZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false;
+  taktschlagZaehler=0; nachfassenBereit=false;
   // Auslese ist laufgebunden: sonst wirkt der Freiwurf, die Preissteigerung oder eine
   // schon "verbrauchte" Welle aus dem vorigen Lauf im neuen Lauf nach.
   ausleseKarten=[]; letzteAusleseWelle=0; ausleseReturnState='playing'; ausleseFreiwurfBenutzt=false; ausleseBezahlteWuerfe=0; ausleseOffenSeit=0;
@@ -2911,6 +2987,14 @@ function doActive(slot){
   const echoLadung=slot===1&&treeFlags.echoPowerCharge>0&&treeFlags.echoPowerChargeUntil>Date.now();
   if(slot===1&&treeFlags.echoPowerCharge&& !echoLadung) treeFlags.echoPowerCharge=0;
   fokusAktiv = natuerlicherFokus||echoLadung;
+  // Auslese-Modul Kurzschluss: Tempo gegen Leben. Rang 2 verschont nur den echten
+  // Vollfokus-Einsatz (natuerlicherFokus) — Echo-Ladung zählt nicht als "voller Fokus".
+  if(runModule.kurzschluss && !(runModule.kurzschluss>=2 && natuerlicherFokus)){
+    const kosten=player.maxHp*.04;
+    player.hp=Math.max(1, player.hp-kosten);   // darf den Spieler nie töten
+    pushFloat(player.x,player.y-30,'-'+Math.round(kosten)+' KURZSCHLUSS','#ff6b6b',0.9);
+    spawnParticles(player.x,player.y,'#ff6b6b',5);
+  }
   if(natuerlicherFokus){
     fokusBereit=false; fokus=0;
     spawnParticles(player.x,player.y,'#dcb5ff',24);
@@ -3360,7 +3444,13 @@ const ICON={
   // Nachhall ist eine Druckwelle vom Treffer aus. Vorher lieh er sich ICON.boost,
   // eine Flamme — die sagte nichts ueber die Wirkung.
   farbe:'<path d="M12 3a9 9 0 0 0 0 18c1.4 0 2-.8 2-1.8 0-.6-.4-1-.4-1.6 0-.9.7-1.5 1.6-1.5H17a4.4 4.4 0 0 0 4-4.4C21 6.6 17 3 12 3z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="7.6" cy="11" r="1.3" fill="currentColor"/><circle cx="11" cy="7.4" r="1.3" fill="currentColor"/><circle cx="15.4" cy="8.6" r="1.3" fill="currentColor"/>',
-  nachhall:'<circle cx="6" cy="12" r="2.4" fill="currentColor"/><path d="M10.2 7.6a6.2 6.2 0 0 1 0 8.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.2 5a9.9 9.9 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".62"/><path d="M18.2 2.6a13.6 13.6 0 0 1 0 18.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".34"/>'
+  nachhall:'<circle cx="6" cy="12" r="2.4" fill="currentColor"/><path d="M10.2 7.6a6.2 6.2 0 0 1 0 8.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.2 5a9.9 9.9 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".62"/><path d="M18.2 2.6a13.6 13.6 0 0 1 0 18.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".34"/>',
+  // Fünf neue Icons für die Auslese-Module (18.08.2026) — jede Karte braucht ein Symbol.
+  gegenlauf:'<path d="M12 4a8 8 0 1 1-6.93 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4.2 4.6v4.2h4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 20a8 8 0 0 0 6.93-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/><path d="M19.8 19.4v-4.2h-4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>',
+  taktschlag:'<circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="6.4" fill="none" stroke="currentColor" stroke-width="1.8" opacity=".75"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"/>',
+  nachfassen:'<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 3" opacity=".5"/><path d="M12 3a9 9 0 0 1 6.36 15.36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>',
+  glasklinge:'<path d="M12 2 19 9 12 22 5 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 2v20M5 9h14M9 9 12 2M15 9 12 2" stroke="currentColor" stroke-width="1" opacity=".55"/>',
+  kurzschluss:'<path d="M12 19.2s-6.4-4.1-6.4-8.6A3.7 3.7 0 0 1 12 7.7a3.7 3.7 0 0 1 6.4 2.9c0 1-.3 2-.9 2.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.4 7.6 9 14h3l-1 4.6 5.6-7.6H13z" fill="currentColor"/>'
 };
 function svg(paths){ return `<svg class="card-icon" viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`; }
 
@@ -3636,7 +3726,19 @@ function update(dt){
   // Plasmaklinge rotiert permanent um den Spieler
   const fehlendesLeben=1-player.hp/player.maxHp;
   const leerenTempo=figur().id==='konstrukt' ? 1+fehlendesLeben*0.28 : 1;
+  const vorSwordAngle=swordAngle;
   swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * (sonnenTempoUntil>Date.now()?1.22:1) * dt/1000;
+  // Auslese-Modul Gegenlauf Rang 2: Haupt- und Gegenklinge (-swordAngle) kreuzen sich
+  // exakt bei Vielfachen von π. Läuft hier statt im 120-ms-Trefferraster, sonst würde
+  // die kurze Kreuzung bei 12 rad/s Relativtempo meist übersprungen.
+  if(runModule.gegenlauf>=2 && Math.floor(vorSwordAngle/Math.PI)!==Math.floor(swordAngle/Math.PI)){
+    const kreuzWinkel=Math.round(swordAngle/Math.PI)*Math.PI;
+    const kx=player.x+Math.cos(kreuzWinkel)*(player.radius+bladeLength()*0.72);
+    const ky=player.y+Math.sin(kreuzWinkel)*(player.radius+bladeLength()*0.72);
+    const funkDmg=Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus)*(1+bonuses.dmg)*0.55);
+    for(const en of enemies){ if(Math.hypot(en.x-kx,en.y-ky)<48+en.radius){ en.hp-=funkDmg; pushFloat(en.x,en.y-16,'-'+funkDmg,'#9ad0ff'); } }
+    sparkRing(kx,ky,'#9ad0ff'); if(sfx) sfx('laserPlayer');
+  }
   if(swordAngle>Math.PI*2){ swordAngle-=Math.PI*2; resetMissedOrbit(); }
   player.face = swordAngle;
   // Effekt-Timer
@@ -3681,6 +3783,14 @@ function update(dt){
       for(let bi=0;bi<anglesNow.length;bi++) if(angleDiff(anglesNow[bi],toEnemy)<sweetArcHalf()){trefferIndex=bi;break;}
       const treffer=trefferIndex>=0;
       let dmg = treffer ? dmgArc : dmgBase;
+      /* Glasklinge: hebt JEDEN Klingentreffer, nicht nur Sweet Hits. Die erste Fassung
+         entfernte stattdessen die Rundumzone und sollte Präzision belohnen — gemessen
+         war sie bei jeder Zielzahl schlechter als gar keine Karte (60–65 % auf Rang 1,
+         78–85 % auf Rang 2), und zwar unabhängig davon, wie die Gegner standen. Grund:
+         Die Klinge rotiert permanent und überstreicht ohnehin jeden Winkel — Präzision
+         ist hier keine Achse, auf der man handeln kann. Der Preis sitzt jetzt beim
+         Leben, wo er sichtbar und tatsächlich eine Entscheidung ist. */
+      if(runModule.glasklinge) dmg = Math.round(dmg * (runModule.glasklinge>=2 ? 1.8 : 1.45));
       /* Panzergegner holen die Formentscheidung spät im Lauf zurück: Präzisions-Sweet
          und Schneide Rang 4 durchschlagen, Doppelorbit bezahlt seine sichere Abdeckung
          mit gedämpftem Schaden. Bewusst NICHT unverwundbar — auf „Entdecker" kommen
@@ -3692,8 +3802,10 @@ function update(dt){
       }
       // Präzisions-Sweet und Schneide Rang 4 durchschlagen Panzer vollständig.
       // Doppelorbit bezahlt seine Verlässlichkeit: Seine Sweet Hits werden von
-      // aktiver Panzerung weiterhin gedämpft.
-      const durchschlag = runAbilities.schneide>=SPRUNG_STUFE || !!(treeFlags.singularorbit && treffer);
+      // aktiver Panzerung weiterhin gedämpft. Glasklinge Rang 2 und ein verbreiterter
+      // Nachfassen-Treffer (Rang 2) durchschlagen ebenfalls.
+      const durchschlag = runAbilities.schneide>=SPRUNG_STUFE || !!(treeFlags.singularorbit && treffer)
+        || !!(runModule.nachfassen>=2 && nachfassenBereit && treffer);
       const abgeprallt = en.panzer && !(en.panzerAusUntil>Date.now()) && !durchschlag;
       if(abgeprallt) dmg = Math.max(1, Math.round(dmg*hilfe().panzerDurchlass));
       en.hp -= dmg;
@@ -3798,6 +3910,8 @@ function update(dt){
       en.x += Math.cos(ang)*(treffer?sweetSchub:6);
       en.y += Math.sin(ang)*(treffer?sweetSchub:6);
     }
+    // Nachfassen: die einmalige Verbreiterung ist verbraucht, sobald sie wirklich traf.
+    if(nachfassenBereit && tickSweet) nachfassenBereit=false;
   }
   perfMark('klinge');
   // Splitter (kreisende Energie) aktualisieren

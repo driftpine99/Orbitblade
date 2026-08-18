@@ -1119,6 +1119,69 @@ gemessen 20 bis 26 s, der Abstand ist also groß. Die Heilung ist an der Lebensl
 Der Kampf muss mit starkem Build durch schlechtes Laufen verlierbar und mit schwachem
 Build durch gutes Laufen gewinnbar sein. Vor dieser Änderung war beides nicht der Fall.
 
+## Auslese v2: fünf eigene Karteneffekte (umgesetzt 18.08.2026)
+
+Der Topf bestand nur aus den sechs Passiven. Gemessen trug ein Lauf am Ende 5,43 davon
+— 91 %. *Welche* Fähigkeiten man bekommt, war damit keine Entscheidung, nur noch, welche
+man vertieft. Fünf neue Effekte in einer eigenen Tabelle `AUSLESE_MODULE` beheben das;
+der getragene Stand liegt in `runModule` (id → Rang 1 oder 2), getrennt von `runAbilities`.
+Sie stehen bewusst **nicht** in `ABILITIES`, weil die Tabelle auch Vorbereitung, Sammlung
+und Orbitpfad speist.
+
+- `Gegenlauf` — eine Klinge kreist gegenläufig. Sie zählt für `sweetArcHalf()` mit, die
+  Sweet-Zone schrumpft also wie bei jeder zusätzlichen Klinge; das ist ihr Preis, wie bei
+  der Resonanzklinge. Rang 2 setzt an Kreuzungspunkten einen Funkenstoß.
+- `Taktschlag` — jeder dritte volle Umlauf mit Sweet Hit stößt eine Welle aus, Rang 2
+  jeder zweite und mit Verlangsamung. Hängt an `orbitSweetPulse()`.
+- `Nachfassen` — ein verfehlter Umlauf verbreitert den nächsten Sweet-Bogen einmalig,
+  Rang 2 durchschlägt damit Panzerung. Hängt an `resetMissedOrbit()`.
+- `Glasklinge` — Klingenschaden ×1,45, dafür nur noch 60 % maximales Leben. Rang 2 ×1,80
+  und keine Barriere mehr.
+- `Kurzschluss` — Mächte laden 35 % schneller, jeder Einsatz kostet 4 % Leben. Rang 2
+  60 % schneller, bei vollem Fokus kostenlos.
+
+### Warum genau fünf und nicht zehn
+
+Simuliert über je 4.000 Kartenfolgen:
+
+| Dinge | getragen | Anteil | davon auf Sprungstufe | Endzustände |
+|---|---|---|---|---|
+| 6 (vorher) | 5,43 | 91 % | 3,57 | 50 |
+| 8 | 6,08 | 76 % | 2,92 | 982 |
+| **11 (jetzt)** | **6,66** | **61 %** | **2,35** | **2.740** |
+| 16 | 7,22 | 45 % | 1,78 | 3.981 |
+
+Die Vielfalt sättigt bei rund zehn Dingen: Von 6 auf 8 springen die Endzustände um
+Faktor 20, von 11 auf 16 kaum noch. Und größer wird sogar schlechter — die vorletzte
+Spalte ist die entscheidende, denn nur auf der Sprungstufe passiert die eigentliche
+Mechanik. Bei 16 Dingen trüge ein Lauf 7,2 Fähigkeiten, davon nur 1,78 mit echtem
+Effekt: ein breiter, flacher Matschbuild statt eines Charakters.
+
+Am echten Code über 3.000 Läufe gegengemessen: 6,66 getragen, 2,35 auf Sprungstufe,
+2.740 verschiedene Endzustände, häufigster in 0,10 % der Läufe.
+
+### Verworfen: Glasklinge als Präzisionskarte
+
+Der erste Entwurf entfernte die verzeihende Rundumzone und sollte Präzision belohnen.
+Gemessen war sie **bei jeder Zielzahl schlechter als gar keine Karte**: 60–65 % des
+Grundschadens auf Rang 1, 78–85 % auf Rang 2, gegen einen Boss ebenso wie gegen sechzehn
+Gegner. Auch die Gegnerlage änderte nichts (60 % im Rundumkessel gegen 62 % bei dichter
+Gruppe).
+
+Grund: **Die Klinge rotiert permanent und überstreicht ohnehin jeden Winkel.** Präzision
+ist in diesem Spiel keine Achse, auf der man handeln kann — anders als Distanz. Ein
+bloßes Anheben der Zahlen hätte sie in einen reinen Prozentkauf verwandelt. Der Preis
+sitzt deshalb jetzt beim Leben, wo er sichtbar ist und tatsächlich eine Entscheidung
+darstellt. Das maximale Leben sinkt genau einmal, beim ersten Kauf.
+
+Nebenbefund, bewusst so belassen: `Gegenlauf` liegt gegen ein Einzelziel bei 95 %, gegen
+sechzehn Gegner bei 110 %. Die zusätzliche Klinge verengt den Sweet-Bogen, was im
+Bosskampf nichts einbringt. Das ist ein stimmiger Charakter — eine Gruppenklinge, die
+gegen Bosse leicht bremst —, kein Fehler.
+
+Noch offen: die zustandsabhängige Gewichtung nach Hades-Vorbild. Sie ergibt erst Sinn,
+seit der Topf groß genug ist, und ist die nächste Etappe.
+
 ## Ideen aus dem Spieltest (17.08.2026)
 
 Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.
