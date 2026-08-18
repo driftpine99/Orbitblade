@@ -813,6 +813,7 @@ const overlayStart=document.getElementById('overlay-start'), overlayPause=docume
 const overlayOver=document.getElementById('overlay-gameover');
 const treeBtn=document.getElementById('tree-btn'), overlayTree=document.getElementById('overlay-tree');
 const combatResume=document.getElementById('combat-resume');
+const overlayAuslese=document.getElementById('overlay-auslese');
 const treePunkte=document.getElementById('tree-punkte'), treeBranches=document.getElementById('tree-branches');
 const btnWirbel=document.getElementById('btn-wirbel'), btnStoss=document.getElementById('btn-stoss');
 let cdWirbel=document.getElementById('cd-wirbel'), cdStoss=document.getElementById('cd-stoss');
@@ -1669,6 +1670,110 @@ function closeSkillTree(){
 treeBtn.addEventListener('click',openSkillTree);
 document.getElementById('tree-back').addEventListener('click',closeSkillTree);
 
+/* AUSLESE — alle drei Wellen ein kurzer Zwischenstopp mit drei Karten aus den
+   passiven Fähigkeiten. Sie ersetzt nichts am Orbitpfad, sondern ist eine zweite,
+   unabhängige Quelle für dieselben Passiven. Je Fähigkeit gibt es nur "Neu" oder
+   den mechanischen Sprung auf SPRUNG_STUFE — die Zwischenstufen 2/3 sind laut
+   STUFEN reine +10 %/+20 %-Prozentkarten und in diesem Projekt unerwünscht. */
+const AUSLESE_PREISE=[50,100,200,400];   // Index = bereits bezahlte Würfe in diesem Lauf, gedeckelt bei 400
+let ausleseKarten=[], letzteAusleseWelle=0, ausleseReturnState='playing';
+let ausleseFreiwurfBenutzt=false, ausleseBezahlteWuerfe=0, ausleseOffenSeit=0;
+// Die Passive, die der Orbitbaum für die aktuelle Hauptmacht als Partner ohnehin
+// vergibt (EVOLUTIONS[...].req) — sonst würde sie mit dem Baum kollidieren.
+function ausleseAusschluss(){
+  const pair=Object.entries(EVOLUTIONS).find(([,e])=>e.base===activeSlot1);
+  return pair? pair[1].req : null;
+}
+// Höchstens eine Karte je Passive: "Neu" solange ungetragen, "Verstärkt" nur exakt
+// auf Stufe 1 — danach (Stufe 2+) ist sie bereits über die reguläre Prozentleiter hinaus.
+function ausleseTopf(){
+  const ausschluss=ausleseAusschluss(), out=[];
+  for(const id of PASSIVE_IDS){
+    if(id===ausschluss) continue;
+    if(!isCarried(id)) out.push({id,kind:'neu'});
+    else if(abilityLevel(id)===1) out.push({id,kind:'verstaerkt'});
+  }
+  return out;
+}
+// Bis zu drei verschiedene Karten, ohne Gewichtung; ein kleinerer Topf zeigt entsprechend weniger.
+function ausleseZiehen(){
+  const pool=ausleseTopf(), gezogen=[];
+  while(pool.length && gezogen.length<3) gezogen.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
+  return gezogen;
+}
+function auslesePreis(){ return AUSLESE_PREISE[Math.min(ausleseBezahlteWuerfe,AUSLESE_PREISE.length-1)]; }
+function renderAuslese(){
+  const hinweis=document.getElementById('auslese-hinweis');
+  if(hinweis) hinweis.textContent='Welle '+wave+' · wähle eine Karte';
+  const wrap=document.getElementById('auslese-karten'); wrap.innerHTML='';
+  for(const karte of ausleseKarten){
+    const stufe=karte.kind==='verstaerkt'?'Verstärkt':'Neu';
+    const text=karte.kind==='verstaerkt'? STUFEN[karte.id].sprung : ABILITIES[karte.id].desc;
+    const b=document.createElement('button');
+    b.className='auslese-karte'+(karte.kind==='verstaerkt'?' stark':'');
+    b.innerHTML='<span class="ak-titel">'+ABILITIES[karte.id].name+'</span><span class="ak-text">'+text+'</span><span class="ak-stufe">'+stufe+'</span>';
+    b.onclick=()=>waehleAuslese(karte);
+    wrap.appendChild(b);
+  }
+  const reroll=document.getElementById('auslese-reroll'), preis=auslesePreis();
+  reroll.textContent='Neu würfeln · '+(ausleseFreiwurfBenutzt?preis+' ◆':'gratis');
+  reroll.disabled=ausleseFreiwurfBenutzt && player.stars<preis;
+}
+// Wellenstart prüft, ob diese Welle eine Auslese vorsieht — höchstens einmal je Welle,
+// deshalb über die gemerkte Wellennummer statt eines Zählers abgesichert.
+function pruefeAuslese(){
+  if(wave%3!==0 || wave>=CONFIG.siegWelle || letzteAusleseWelle===wave) return;
+  letzteAusleseWelle=wave;
+  oeffneAuslese();
+}
+// Exakt das Muster von openSkillTree(): vorherigen state merken, eigenen state setzen,
+// Overlay einblenden. update() läuft in diesem state nicht weiter (state!=='playing').
+function oeffneAuslese(){
+  if(state!=='playing') return false;
+  ausleseKarten=ausleseZiehen();
+  if(!ausleseKarten.length) return false;   // gar nichts wählbar -> Auslese komplett überspringen
+  ausleseReturnState=state; state='auslese'; ausleseOffenSeit=Date.now(); setMusicLevel();
+  overlayAuslese.classList.remove('hidden'); renderAuslese(); updateTreeButton();
+  return true;
+}
+function waehleAuslese(karte){
+  if(state!=='auslese') return;
+  runAbilities[karte.id]=karte.kind==='verstaerkt'?SPRUNG_STUFE:1;
+  // pushToast() klingt selbst — ein zusätzliches sfx('pick') gäbe zwei Töne hintereinander.
+  pushToast(ABILITIES[karte.id].name+' · '+(karte.kind==='verstaerkt'?'verstärkt':'neu'));
+  updateHUD(true);
+  schliesseAuslese(ABILITIES[karte.id].name);
+}
+function wuerfleAusleseNeu(){
+  if(state!=='auslese') return;
+  const preis=auslesePreis();
+  if(ausleseFreiwurfBenutzt){
+    if(player.stars<preis) return;   // doppelte Absicherung, der Knopf ist ohnehin disabled
+    player.stars-=preis; ausleseBezahlteWuerfe=Math.min(ausleseBezahlteWuerfe+1,AUSLESE_PREISE.length-1);
+  } else ausleseFreiwurfBenutzt=true;
+  ausleseKarten=ausleseZiehen();
+  if(!ausleseKarten.length){ schliesseAuslese(); return; }   // Absicherung, falls der Topf leerläuft
+  if(sfx) sfx('pick');
+  updateHUD(true); renderAuslese();
+}
+// Exakt das Muster von closeSkillTree(): gemerkten state wiederherstellen, Overlay ausblenden.
+function schliesseAuslese(name){
+  if(state!=='auslese') return;
+  overlayAuslese.classList.add('hidden');
+  /* Bei Welle 15 spawnt der Boss im selben startWave()-Aufruf und startet die
+     10 s Begleiter-Überladung über Date.now(). Die reale Uhr läuft weiter, während
+     der Spieler Karten liest — deshalb wird die Restzeit um die Lesedauer verschoben. */
+  const pause=Date.now()-ausleseOffenSeit;
+  if(helferOverdriveUntil>Date.now()) helferOverdriveUntil+=pause;
+  state=ausleseReturnState||'playing'; ausleseReturnState='playing'; setMusicLevel();
+  // Gleiche Begründung wie nach dem Orbitpfad: neue Mechanik plus verlorener
+  // Überblick über Gegner und Klingenbahn brauchen einen kurzen Wiedereinstieg.
+  if(state==='playing'&&name) startCombatResume(name);
+  else if(state==='playing') lastTime=performance.now();
+  updateTreeButton();
+}
+document.getElementById('auslese-reroll').addEventListener('click',wuerfleAusleseNeu);
+
 function resize(){
   const rawDpr=window.devicePixelRatio||1;
   const dprLimit=IS_TOUCH ? CONFIG.render.touchDpr : CONFIG.render.desktopDpr;
@@ -1740,6 +1845,9 @@ function resetGame(){
   bombs=[]; pShots=[]; powerFields=[]; powerEchoes=[]; novaFx=0; novaEcho=0; barriere=0;
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
   wiederaufBenutzt=false; nachhallZaehler=0; splitterSweetZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false;
+  // Auslese ist laufgebunden: sonst wirkt der Freiwurf, die Preissteigerung oder eine
+  // schon "verbrauchte" Welle aus dem vorigen Lauf im neuen Lauf nach.
+  ausleseKarten=[]; letzteAusleseWelle=0; ausleseReturnState='playing'; ausleseFreiwurfBenutzt=false; ausleseBezahlteWuerfe=0; ausleseOffenSeit=0;
   swordAngle=0; orbitRoundSweet=false; orbitRoundLight=false; orbitRoundDistance=0; orbitLastX=player.x; orbitLastY=player.y;
   waechterLadung=false; sonnenSerie=0; sonnenTempoUntil=0; praezSerie=0; kronenMachtId=''; kronenMachtUntil=0; kronenZielklinge=0;
   toasts=[]; banner=null;
@@ -1759,6 +1867,7 @@ function hideAll(){
   overlayStart.classList.add('hidden'); overlayPause.classList.add('hidden');
   overlayOver.classList.add('hidden'); overlayTree.classList.add('hidden');
   document.getElementById('overlay-hangar').classList.add('hidden');
+  overlayAuslese.classList.add('hidden');
   if(combatResume) combatResume.classList.add('hidden');
 }
 function startWave(){
@@ -1771,6 +1880,7 @@ function startWave(){
   else if(wave>1){ const b=biomeForWave(); announce('Welle '+wave, (wave-1)%5===0? b.name : '', b.accent); }  // Biome-Name, wenn Zone wechselt
   recordBest();
   checkMilestones();   // Erreichen der Welle genügt — Freischaltungen sollen ankommen
+  pruefeAuslese();     // alle drei Wellen ein Kartenstopp, unabhängig vom Orbitpfad
 }
 // Ist dies der Kampf, der den Lauf gewinnt?
 function istFinale(){ return wave>=CONFIG.siegWelle && !endlosLauf; }

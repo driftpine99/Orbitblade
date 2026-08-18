@@ -980,6 +980,57 @@ Kein umfangreiches Testnetz aufbauen; das Spiel ist noch nicht produktiv. Nach
 Änderungen genügen derzeit proportionale Checks: mindestens
 `node --check konzept/game.js` und betroffene Klickwege über GitHub Pages.
 
+## Auslese: Kartenwahl alle drei Wellen (umgesetzt 18.08.2026)
+
+Erste Etappe gegen den Befund „gleichartige Buffs, kaum Wiederspielwert". Der
+Orbitpfad bleibt unverändert; die Auslese ist eine **zweite, unabhängige Quelle**
+für dieselben passiven Fähigkeiten und die erste Stelle im Spiel, an der zwischen
+Läufen etwas anderes passiert.
+
+- Auslösung bei Welle 3, 6, 9, 12, 15, 18, 21, 24 und 27 — also `wave%3===0 &&
+  wave<CONFIG.siegWelle`, angehängt an das Ende von `startWave()`. Eine gemerkte
+  Wellennummer (`letzteAusleseWelle`) sichert genau eine Auslese je Welle; sie wird
+  auch dann gesetzt, wenn der Topf leer ist, damit ein leerer Topf die Welle nicht
+  immer wieder neu anfragt. In Endlos gibt es keine Auslese.
+- Der Topf sind die sechs Passiven aus `PASSIVE_IDS` **ohne** die Partnerpassive der
+  aktuellen Hauptmacht (`EVOLUTIONS[…].req`) — sonst kollidierten Baum und Auslese
+  auf derselben Fähigkeit.
+- Je Passive existieren genau zwei Karten: `Neu` setzt Stufe 1, `Verstärkt` springt
+  direkt auf `SPRUNG_STUFE` und ist gold hervorgehoben. Die Zwischenstufen 2 und 3
+  sind über `abilScale()` nur +10 % und +20 % und kommen bewusst nicht als Karte vor.
+- Gezogen werden drei verschiedene Karten ohne Gewichtung. Die zustandsabhängige
+  Gewichtung nach Hades-Vorbild ist eine spätere Etappe.
+- Neuwürfeln: einmal je Lauf gratis, danach 50, 100, 200 und ab dem vierten Mal
+  400 Fragmente aus dem Laufkonto. Reicht das Guthaben nicht, ist der Knopf gesperrt,
+  nennt aber weiterhin den Preis.
+- Pausiert wird nach dem Muster von `openSkillTree()`; `update()` steht still, weil es
+  mit `state!=='playing'` aussteigt. Beim Schließen läuft derselbe zweisekündige
+  Wiedereinstieg wie nach einem Baumkauf — die Auslese hält mitten im Kampf an und
+  schaltet eine neue Mechanik frei.
+- Bei Welle 15 fallen Boss und Auslese zusammen. `spawnBoss()` startet die
+  zehnsekündige Begleiter-Überladung über `Date.now()`; die Restzeit wird beim
+  Schließen um die Lesedauer verschoben, sonst verstriche sie im Overlay.
+
+Gemessen an 2.000 simulierten Kartenfolgen:
+
+- Der Topf trägt über alle neun Auslesen. Bis zur achten liegen immer drei Karten zur
+  Wahl, bei der neunten im Schnitt 2,9 — jede `Neu`-Wahl legt sofort die zugehörige
+  `Verstärkt`-Karte nach.
+- 50 verschiedene Endzustände, der häufigste in nur 2,8 % der Läufe. Das ist deutlich
+  mehr Streuung als die acht Buildformen des Orbitpfads.
+- **Die eigentliche Grenze ist die Breite, nicht die Menge:** im Schnitt trägt ein Lauf
+  am Ende 5,41 von 6 Passiven. *Welche* Fähigkeiten man bekommt, ist damit kaum eine
+  Entscheidung — nur noch, welche man vertieft. Kein einziger Lauf brachte alle sechs
+  auf die Sprungstufe, die Tiefe bleibt also knapp.
+
+Das ist für diese Etappe so vorgesehen. Erst die nächste Etappe mit neuen Karteneffekten
+macht den Topf so groß, dass die Auswahl auch in der Breite wehtut.
+
+Nebenbefund aus dem Test, nicht durch die Auslese verursacht: Fast alle Zeitfenster
+im Spiel hängen an `Date.now()` und laufen weiter, während ein Overlay offen ist. Der
+Orbitpfad hat dieselbe Eigenschaft. Eine gemeinsame pausierbare Zeitbasis wäre die
+saubere Lösung und steht im Backlog.
+
 ## Ideen aus dem Spieltest (17.08.2026)
 
 Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.

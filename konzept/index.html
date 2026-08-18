@@ -151,6 +151,15 @@
     <div id="tree-message" role="status"></div>
   </div>
 
+  <!-- Auslese: alle drei Wellen hält der Kampf an und bietet drei Karten zur Wahl.
+       Nur die Hülle steht hier — die Karten selbst rendert das Spiel hinein. -->
+  <div id="overlay-auslese" class="overlay hidden">
+    <h2 id="auslese-titel">Auslese</h2>
+    <p class="subtitle" id="auslese-hinweis"></p>
+    <div id="auslese-karten"></div>
+    <button id="auslese-reroll" class="secondary"></button>
+  </div>
+
   <!-- Game Over -->
   <div id="overlay-gameover" class="overlay hidden">
     <h2>Besiegt</h2>
