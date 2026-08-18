@@ -1163,17 +1163,13 @@ function tutorialSweetSpotTreffer(){
 function bladeLength(){ return CONFIG.bladeBaseLen * (1 + bonuses.range) * figur().reichweite * (treeFlags.singularorbit?1.20:1); }
 function effektiveKlingen(){
   const basis=treeFlags.ereignishorizont && player.hp/player.maxHp<.35 ? Math.max(3,bonuses.blades) : bonuses.blades;
-  return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0)+(treeFlags.resonanzKlingeUntil>Date.now()?1:0)+(runModule.gegenlauf?1:0);
+  return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0)+(treeFlags.resonanzKlingeUntil>Date.now()?1:0)+(runModule.klingenteilung||0);
 }
 // Winkel aller aktiven Klingen (Doppelklinge = zweite Klinge gegenüber)
 function bladeAngles(){
   const out=[swordAngle];
-  // Gegenlauf zählt für effektiveKlingen()/sweetArcHalf() als zusätzliche Klinge (Preis:
-  // schmalerer Sweet Spot), läuft aber NICHT durch die Gleichverteilungsschleife der
-  // übrigen Klingen — sie kreist bewusst frei mit -swordAngle in Gegenrichtung.
-  const anzahl=effektiveKlingen()-(runModule.gegenlauf?1:0);
+  const anzahl=effektiveKlingen();
   for(let i=1;i<anzahl;i++) out.push(swordAngle + Math.PI*2*i/anzahl);
-  if(runModule.gegenlauf) out.push(-swordAngle);
   return out;
 }
 // kleinster Abstand zweier Winkel (0..PI)
@@ -1193,7 +1189,13 @@ function sweetArcHalf(){
 }
 
 function sweetKlingenFaktor(){
+  /* Klingenteilung gleicht den Preis ihrer eigenen Zusatzklinge aus. Ohne das brachte
+     sie gemessen einem Doppelorbit-Spieler nur +3 %, weil sweetArcHalf() die Zone je
+     Klinge auf drei Viertel schrumpft und den Gewinn wieder auffrisst — für die Hälfte
+     der Builds wäre sie eine tote Karte gewesen. Die Zone schrumpft weiterhin, damit
+     Positionieren zählt; nur der Treffer wiegt schwerer. */
   let f=treeFlags.singularorbit?1.45:1;
+  if(runModule.klingenteilung>=2) f*=1.42; else if(runModule.klingenteilung) f*=1.22;
   if(treeFlags.doppelorbit) f*=.72;
   if(sonnenTempoUntil>Date.now() && treeFlags.sonnenorbit) f*=1.30;
   return f;
@@ -1774,9 +1776,9 @@ let ausleseFreiwurfBenutzt=false, ausleseBezahlteWuerfe=0, ausleseOffenSeit=0;
    von runAbilities. Wie bei den Passiven gibt es je Modul nur zwei Karten: "Neu"
    (desc, Rang 1) und "Verstärkt" (sprung, Rang 2) — keine Zwischenstufen. */
 const AUSLESE_MODULE={
-  gegenlauf:  { name:'Gegenlauf',   icon:'gegenlauf',
-                desc:'Eine Klinge kreist gegenläufig mit',
-                sprung:'Kreuzende Klingen lösen einen Funkenstoß aus' },
+  klingenteilung:{ name:'Klingenteilung', icon:'klingenteilung',
+                desc:'Eine zusätzliche Klinge kreist mit',
+                sprung:'Noch eine Klinge; jeder Sweet Hit wiegt deutlich schwerer' },
   taktschlag: { name:'Taktschlag',  icon:'taktschlag',
                 desc:'Jeder 3. volle Umlauf stößt eine Schadenswelle aus',
                 sprung:'Schon jeder 2. Umlauf; die Welle verlangsamt zusätzlich' },
@@ -3540,7 +3542,7 @@ const ICON={
   farbe:'<path d="M12 3a9 9 0 0 0 0 18c1.4 0 2-.8 2-1.8 0-.6-.4-1-.4-1.6 0-.9.7-1.5 1.6-1.5H17a4.4 4.4 0 0 0 4-4.4C21 6.6 17 3 12 3z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="7.6" cy="11" r="1.3" fill="currentColor"/><circle cx="11" cy="7.4" r="1.3" fill="currentColor"/><circle cx="15.4" cy="8.6" r="1.3" fill="currentColor"/>',
   nachhall:'<circle cx="6" cy="12" r="2.4" fill="currentColor"/><path d="M10.2 7.6a6.2 6.2 0 0 1 0 8.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.2 5a9.9 9.9 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".62"/><path d="M18.2 2.6a13.6 13.6 0 0 1 0 18.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".34"/>',
   // Fünf neue Icons für die Auslese-Module (18.08.2026) — jede Karte braucht ein Symbol.
-  gegenlauf:'<path d="M12 4a8 8 0 1 1-6.93 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4.2 4.6v4.2h4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 20a8 8 0 0 0 6.93-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/><path d="M19.8 19.4v-4.2h-4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>',
+  klingenteilung:'<path d="M12 4a8 8 0 1 1-6.93 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4.2 4.6v4.2h4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 20a8 8 0 0 0 6.93-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/><path d="M19.8 19.4v-4.2h-4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>',
   taktschlag:'<circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="6.4" fill="none" stroke="currentColor" stroke-width="1.8" opacity=".75"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"/>',
   nachfassen:'<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 3" opacity=".5"/><path d="M12 3a9 9 0 0 1 6.36 15.36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>',
   glasklinge:'<path d="M12 2 19 9 12 22 5 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 2v20M5 9h14M9 9 12 2M15 9 12 2" stroke="currentColor" stroke-width="1" opacity=".55"/>',
@@ -3837,17 +3839,6 @@ function update(dt){
   const leerenTempo=figur().id==='konstrukt' ? 1+fehlendesLeben*0.28 : 1;
   const vorSwordAngle=swordAngle;
   swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * (sonnenTempoUntil>Date.now()?1.22:1) * dt/1000;
-  // Auslese-Modul Gegenlauf Rang 2: Haupt- und Gegenklinge (-swordAngle) kreuzen sich
-  // exakt bei Vielfachen von π. Läuft hier statt im 120-ms-Trefferraster, sonst würde
-  // die kurze Kreuzung bei 12 rad/s Relativtempo meist übersprungen.
-  if(runModule.gegenlauf>=2 && Math.floor(vorSwordAngle/Math.PI)!==Math.floor(swordAngle/Math.PI)){
-    const kreuzWinkel=Math.round(swordAngle/Math.PI)*Math.PI;
-    const kx=player.x+Math.cos(kreuzWinkel)*(player.radius+bladeLength()*0.72);
-    const ky=player.y+Math.sin(kreuzWinkel)*(player.radius+bladeLength()*0.72);
-    const funkDmg=Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus)*(1+bonuses.dmg)*0.55);
-    for(const en of enemies){ if(Math.hypot(en.x-kx,en.y-ky)<48+en.radius){ en.hp-=funkDmg; pushFloat(en.x,en.y-16,'-'+funkDmg,'#9ad0ff'); } }
-    sparkRing(kx,ky,'#9ad0ff'); if(sfx) sfx('laserPlayer');
-  }
   if(swordAngle>Math.PI*2){ swordAngle-=Math.PI*2; resetMissedOrbit(); }
   player.face = swordAngle;
   // Effekt-Timer

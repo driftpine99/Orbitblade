@@ -1128,9 +1128,8 @@ der getragene Stand liegt in `runModule` (id → Rang 1 oder 2), getrennt von `r
 Sie stehen bewusst **nicht** in `ABILITIES`, weil die Tabelle auch Vorbereitung, Sammlung
 und Orbitpfad speist.
 
-- `Gegenlauf` — eine Klinge kreist gegenläufig. Sie zählt für `sweetArcHalf()` mit, die
-  Sweet-Zone schrumpft also wie bei jeder zusätzlichen Klinge; das ist ihr Preis, wie bei
-  der Resonanzklinge. Rang 2 setzt an Kreuzungspunkten einen Funkenstoß.
+- `Klingenteilung` — eine zusätzliche gleichlaufende Klinge, Rang 2 noch eine.
+  **Ersetzt seit dem Spieltest den früheren `Gegenlauf`**, siehe unten.
 - `Taktschlag` — jeder dritte volle Umlauf mit Sweet Hit stößt eine Welle aus, Rang 2
   jeder zweite und mit Verlangsamung. Hängt an `orbitSweetPulse()`.
 - `Nachfassen` — ein verfehlter Umlauf verbreitert den nächsten Sweet-Bogen einmalig,
@@ -1174,10 +1173,34 @@ bloßes Anheben der Zahlen hätte sie in einen reinen Prozentkauf verwandelt. De
 sitzt deshalb jetzt beim Leben, wo er sichtbar ist und tatsächlich eine Entscheidung
 darstellt. Das maximale Leben sinkt genau einmal, beim ersten Kauf.
 
-Nebenbefund, bewusst so belassen: `Gegenlauf` liegt gegen ein Einzelziel bei 95 %, gegen
-sechzehn Gegner bei 110 %. Die zusätzliche Klinge verengt den Sweet-Bogen, was im
-Bosskampf nichts einbringt. Das ist ein stimmiger Charakter — eine Gruppenklinge, die
-gegen Bosse leicht bremst —, kein Fehler.
+### Ersetzt: Gegenlauf durch Klingenteilung (18.08.2026)
+
+Der Nutzer fand die gegenläufige Klinge optisch unruhig und wünschte sich stattdessen
+eine dritte gleichlaufende. Nachgemessen war seine Einschätzung auch mechanisch richtig:
+Gegenlauf lag gegen ein Einzelziel bei 95 %, eine zusätzliche gleichlaufende Klinge bei
+113 %.
+
+Beim Umbau fiel eine zweite Falle auf. Eine schlichte Zusatzklinge nützt **je nach Zweig
+völlig unterschiedlich**, weil `sweetArcHalf()` die Zone je Klinge auf drei Viertel
+schrumpft und den Gewinn auffrisst:
+
+| ausgehend von | schlicht +1 Klinge |
+|---|---|
+| Präzisionsorbit (1 Klinge) | +17 % |
+| Doppelorbit (2 Klingen) | **+3 %** |
+
+Für die Hälfte aller Builds wäre sie damit eine tote Karte gewesen — derselbe Fehler wie
+bei der ersten Glasklinge. `sweetKlingenFaktor()` gleicht das jetzt aus (×1,22 auf Rang 1,
+×1,42 auf Rang 2). Die Zone schrumpft weiterhin, damit Positionieren zählt; nur der
+Treffer wiegt schwerer. Gemessen danach:
+
+| | 1 Ziel | 16 Ziele |
+|---|---|---|
+| Präzisionsorbit, Rang 1 / 2 | 130 % / 144 % | 127 % / 147 % |
+| Doppelorbit, Rang 1 / 2 | 110 % / 128 % | 113 % / 123 % |
+
+Der Sweet-Halbwinkel sinkt bei vier Klingen von 28,6° auf 12,1° — die Karte bleibt ein
+Zugewinn mit Preis, nur ist der Preis jetzt Präzision statt Wirkungslosigkeit.
 
 Noch offen: die zustandsabhängige Gewichtung nach Hades-Vorbild. Sie ergibt erst Sinn,
 seit der Topf groß genug ist, und ist die nächste Etappe.
