@@ -1295,6 +1295,66 @@ ersten Sieg erscheinen die freigeschalteten Stufen und ein gedämpfter Ausblick 
 nächste. Ohne diese Regel hätte ein Neuling eine gesperrte achte Schwierigkeitskarte
 gesehen, die ihn nichts angeht.
 
+## Kiten behoben: Jäger bekommen einen Rhythmus (umgesetzt 18.08.2026)
+
+Spieltestbefund: „beim Gameplay ist man irgendwie nur noch am Kiten" und „mit dem
+Schwert bekomme ich sie eigentlich nur, wenn ich Schaden nehme".
+
+### Ursache, gemessen
+
+- **28 % aller Gegner ab Welle 15 sind `jaeger`.** Bei 109 Gegnern auf Welle 25 sind das
+  rund 30 Schützen.
+- Ihre Reichweite ist 300 px. Die Orbitklinge reicht 72 px, Kettenblitz 140, Bombe wird
+  am eigenen Ort gelegt, Nova 190, Phaser 260. **Nur der Sog erreicht 300 px** — und der
+  ist eine aktive Macht mit Abklingzeit.
+- `keepRange` stoppte den Jäger, sobald er innerhalb von 300 px war. Danach bewegte er
+  sich **nie wieder**, auch nicht während seiner Abklingzeit. Er war ein stehender
+  Geschützturm außerhalb jeder Reichweite.
+
+Mit einem Build aus Bombe und Nova gab es gegen jeden vierten Gegner keine Antwort außer
+hinterherlaufen. Das ist kein Balancegefühl, sondern eine Lücke.
+
+### Behebung
+
+`en.jagdPhase` mit drei Phasen ersetzt den Standplatz:
+
+- `an` — läuft heran bis `CONFIG.jaeger.haltNah` (115 px)
+- `laden` — steht still, lädt die vorhandenen 850 ms sichtbar auf, feuert
+- `zurueck` — weicht bis `haltFern` (270 px) zurück, dann von vorn
+
+`chargeMs` (850) und `cooldown` (700) blieben unverändert — das Ausweichfenster
+funktionierte. 115 px liegt knapp hinter der Klingenreichweite gegen einen Jäger
+(72 + Radius 16 ≈ 88 px): Wer während des Ladens hineingeht, tötet ihn, riskiert dafür
+aber seine Position.
+
+Gemessen an einem einzelnen Jäger über 30 s gegen einen stillstehenden Spieler:
+
+| | vorher | jetzt |
+|---|---|---|
+| Schüsse | ~19 | 13 |
+| Zeit innerhalb 120 px | 0 s | 12,3 s |
+| nächste Annäherung | 300 px | 113 px |
+
+Die Bedrohung sinkt um rund ein Drittel, dafür ist der Jäger 41 % der Zeit mit einem
+kurzen Schritt erreichbar. Falls der Spieltest zeigt, dass es zu leicht wurde, ist
+`haltFern` der einzige Regler: kleiner heißt kürzere Wege und mehr Schüsse.
+
+### Mitkorrigiert
+
+- **Drehsperre des Spiralwerfers entschärft**: Schaden 14 → 9, Dauer 3500 → 2600 ms.
+  Armzahl, Länge 130 und Drehtempo bleiben — sie sind der Charakter des Bosses, nur die
+  Härte war zu hoch. Der Spieler berichtete, dass Welle 20 im Nahkampf zu stark ist; das
+  war eine Folge des Raumhebels aus derselben Sitzung.
+- **Glasklinge sagte „Klinge ×1,45"**, gemeint war Schaden. Der Spieler las es als Größe
+  und wunderte sich, dass die Klinge nicht wächst. Text jetzt „Klingenschaden ×1,45";
+  zusätzlich bekommt die Klinge einen sichtbaren Glascharakter — schmalerer, kalter Kern
+  und ein wandernder Schimmer —, sonst bleibt der Handel gefühlt einseitig.
+
+### Offen
+
+`CONFIG.jaeger.shootRange` und `en.shootRange` werden seit der Umstellung nirgends mehr
+gelesen, nur noch zugewiesen. Totes Feld, bewusst stehen gelassen.
+
 ## Ideen aus dem Spieltest (17.08.2026)
 
 Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.

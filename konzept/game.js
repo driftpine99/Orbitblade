@@ -56,7 +56,10 @@ const CONFIG = {
     knoten: { hp:1, dmg:0, speed:0, radius:16, color:'#4de0a0', star:0, xp:0 }
   },
   shots: { speed:340, radius:5, life:3.2 },        // Projektile der Distanz-Gegner
-  jaeger: { shootRange:300, chargeMs:850, cooldown:700 },
+  // haltNah liegt knapp hinter der Klingenreichweite (~88 px bei Jaeger-Radius 16):
+  // wer waehrend des Ladens hineingeht, riskiert die Position fuer den Kill. haltFern
+  // ist nur die Zieldistanz des Rueckzugs — shootCd beendet ihn notfalls frueher.
+  jaeger: { shootRange:300, chargeMs:850, cooldown:700, haltNah:115, haltFern:270 },
   exploder: { fuseMs:650, blast:95 },              // Zünd-Puls vor der Explosion, Schadensabfall
   xpOrb: { chance:0.15, pity:8, xp:30, radius:9 },
   // Rote Lebenskugeln: seltener als XP-Orbs, heilen einen festen Anteil der Leiste
@@ -1454,6 +1457,12 @@ function zeichneLeerenklingeNeu(g, lean, farbe, kern, blur){
 function zeichneKlinge(g, x0, laenge, form, farbe, kern, blur){
   const bl = blur || (v=>{ g.shadowBlur=v; });
   const strahlen = form.zwei ? [-3.7, 3.7] : [0];
+  // Glasklinge (Auslese-Modul): der Lebens-Handel bleibt sonst unsichtbar. Heller,
+  // schmalerer Kern statt der Skin-Kernfarbe plus ein wandernder kalter Lichtpunkt —
+  // kein neues Bild, nur andere Werte im vorhandenen Zeichenpfad.
+  const glas = !!runModule.glasklinge;
+  const kernSkal = glas ? 0.55 : 1;
+  const kernFarbe = glas ? '#eafdff' : kern;
   for(const off of strahlen){
     g.shadowColor=farbe; bl(form.glut); g.fillStyle=farbe;
     if(form.spitz){
@@ -1469,13 +1478,19 @@ function zeichneKlinge(g, x0, laenge, form, farbe, kern, blur){
     } else {
       g.beginPath(); g.roundRect(x0, off-form.dicke/2, laenge, form.dicke, form.rund); g.fill();
     }
-    bl(form.glut*0.5); g.fillStyle=kern;
+    bl(form.glut*0.5); g.fillStyle=kernFarbe;
     if(form.doppelkern){
       for(const k of [-form.kern*0.7, form.kern*0.7]){
-        g.beginPath(); g.roundRect(x0+2, off+k-0.55, laenge-9, 1.1, 0.55); g.fill();
+        g.beginPath(); g.roundRect(x0+2, off+k-0.55*kernSkal, laenge-9, 1.1*kernSkal, 0.55*kernSkal); g.fill();
       }
     } else {
-      g.beginPath(); g.roundRect(x0+1, off-form.kern/2, laenge-5, form.kern, form.kern/2); g.fill();
+      g.beginPath(); g.roundRect(x0+1, off-form.kern*kernSkal/2, laenge-5, form.kern*kernSkal, form.kern*kernSkal/2); g.fill();
+    }
+    if(glas){
+      // kalter Schimmer: heller Punkt läuft die Klingenlänge ab und zurück
+      const lauf=Math.abs(((Date.now()/620)%2)-1);
+      bl(form.glut*0.7); g.fillStyle='rgba(224,250,255,'+(0.5+0.35*Math.sin(Date.now()/95)).toFixed(2)+')';
+      g.beginPath(); g.arc(x0+5+(laenge-14)*lauf, off, 2, 0, Math.PI*2); g.fill();
     }
   }
   bl(0);
@@ -1769,8 +1784,8 @@ const AUSLESE_MODULE={
                 desc:'Verfehlter Umlauf: nächster Sweet-Bogen doppelt breit',
                 sprung:'Dieser breite Treffer durchschlägt zusätzlich Panzerung' },
   glasklinge: { name:'Glasklinge',  icon:'glasklinge',
-                desc:'Klinge ×1,45, dafür nur noch 60 % maximales Leben',
-                sprung:'Klinge ×1,80; Barriere baut sich nicht mehr auf' },
+                desc:'Klingenschaden ×1,45, dafür nur 60 % maximales Leben',
+                sprung:'Klingenschaden ×1,80; Barriere baut sich nicht mehr auf' },
   kurzschluss:{ name:'Kurzschluss', icon:'kurzschluss',
                 desc:'Mächte laden 35 % schneller, Einsatz kostet 4 % Leben',
                 sprung:'60 % schneller; Einsatz bei vollem Fokus kostet nichts' },
@@ -2140,12 +2155,15 @@ function fireBossAbility(en){
   } else if(a==='sperre'){
     // Drehsperre: zwei (Phase 2: drei) Balken überstreichen das sichere Band. 0,9 rad/s
     // ist bewusst langsamer als das Lauftempo auf 70 px (~2,5 rad/s) — überholbar.
+    // Spieltest: zusammen mit dem alten Jäger-Kiten wirkte sie zu hart, weil sie genau
+    // das Nahkampfband deckt. Schaden 14→9, Dauer 3500→2600 ms; Armzahl/Länge/Drehtempo
+    // bleiben ihr Charakter und sind unverändert.
     const n=en.phase2?3:2;
     const dreh=en.phase2?1.3:0.9;
     const basis=en.sperreAng!=null ? en.sperreAng : Math.atan2(player.y-en.y, player.x-en.x);
     for(let k=0;k<n;k++){
       if(bossHazards.length>=40) break;
-      bossHazards.push({kind:'arm', x:en.x, y:en.y, r:130, until:3500, dmg:14, farbe:en.color,
+      bossHazards.push({kind:'arm', x:en.x, y:en.y, r:130, until:2600, dmg:9, farbe:en.color,
         ang:basis+k*(Math.PI*2/n), len:130, drehen:dreh, tick:0});
     }
     en.sperreAng=null;
@@ -2209,7 +2227,7 @@ function makeEnemy(type){
   // Minions, Spiralen), nicht aus reinem Hinterherlaufen.
   let spd = t.speed*diff.enemySpeed*(type==='boss' ? (diff.bossSpeed!==undefined?diff.bossSpeed:1) : 1);
   if(type==='boss') spd = Math.min(spd, CONFIG.playerBaseSpeed*0.6);
-  return { type, x,y, hp, maxHp:hp, dmg:Math.round(t.dmg*dScale*diff.enemyDmg), speed:spd, radius:t.radius, color:t.color, panzer:!!t.panzer, hitCd:0, bossTimer:0, shootRange:t.shootRange||0, chargeT:0, shootCd:0, bossPhase:'', ability:'', ramT:0, ramRecoverT:0, shockFx:0, warnT:0,
+  return { type, x,y, hp, maxHp:hp, dmg:Math.round(t.dmg*dScale*diff.enemyDmg), speed:spd, radius:t.radius, color:t.color, panzer:!!t.panzer, hitCd:0, bossTimer:0, shootRange:t.shootRange||0, chargeT:0, shootCd:0, jagdPhase:'an', bossPhase:'', ability:'', ramT:0, ramRecoverT:0, shockFx:0, warnT:0,
            phase2:false, phaseT:0, hpDavor:0, schildT:0, schildDir:0, schildHitCd:0, brandTick:0 };
 }
 function randomEnemyType(){
@@ -4052,11 +4070,25 @@ function update(dt){
       en.x=player.x+Math.cos(en.moduleOrbitAngle)*rr;en.y=player.y+Math.sin(en.moduleOrbitAngle)*rr;
       dx=player.x-en.x;dy=player.y-en.y;d=Math.hypot(dx,dy);
     }
-    // Distanz-Gegner halten Reichweite, zündende Exploder bleiben stehen; Stun (Nova) friert ein
-    const keepRange = en.type==='jaeger' && d<en.shootRange;
+    // Jäger: Rhythmus aus Anrücken/Laden/Rückzug statt festem Stopp-Radius — vorher blieb
+    // er ab shootRange (300 px) für immer stehen, weit außerhalb von Klinge (~72 px) und
+    // fast jeder Macht. haltNah (115) liegt knapp hinter der Klingenreichweite: wer
+    // während des Ladens hineingeht, tötet ihn, riskiert dafür die Position.
+    let jaegerRueckwaerts=false;
+    if(en.type==='jaeger'){
+      if(en.jagdPhase==='an' && d<=CONFIG.jaeger.haltNah) en.jagdPhase='laden';
+      // shootCd (bereits Vorframe-Wert) beendet den Rückzug notfalls auch fern von haltFern —
+      // sonst bliebe ein verfolgter Jäger dauerhaft rückwärts in der Kartenmitte kleben.
+      else if(en.jagdPhase==='zurueck' && (d>=CONFIG.jaeger.haltFern || en.shootCd<=0)) en.jagdPhase='an';
+      jaegerRueckwaerts = en.jagdPhase==='zurueck';
+    }
+    // Distanz-Gegner halten nur noch während des Ladens die Position; zündende Exploder
+    // bleiben stehen; Stun (Nova) friert ein.
+    const keepRange = en.type==='jaeger' && en.jagdPhase==='laden';
     if(d>1 && !modulOrbit && !keepRange && !en.exploding && !(en.stunT>0) && !(en.type==='boss' && en.ramT>0) && !(en.type==='boss' && en.phaseT>0)){
       const langsam=en.slowT>0?.55:1, erholung=en.ramRecoverT>0?.32:1;
-      en.x+=dx/d*en.speed*langsam*erholung*dt/1000;en.y+=dy/d*en.speed*langsam*erholung*dt/1000;
+      const richtung = jaegerRueckwaerts ? -1 : 1;
+      en.x+=richtung*dx/d*en.speed*langsam*erholung*dt/1000;en.y+=richtung*dy/d*en.speed*langsam*erholung*dt/1000;
     }
     // attack if close
     if(!en.exploding && !(en.stunT>0) && !(en.type==='boss'&&en.ramT>0) && d < en.radius + player.radius + 4){
@@ -4070,10 +4102,11 @@ function update(dt){
     if(en.stunT>0) en.stunT-=dt;
     if(en.slowT>0) en.slowT-=dt;
     if(en.ramRecoverT>0) en.ramRecoverT-=dt;
-    // Jäger (Distanz-Angreifer): lädt sichtbar auf und feuert ein Projektil
+    // Jäger (Distanz-Angreifer): lädt nur noch in Phase 'laden' sichtbar auf, sonst würde
+    // er beim Anrücken schon unsichtbar vorladen. Schussmechanik selbst unverändert.
     if(en.type==='jaeger'){
       en.shootCd=(en.shootCd||0)-dt;
-      if(d<en.shootRange && en.shootCd<=0 && !(en.stunT>0)){
+      if(en.jagdPhase==='laden' && en.shootCd<=0 && !(en.stunT>0)){
         en.chargeT=(en.chargeT||0)+dt;
         if(en.chargeT>=CONFIG.jaeger.chargeMs){
           en.chargeT=0; en.shootCd=CONFIG.jaeger.cooldown;
@@ -4081,6 +4114,7 @@ function update(dt){
           shots.push({x:en.x+nx*en.radius, y:en.y+ny*en.radius, vx:nx*CONFIG.shots.speed, vy:ny*CONFIG.shots.speed,
             dmg:en.dmg, color:en.color, r:CONFIG.shots.radius, life:CONFIG.shots.life});
           if(sfx) sfx('laserEnemy');
+          en.jagdPhase='zurueck';   // nach dem Schuss Raum gewinnen statt sofort weiterzuladen
         }
       } else { en.chargeT=0; }
     }
