@@ -202,7 +202,7 @@ const SKINS = {
 const ORBIT_AUFTRAEGE={
   fokus_einsatz:{id:'fokus_einsatz',titel:'Fokus im Orbit',text:'Setze 5 fokussierte Hauptmächte ein.',kurz:'Fokusmächte',ziel:5,lohn:160},
   boss_makellos:{id:'boss_makellos',titel:'Makelloser Orbit',text:'Besiege 1 Boss ohne Lebensschaden.',kurz:'Boss makellos',ziel:1,lohn:200},
-  panzer_sweet:{id:'panzer_sweet',titel:'Präzisionsbrecher',text:'Triff 20 Panzergegner im Sweet Spot.',kurz:'Panzer-Sweet',ziel:20,lohn:170},
+  panzer_sweet:{id:'panzer_sweet',titel:'Präzisionsbrecher',text:'Lande 20 Volltreffer auf Panzergegner.',kurz:'Panzer-Volltreffer',ziel:20,lohn:170},
   held_lichtbund:{id:'held_lichtbund',titel:'Lichtbund',text:'Erzeuge als Lichthüter 3 Fokusbarrieren.',kurz:'Lichtbarrieren',ziel:3,lohn:170,figur:'held'},
   leere_hunger:{id:'leere_hunger',titel:'Leerenhunger',text:'Lade als Leerenklinge 3-mal unter 45 % Leben Fokus voll.',kurz:'Risiko-Fokus',ziel:3,lohn:190,figur:'konstrukt'},
 };
@@ -346,7 +346,7 @@ const FIGUREN = {
   // Die interne ID bleibt für vorhandene v5-Spielstände bestehen.
   konstrukt: { name:'Leerenklinge', desc:'Schwebender Träger einer instabilen Orbit-Klinge',
                id:'konstrukt', hp:0.88, tempo:1.07, reichweite:0.98, fokusZiel:0.88, barriereMal:0.75,
-               staerke:'Leerenhunger · fehlendes Leben verstärkt Sweet Spot und Orbit',
+               staerke:'Leerenhunger · fehlendes Leben verstärkt Volltreffer und Orbit',
                fuer:'Hohes Risiko, aggressives Kreisen und starke Klingen-Kombos' },
 };
 function figur(){ return isAvailable('figur', save.figur)? FIGUREN[save.figur] : FIGUREN.held; }
@@ -364,11 +364,11 @@ const ABILITIES = {
   wirbel:        { name:'Wirbel',          desc:'Spirale rund um dich — massiver Schaden',                    slot:'active',  iconKey:'wirbel',  start:true },
   stoss:         { name:'Schock',          desc:'Elektrische Schockwelle — stößt Gegner weg',                 slot:'active',  iconKey:'stoss',  start:true },
   bombe:         { name:'Bombe',           desc:'Legt eine Bombe, die verzögert explodiert',                  slot:'active',  iconKey:'bombe' },
-  nova:          { name:'Machtblitz-Nova', desc:'Elektrischer Ring — Schaden und kurzer Stun',                slot:'active',  iconKey:'nova' },
-  // Neu in der Konzeptfassung — zwei davon zahlen direkt auf den Sweet Spot ein
+  nova:          { name:'Machtblitz-Nova', desc:'Elektrischer Ring — Schaden und kurze Betäubung',            slot:'active',  iconKey:'nova' },
+  // Neu in der Konzeptfassung — zwei davon zahlen direkt auf den Volltreffer ein
   sog:           { name:'Sog',             desc:'Zieht alle Gegner heran — bringt sie in deine Klinge',       slot:'active',  iconKey:'reichweite' },
-  schneide:      { name:'Schneide',        desc:'Sweet-Spot-Treffer richten deutlich mehr Schaden an',        slot:'passive', iconKey:'schaden' },
-  nachhall:      { name:'Nachhall',        desc:'Jeder vierte Sweet-Spot-Treffer löst eine Druckwelle aus',   slot:'passive', iconKey:'nachhall' },
+  schneide:      { name:'Schneide',        desc:'Volltreffer richten deutlich mehr Schaden an',               slot:'passive', iconKey:'schaden' },
+  nachhall:      { name:'Nachhall',        desc:'Jeder vierte Volltreffer löst eine Druckwelle aus',          slot:'passive', iconKey:'nachhall' },
 };
 const ACTIVE_IDS=['wirbel','stoss','bombe','nova','sog'];
 const MAX_ABIL_LEVEL=5;
@@ -382,10 +382,10 @@ const MAX_ABIL_LEVEL=5;
    gesenkt: Stufe 5 liegt damit bei +40 % statt +48 %, der Sprung kommt obendrauf. */
 const SPRUNG_STUFE=4;
 const ACTIVE_MODS={
-  wirbel:['A: Positioniert bis 70 px an die Klingenbahn, kein Zusatzschaden','B: Ortsgebundener Nachlauf, 1550 ms, 12 % Snapshot-Schaden'],
-  stoss:['Weggestoßene Gegner verursachen Kollisionsschaden','Hinterlässt ein verlangsamendes Feld'],
+  wirbel:['A: Zieht nahe Gegner sanft zu deiner Klinge','B: Hinterlässt an deiner Position ein kurz nachbrennendes Feld'],
+  stoss:['Weggestoßene Gegner rammen andere und verletzen beide','Hinterlässt ein Feld, das Gegner verlangsamt'],
   bombe:['Haftet automatisch am nächsten Gegner','Erneutes Drücken zündet die Bombe vorzeitig'],
-  nova:['Treffer laden etwas Barriere','Gezielte Energiebögen treffen nahe Gegner'],
+  nova:['Treffer laden eine kleine Barriere auf','Gezielte Energiebögen treffen nahe Gegner'],
   sog:['Hält Gegner kurz in Klingenreichweite','Lässt Gegner kurz um dich kreisen'],
 };
 const STUFEN={
@@ -399,7 +399,7 @@ const STUFEN={
   phaser:      { pro:'+10 % Schussschaden',                        sprung:'Du feuerst zwei Geschosse gleichzeitig' },
   lebensregen: { pro:'+50 % Heilung pro besiegtem Gegner',         sprung:'Du regenerierst zusätzlich dauerhaft Leben' },
   sog:         { pro:'+10 % Reichweite und Zugkraft',              sprung:'Herangezogene Gegner werden kurz betäubt' },
-  schneide:    { pro:'+8 % Schaden im Sweet Spot',                 sprung:'Sweet-Spot-Treffer durchschlagen jede Panzerung' },
+  schneide:    { pro:'+8 % Schaden bei Volltreffern',               sprung:'Volltreffer durchschlagen jede Panzerung' },
   nachhall:    { pro:'+12 % Schaden der Druckwelle',               sprung:'Schon jeder dritte Treffer löst sie aus' },
 };
 // Text für den Schritt von `vonStufe` auf die nächste Stufe
@@ -422,7 +422,7 @@ function naechsteStufeText(id, lv){
    deterministisch: im Codex nachlesbar, man kann darauf hinspielen. */
 const EVOLUTIONS={
   sturmwirbel:   { base:'wirbel', req:'splitter',    name:'Sturmwirbel',
-                   desc:'Zwei gegenläufige Ringe; danach 8 Radialprojektile mit 35 % Snapshot-Schaden' },
+                   desc:'Zwei gegenläufige Ringe kreisen kurz, danach schießt ein Kranz aus Geschossen nach außen' },
   kettengewitter:{ base:'stoss',  req:'kettenblitz', name:'Kettengewitter',
                    desc:'Die Schockwelle springt als Blitz auf alle Getroffenen über' },
   streubombe:    { base:'bombe',  req:'konterstoss', name:'Streubombe',
@@ -461,27 +461,27 @@ function regularInvested(){
   return Object.entries(runTree).reduce((sum,[id,rank])=>sum+(id.startsWith('echo_')?0:Number(rank)||0),0);
 }
 const ACTIVE_MOD_SHORT={
-  wirbel:['ZUG','ZONE'], stoss:['KOLL.','SLOW'], bombe:['HAFT','SOFORT'],
+  wirbel:['ZUG','ZONE'], stoss:['KOLL.','LANGSAM'], bombe:['HAFT','SOFORT'],
   nova:['SCHILD','BÖGEN'], sog:['HALT','ORBIT']
 };
 /* Zwei Knoten, aber pro Hauptmacht vier konkrete Mechaniken. Name und Kurzzeile
    zeigen stets den nächsten Rang, sodass kein Öffnen nötig ist, um den Kauf zu lesen. */
 const MODULE_TEXT={
   wirbel:{
-    blade:[['Wirbelkerbe','4. SWEET: ZUG','Jeder vierte Sweet Hit zieht die Gruppe sichtbar an den Treffer.'],['Ringladung','WIRBEL LÄDT','Wirbel lädt Klingentreffer auf, die kurze Nachlauffelder setzen.']],
-    power:[['Wanderkern','MUTATION WANDERT','Die Mutation wandert kurz mit dir oder setzt ein zweites Feld.'],['Gegenstrom','RING KEHRT UM','Ein verzögerter Gegenstrom zieht Gegner zurück in die Klingenbahn.']]},
+    blade:[['Wirbelkerbe','GRUPPENZUG','Jeder vierte Volltreffer zieht nahe Gegner sichtbar zum Treffpunkt.'],['Ringladung','WIRBEL LÄDT','Nach Wirbel hinterlassen deine nächsten Treffer kurz nachbrennende Felder.']],
+    power:[['Wanderkern','FELD WANDERT','Deine Mutation wandert kurz mit dir oder setzt ein zweites Feld.'],['Gegenstrom','RING KEHRT UM','Ein verzögerter Gegenstrom zieht Gegner zurück in die Klingenbahn.']]},
   stoss:{
-    blade:[['Leitkerbe','SWEET MARKIERT','Sweet Hits setzen und entladen sichtbare Blitzmarken.'],['Kettenkante','BLITZ SPRINGT','Entladungen springen formabhängig auf weitere Ziele.']],
+    blade:[['Leitkerbe','MARKE ZÜNDET','Volltreffer markieren ihr Ziel; ein weiterer Volltreffer entlädt die Marke.'],['Kettenkante','BLITZ SPRINGT','Entladungen springen formabhängig auf weitere Ziele.']],
     power:[['Rückleiter','ZIELE KEHREN','Weggestoßene Ziele werden nach kurzer Zeit zur Klinge zurückgeholt.'],['Feldbruch','MINI-SCHOCK','Die Rückkehr endet in einer kleinen betäubenden Schockwelle.']]},
   bombe:{
-    blade:[['Zündkerbe','SWEET BESCHL.','Sweet Hits beschleunigen die nächste sichtbare Bombenzündung.'],['Bombenpass','SWEET HEFTET','Der nächste Sweet Hit heftet eine gelegte Bombe an sein Ziel.']],
-    power:[['Sprengkette','FOLGELADUNG','Die Kernexplosion legt genau eine kleine Folgeladung.'],['Kernsplitter','KERN: 4 SPLITTER','Ein Kernvolltreffer schleudert vier begrenzte Splitter heraus.']]},
+    blade:[['Zündkerbe','SCHNELLZÜNDUNG','Volltreffer nahe einer Bombe lassen sie früher zünden.'],['Bombenpass','BOMBE HEFTET','Der nächste Volltreffer heftet eine gelegte Bombe an sein Ziel.']],
+    power:[['Sprengkette','FOLGELADUNG','Die Kernexplosion legt genau eine kleine Folgeladung.'],['Kernsplitter','4 SPLITTER','Ein Kernvolltreffer schleudert vier Splitter heraus.']]},
   nova:{
-    blade:[['Phasenkante','NOVA LÄDT SALVEN','Nova lädt zwei formabhängige Klingensalven.'],['Sternenring','LETZTE: MINI-NOVA','Die letzte Salve erzeugt am Treffer eine kleine Nova.']],
-    power:[['Sternenfänger','FÄNGT GESCHOSSE','Nova wandelt feindliche Geschosse in eigene Phaser um.'],['Sternenbruch','PHASER: MINI-NOVA','Gefangene Phaser zünden beim Treffer eine kleine Nova.']]},
+    blade:[['Phasenkante','2 SALVEN','Nova lädt zwei formabhängige Klingensalven.'],['Sternenring','LETZTE NOVA','Die letzte Salve erzeugt am Treffer eine kleine Nova.']],
+    power:[['Sternenfänger','FÄNGT SCHUSS','Nova wandelt feindliche Geschosse in eigene Phaser um.'],['Sternenbruch','MINI-NOVA','Gefangene Phaser zünden beim Treffer eine kleine Nova.']]},
   sog:{
-    blade:[['Kernkerbe','SWEET LENKT KERN','Sweet Hits lenken den Gravitationskern durch die Gruppe.'],['Gravschnitt','3. HIT: NACHHALL','Der dritte Kerntreffer löst einmalig eine Nachhallwelle aus.']],
-    power:[['Gravbindung','ZIELE IM UMLAUF','Gezogene Ziele kreisen kurz auf Klingenreichweite.'],['Kernbruch','UMLAUF ENDET','Der Umlauf endet in einer machtbezogenen Gruppenwelle.']]}
+    blade:[['Kernkerbe','KERN LENKBAR','Volltreffer auf gezogene Gegner reißen die Nachbarn mit.'],['Gravschnitt','3. NACHHALL','Der dritte Kerntreffer löst einmalig eine Nachhallwelle aus.']],
+    power:[['Gravbindung','ZIELE KREISEN','Gezogene Ziele kreisen kurz auf Klingenreichweite.'],['Kernbruch','UMLAUF ENDET','Der Umlauf endet in einer Gruppenwelle mit zusätzlichem Schaden.']]}
 };
 /* Machtmeisterschaft: früher EIN Knoten mit 3 Rängen, jetzt drei Knoten mit je
    einem — ein Punkt kauft eine ganze, benannte Mechanik statt eines Drittels davon.
@@ -489,24 +489,24 @@ const MODULE_TEXT={
    bzw. der über steigereMacht() gesetzte Fähigkeitslevel); hier nur Name/Kurztext je Rang. */
 const POWER_MASTER_TEXT={
   wirbel:[
-    ['Außenbahn','ÄUSSERE BAHN','Der Wirbelradius wächst um 14 % – die Klinge trifft weiter außen.'],
-    ['Kernschlag','TRIFFT KERN','Ein zusätzlicher Kernschlag im Zentrum trifft mit 42 % Schaden.'],
+    ['Außenbahn','ÄUSSERE BAHN','Dein Wirbel reicht spürbar weiter nach außen.'],
+    ['Kernschlag','TRIFFT KERN','Ein zusätzlicher Kernschlag trifft zugleich alles direkt neben dir.'],
     ['Doppelring','ZWEITER RING','Ein zweiter äußerer Ring trifft zusätzlich mit halbem Schaden.']],
   stoss:[
-    ['Schockmarke','MARKIERT ZIELE','Jeder Treffer markiert sein Ziel 3,2 s; ein Sweet Hit löst +38 % Entladung aus.'],
-    ['Marklähmung','MARKE: BETÄUBT','Die Entladung einer Marke betäubt das Ziel zusätzlich 520 ms.'],
+    ['Schockmarke','MARKIERT ZIELE','Jeder Treffer markiert sein Ziel; ein Volltreffer löst dort eine Entladung aus.'],
+    ['Marklähmung','MARKE: BETÄUBT','Die Entladung einer Marke betäubt das Ziel zusätzlich kurz.'],
     ['Stoßbetäubung','ALLE BETÄUBT','Jeder Stoßtreffer betäubt kurz – auch ohne Marke.']],
   bombe:[
-    ['Kernzone','STARKER KERN','Treffer im Bombenkern verursachen 45 % mehr Schaden.'],
+    ['Kernzone','STARKER KERN','Treffer im Bombenkern verursachen deutlich mehr Schaden.'],
     ['Panzerbruch','ENTPANZERT','Kernnahe Treffer entfernen 2,6 s lang die Panzerung.'],
     ['Doppelwurf','2. BOMBE','Jeder Wurf legt eine zweite, versetzt zündende Bombe.']],
   nova:[
     ['Novasalve','4 GESCHOSSE','Nova feuert vier Geschosse radial aus.'],
     ['Novaecho','2. WELLE','Eine verzögerte zweite Nova-Welle folgt automatisch.'],
-    ['Sternenschauer','8 GESCHOSSE','Acht Geschosse statt vier; das Echo trifft deutlich härter.']],
+    ['Sternenschauer','8 GESCHOSSE','Doppelt so viele Geschosse – das Echo trifft deutlich härter.']],
   sog:[
     ['Kernbindung','KERN MARKIERT','Der nächstgezogene Gegner wird 3,6 s zum Gravitationskern.'],
-    ['Kernsammlung','ZIEHT GRUPPE','Ein Sweet Hit am Kern zieht nahe Gegner zusammen.'],
+    ['Kernsammlung','ZIEHT GRUPPE','Ein Volltreffer am Kern zieht nahe Gegner zusammen.'],
     ['Sogbetäubung','BETÄUBT ALLE','Jeder gezogene Gegner wird kurz betäubt.']]
 };
 function treeNodes(){
@@ -518,31 +518,31 @@ function treeNodes(){
   const pm1=MODULE_TEXT[id].power[0], pm2=MODULE_TEXT[id].power[1];
   const mt=POWER_MASTER_TEXT[id];
   const n=[
-    {id:'blade_multi',stage:0,col:2,kind:'major',name:'Doppelorbit',short:'2 KLINGEN',desc:'2 Klingen π-versetzt: Sweet je ×0,72, Zone ×0,75, Schub 16 px.',icon:'Ⅱ',exclusiveGroup:'orbit',spine:'blade',apply:()=>{bonuses.blades=2;treeFlags.doppelorbit=true;earnBadge('doppel');}},
-    {id:'blade_single',stage:0,col:6,kind:'major',name:'Präzisionsorbit',short:'SWEET ×1,45',desc:'1 Klinge, Länge ×1,20, Sweet-Bogen ×0,68; nur Sweet durchschlägt Panzer.',icon:'┃',exclusiveGroup:'orbit',spine:'blade',apply:()=>{treeFlags.singularorbit=true;}},
-    {id:power+'_a',stage:1,col:2,kind:'major',name:ABILITIES[id].name+' · A',short:ACTIVE_MOD_SHORT[id][0],desc:ACTIVE_MODS[id][0],icon:'A',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='a'},
-    {id:power+'_b',stage:1,col:6,kind:'major',name:ABILITIES[id].name+' · B',short:ACTIVE_MOD_SHORT[id][1],desc:ACTIVE_MODS[id][1],icon:'B',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='b'},
-    {id:partner,stage:2,col:2,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'VOLL',desc:ABILITIES[evo.req].desc+'; '+STUFEN[evo.req].sprung+'.',icon:'✦',reqAny:[power+'_a',power+'_b'],spine:'partner',apply:()=>runAbilities[evo.req]=SPRUNG_STUFE},
+    {id:'blade_multi',stage:0,col:2,kind:'major',name:'Doppelorbit',short:'2 KLINGEN',desc:'Zwei Klingen kreisen dir gegenüber: verlässlich, aber jede trifft schwächer.',icon:'Ⅱ',exclusiveGroup:'orbit',spine:'blade',apply:()=>{bonuses.blades=2;treeFlags.doppelorbit=true;earnBadge('doppel');}},
+    {id:'blade_single',stage:0,col:6,kind:'major',name:'Präzisionsorbit',short:'TREFFER ×1,45',desc:'Eine lange, schmale Klinge mit deutlich stärkerem Volltreffer, der Panzerung durchschlägt.',icon:'┃',exclusiveGroup:'orbit',spine:'blade',apply:()=>{treeFlags.singularorbit=true;}},
+    {id:power+'_a',stage:1,col:2,kind:'major',name:ABILITIES[id].name+' · A',short:ACTIVE_MOD_SHORT[id][0],desc:ACTIVE_MODS[id][0].replace(/^A:\s*/,''),icon:'A',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='a'},
+    {id:power+'_b',stage:1,col:6,kind:'major',name:ABILITIES[id].name+' · B',short:ACTIVE_MOD_SHORT[id][1],desc:ACTIVE_MODS[id][1].replace(/^B:\s*/,''),icon:'B',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='b'},
+    {id:partner,stage:2,col:2,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'VOLL',desc:ABILITIES[evo.req].desc+'. '+STUFEN[evo.req].sprung+'.',icon:'✦',reqAny:[power+'_a',power+'_b'],spine:'partner',apply:()=>runAbilities[evo.req]=SPRUNG_STUFE},
     {id:'blade_module',stage:2,col:4,kind:'buff',name:bm1[0],short:bm1[1],desc:bm1[2],icon:'◒',reqAny:[power+'_a',power+'_b'],apply:()=>treeFlags.bladeModule=1},
     {id:'blade_module_2',stage:2,col:6,kind:'buff',name:bm2[0],short:bm2[1],desc:bm2[2],icon:'◒',reqAll:['blade_module'],apply:()=>treeFlags.bladeModule=2},
-    {id:'char_route_a',stage:3,col:2,kind:'major',name:figur().id==='held'?'Wächter':'Verschlinger',short:figur().id==='held'?'BARRIERE':'LEBENSRAUB',desc:figur().id==='held'?'Fokus: 8% Barriere, 150 px Slow 1200 ms.':'Besiegte Gegner heilen einen kleinen Teil deines Lebens.',icon:figur().id==='held'?'◈':'◆',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.waechter=true;waechterLadung=false;}else treeFlags.leerenHeilung=.006;}},
-    {id:'char_route_b',stage:3,col:6,kind:'major',name:figur().id==='held'?'Sonnenjäger':'Abgrund',short:figur().id==='held'?'3 SWEET':'RISIKO-DMG',desc:figur().id==='held'?'3 Sweet-Pulse starten 3 s Sonnentempo ×1,22.':'Fehlendes Leben steigert den Sweet-Spot-Schaden stark.',icon:figur().id==='held'?'☀':'▼',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.sonnenjaeger=true;sonnenSerie=0;sonnenTempoUntil=0;}else treeFlags.leerenRisikoBonus=.28;}},
+    {id:'char_route_a',stage:3,col:2,kind:'major',name:figur().id==='held'?'Wächter':'Verschlinger',short:figur().id==='held'?'BARRIERE':'LEBENSRAUB',desc:figur().id==='held'?'Voller Fokus gibt dir Barriere und verlangsamt Gegner in der Nähe.':'Besiegte Gegner heilen einen kleinen Teil deines Lebens.',icon:figur().id==='held'?'◈':'◆',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.waechter=true;waechterLadung=false;}else treeFlags.leerenHeilung=.006;}},
+    {id:'char_route_b',stage:3,col:6,kind:'major',name:figur().id==='held'?'Sonnenjäger':'Abgrund',short:figur().id==='held'?'SONNENSERIE':'RISIKO-SCHADEN',desc:figur().id==='held'?'Drei Volltreffer in Folge beschleunigen kurz deinen Orbit.':'Fehlendes Leben steigert deinen Volltreffer-Schaden stark.',icon:figur().id==='held'?'☀':'▼',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.sonnenjaeger=true;sonnenSerie=0;sonnenTempoUntil=0;}else treeFlags.leerenRisikoBonus=.28;}},
     {id:'power_master_1',stage:4,col:2,kind:'buff',name:mt[0][0],short:mt[0][1],desc:mt[0][2],icon:'⬡',reqAny:['char_route_a','char_route_b'],spine:'master',apply:()=>{steigereMacht(id,2);treeFlags.powerMaster=1;}},
     {id:'power_master_2',stage:4,col:4,kind:'buff',name:mt[1][0],short:mt[1][1],desc:mt[1][2],icon:'⬡',reqAll:['power_master_1'],apply:()=>{steigereMacht(id,3);treeFlags.powerMaster=2;}},
     {id:'power_master_3',stage:4,col:6,kind:'buff',name:mt[2][0],short:mt[2][1],desc:mt[2][2],icon:'⬡',reqAll:['power_master_2'],apply:()=>{steigereMacht(id,4);treeFlags.powerMaster=3;}},
     {id:'power_module',stage:5,col:2,kind:'buff',name:pm1[0],short:pm1[1],desc:pm1[2],icon:'◉',reqAny:['char_route_a','char_route_b'],apply:()=>treeFlags.powerModule=1},
     {id:'power_module_2',stage:5,col:4,kind:'buff',name:pm2[0],short:pm2[1],desc:pm2[2],icon:'◉',reqAll:['power_module'],apply:()=>treeFlags.powerModule=2},
-    {id:'blade_synergy',stage:5,col:6,kind:'major',name:figur().id==='held'?(treeRang('char_route_a')?'Leuchtfeuer':'Sonnenorbit'):(treeRang('char_route_a')?'Satter Abgrund':'Ereignishorizont'),short:figur().id==='held'?(treeRang('char_route_a')?'LICHTPFAD':'SONNENBAHN'):(treeRang('char_route_a')?'HEIL-KOMBO':'3 KLINGEN'),desc:figur().id==='held'?(treeRang('char_route_a')?'Barriere: kurze Lichtspuren bremsen Gegner.':'Fokussierter Wirbel setzt 3 Sonnenpulse.'): (treeRang('char_route_a')?'Klingen-Kills heilen stärker, solange du angeschlagen bist.':'Unter 35 % Leben kreisen drei Klingen um dich.'),icon:'✦',reqAll:['power_master_1'],spine:'synergy',apply:()=>{if(figur().id==='held'){if(treeRang('char_route_a'))treeFlags.leuchtfeuer=true;else treeFlags.sonnenorbit=true;}else{if(treeRang('char_route_a'))treeFlags.satterAbgrund=true;else treeFlags.ereignishorizont=true;}}},
+    {id:'blade_synergy',stage:5,col:6,kind:'major',name:figur().id==='held'?(treeRang('char_route_a')?'Leuchtfeuer':'Sonnenorbit'):(treeRang('char_route_a')?'Satter Abgrund':'Ereignishorizont'),short:figur().id==='held'?(treeRang('char_route_a')?'LICHTPFAD':'SONNENBAHN'):(treeRang('char_route_a')?'HEIL-KOMBO':'3 KLINGEN'),desc:figur().id==='held'?(treeRang('char_route_a')?'Während einer Barriere hinterlässt deine Klinge bremsende Lichtspuren.':'Solange dein Orbit beschleunigt ist, wird die Volltreffer-Zone schmaler und trifft härter.'): (treeRang('char_route_a')?'Besiegte Gegner heilen dich stärker, solange du angeschlagen bist.':'Bei wenig Leben kreisen drei Klingen um dich.'),icon:'✦',reqAll:['power_master_1'],spine:'synergy',apply:()=>{if(figur().id==='held'){if(treeRang('char_route_a'))treeFlags.leuchtfeuer=true;else treeFlags.sonnenorbit=true;}else{if(treeRang('char_route_a'))treeFlags.satterAbgrund=true;else treeFlags.ereignishorizont=true;}}},
     {id:'evo_'+evoId,stage:6,col:2,kind:'evo',power:id,name:evo.name,short:'SUPER-MACHT',desc:evo.desc,icon:'✹',reqAll:['power_master_1',partner],spine:'evolution',evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}},
     {id:'orbit_resonance_1',stage:6,col:4,kind:'buff',name:'Kopplung',short:'KOPPELT MÄCHTE',desc:'Koppelt beide Mächte: ein Einsatz kürzt danach die Abklingzeit der anderen.',icon:'◎',reqAll:['blade_synergy','evo_'+evoId],spine:'resonance',apply:()=>{treeFlags.orbitResonanz=true;}},
     {id:'orbit_resonance_2',stage:6,col:6,kind:'buff',name:'Sofortschaltung',short:'SOFORT BEREIT',desc:'Ein fokussierter Einsatz macht die andere Macht sofort bereit.',icon:'◎',reqAll:['orbit_resonance_1'],apply:()=>{treeFlags.resonanzSofort=true;}},
     {id:'orbit_resonance_3',stage:7,col:2,kind:'buff',name:'Resonanzklinge',short:'ZUSATZKLINGE',desc:'Ein fokussierter Einsatz lässt 4 s eine Zusatzklinge mitkreisen.',icon:'◎',reqAll:['orbit_resonance_2'],apply:()=>{treeFlags.resonanzKlinge=true;}},
-    {id:'orbit_crown',stage:7,col:5,kind:'capstone',name:'Orbitkrone',short:treeRang('orbit_crown')?'KERNRESERVE':'FINALE',desc:treeRang('orbit_crown')?'Kernreserve gibt +10 % maximales Leben und vollen Fokus bei jedem Bossbeginn.':(treeRang('blade_multi')?'Machtechos wechseln sauber zwischen 2 Zielklingen.':'3 Sweet-Pulse verkürzen Aktiv 1 um 1600 ms.'),icon:'★',maxRank:metaLevel('startimpuls')?2:1,reqAll:['orbit_resonance_1','evo_'+evoId],minInvested:14,spine:'crown',apply:rank=>{if(rank===1){treeFlags.orbitKrone=true;treeFlags.kronenform=treeRang('blade_multi')?'dopp':'praez';praezSerie=0;kronenZielklinge=0;kronenMachtId='';kronenMachtUntil=0;}else{const vorher=player.maxHp;treeFlags.kernreserve=true;player.maxHp=Math.round(player.maxHp*1.1);player.hp=Math.min(player.maxHp,player.hp+player.maxHp-vorher);}}},
+    {id:'orbit_crown',stage:7,col:5,kind:'capstone',name:'Orbitkrone',short:treeRang('orbit_crown')?'KERNRESERVE':'FINALE',desc:treeRang('orbit_crown')?'Kernreserve gibt +10 % maximales Leben und vollen Fokus bei jedem Bossbeginn.':(treeRang('blade_multi')?'Machtechos wechseln sauber zwischen 2 Zielklingen.':'Drei Volltreffer in Folge laden einen Strahl. Er durchschlägt beim nächsten Treffer alle Gegner auf seiner Linie.'),icon:'★',maxRank:metaLevel('startimpuls')?2:1,reqAll:['orbit_resonance_1','evo_'+evoId],minInvested:14,spine:'crown',apply:rank=>{if(rank===1){treeFlags.orbitKrone=true;treeFlags.kronenform=treeRang('blade_multi')?'dopp':'praez';praezSerie=0;kronenZielklinge=0;kronenMachtId='';kronenMachtUntil=0;}else{const vorher=player.maxHp;treeFlags.kernreserve=true;player.maxHp=Math.round(player.maxHp*1.1);player.hp=Math.min(player.maxHp,player.hp+player.maxHp-vorher);}}},
   ];
   if(regularTreeFrozen){
     n.push(
-      {id:'echo_blade',stage:8,col:3,kind:'endless',endless:true,name:'Klingenecho',short:'SWEET-ECHO',desc:'Drei Ränge: Schattenkerbe, formabhängiger Spiegelorbit und Kronensturm.',icon:'◐',maxRank:3,reqAll:['orbit_crown'],exclusiveGroup:'endless_echo',apply:rank=>treeFlags.bladeEcho=rank},
-      {id:'echo_power',stage:8,col:5,kind:'endless',endless:true,name:'Machtecho',short:'MACHT-ECHO',desc:'Drei Ränge: verzögertes Echo, Mutationswirkung und fokussierter Doppelimpuls.',icon:'◉',maxRank:3,reqAll:['orbit_crown'],exclusiveGroup:'endless_echo',apply:rank=>treeFlags.powerEcho=rank}
+      {id:'echo_blade',stage:8,col:3,kind:'endless',endless:true,name:'Klingenecho',short:'KLINGEN-ECHO',desc:'Volltreffer feuern zusätzliche Schattenklingen ab, mit steigendem Rang öfter und stärker.',icon:'◐',maxRank:3,reqAll:['orbit_crown'],exclusiveGroup:'endless_echo',apply:rank=>treeFlags.bladeEcho=rank},
+      {id:'echo_power',stage:8,col:5,kind:'endless',endless:true,name:'Machtecho',short:'MACHT-ECHO',desc:'Deine Hauptmacht wiederholt sich kurz danach von selbst. Höhere Ränge fügen die Mutation hinzu und lösen bei fokussiertem Einsatz einen zweiten Nachhall aus.',icon:'◉',maxRank:3,reqAll:['orbit_crown'],exclusiveGroup:'endless_echo',apply:rank=>treeFlags.powerEcho=rank}
     );
   }
   return n;
@@ -1179,7 +1179,7 @@ function tutorialTick(dt){
     tutStep=2;
   } else if(tutStep===2 && tutT>12000){
     tutorialBladeUntil=Date.now()+2800;
-    announce('SWEET SPOT', 'Die sichtbare Klinge verursacht Extraschaden', '#ffffff');
+    announce('VOLLTREFFER', 'Die sichtbare Klinge verursacht Extraschaden', '#ffffff');
     tutStep=3;
   } else if(tutStep===3 && tutT>16000){
     save.tutorialDone=true; save.tutorialVersion=TUTORIAL_VERSION; persist(); tutStep=4;
@@ -1188,7 +1188,7 @@ function tutorialTick(dt){
 function tutorialSweetSpotTreffer(){
   if((save.tutorialVersion||0)>=TUTORIAL_VERSION || tutStep!==2 || tutT<7200) return;
   tutorialBladeUntil=Date.now()+2800;
-  announce('SWEET SPOT!','Die sichtbare Klinge verursacht Extraschaden','#ffffff'); tutStep=3;
+  announce('VOLLTREFFER!','Die sichtbare Klinge verursacht Extraschaden','#ffffff'); tutStep=3;
 }
 
 // Klingenlänge: multiplikativ, damit "+15% Reichweite" auch wirklich +15% bedeutet
@@ -1240,12 +1240,16 @@ function orbitSweetPulse(){
     sonnenSerie++;
     if(sonnenSerie>=3){ sonnenSerie=0; sonnenTempoUntil=Date.now()+3000; pushFloat(player.x,player.y-42,'SONNENTEMPO','#ffd257',1.1); }
   }
-  if(treeFlags.kronenform==='praez' && activeCd[activeSlot1]>0){
+  // Orbitkrone (Präzisionsorbit): drei Serientreffer laden den Durchschlag auf, statt wie
+  // vorher nur die Abklingzeit zu kürzen. Die alte Bedingung "nur während laufender
+  // Abklingzeit" ergab ausschließlich für die CD-Kürzung Sinn und entfällt deshalb.
+  if(treeFlags.kronenform==='praez'){
     praezSerie++;
     if(praezSerie>=3){
-      const cdVorher=activeCd[activeSlot1]; activeCd[activeSlot1]=Math.max(0,cdVorher-1600); praezSerie=0;
-      if(PERF_DEBUG){ treeFlags.debugPraezReduktionen=(treeFlags.debugPraezReduktionen||0)+1; treeFlags.debugPraezCdGesamt=(treeFlags.debugPraezCdGesamt||0)+cdVorher-activeCd[activeSlot1]; }
-      pushFloat(player.x,player.y-42,'PRÄZISION −1600','#ffd257',1.0);
+      praezSerie=0; treeFlags.durchschlagBereit=true;
+      if(PERF_DEBUG) treeFlags.debugDurchschlagLadungen=(treeFlags.debugDurchschlagLadungen||0)+1;
+      pushFloat(player.x,player.y-42,'DURCHSCHLAG BEREIT','#ffd257',1.1);
+      spawnParticles(player.x,player.y,'#ffd257',10);
     }
   }
   // Auslese-Modul Taktschlag: zählt volle (getroffene) Umläufe, stößt alle 3./2. eine Welle aus.
@@ -1306,7 +1310,7 @@ function fokusVoll(quelle){
   particles.push({ring:true,x:player.x,y:player.y,color:'#c77dff',life:.48,max:.48});
   if(!save.focusTutorialSeen){
     save.focusTutorialSeen=true; persist();
-    announce('FOKUS VOLL','Sweet Hits laden ihn – Taste 1 ist jetzt '+CONFIG.fokusBonus.toFixed(1)+'× stärker','#dcb5ff');
+    announce('FOKUS VOLL','Volltreffer laden ihn – Taste 1 ist jetzt '+CONFIG.fokusBonus.toFixed(1)+'× stärker','#dcb5ff');
   }
   if(sfx) sfx('focus');
   return true;
@@ -1810,12 +1814,12 @@ let ausleseFreiwurfBenutzt=false, ausleseBezahlteWuerfe=0, ausleseOffenSeit=0;
 const AUSLESE_MODULE={
   klingenteilung:{ name:'Klingenteilung', icon:'klingenteilung',
                 desc:'Eine zusätzliche Klinge kreist mit',
-                sprung:'Noch eine Klinge; jeder Sweet Hit wiegt deutlich schwerer' },
+                sprung:'Noch eine Klinge; jeder Volltreffer wiegt deutlich schwerer' },
   taktschlag: { name:'Taktschlag',  icon:'taktschlag',
                 desc:'Jeder 3. volle Umlauf stößt eine Schadenswelle aus',
                 sprung:'Schon jeder 2. Umlauf; die Welle verlangsamt zusätzlich' },
   nachfassen: { name:'Nachfassen',  icon:'nachfassen',
-                desc:'Verfehlter Umlauf: nächster Sweet-Bogen doppelt breit',
+                desc:'Ein Umlauf ohne Treffer macht die nächste Volltreffer-Zone doppelt so breit',
                 sprung:'Dieser breite Treffer durchschlägt zusätzlich Panzerung' },
   glasklinge: { name:'Glasklinge',  icon:'glasklinge',
                 desc:'Klingenschaden ×1,45, dafür nur 60 % maximales Leben',
@@ -3035,6 +3039,32 @@ function handleOrbitCrownSweet(en,toEnemy,bladeIndex){
   if(PERF_DEBUG) treeFlags.debugKronenEchos=(treeFlags.debugKronenEchos||0)+1;
   pushFloat(en.x,en.y-38,'KRONENECHO','#ffd257',1.0); particles.push({ring:true,x:en.x,y:en.y,color:'#ffd257',life:.3,max:.3});
 }
+/* Orbitkrone (Präzisionsorbit): der von orbitSweetPulse() aufgeladene Durchschlag. Löst beim
+   nächsten Volltreffer einen kurzen Strahl entlang der treffenden Klinge aus — 900 px lang,
+   26 px Halbbreite, ignoriert Panzerung. Schaden ist grob das Vierfache eines normalen
+   Volltreffers, das ist der Abschlussmoment dieser Kronenform. Nutzt powerFields als
+   kurzlebiges Feld, damit weder Lebenszyklus noch Aufräumen einen Sonderweg brauchen. */
+function triggerDurchschlag(ang, dmgEinzel){
+  treeFlags.durchschlagBereit=false;
+  const dmg=Math.round(dmgEinzel*4), len=900, half=26;
+  const dx=Math.cos(ang)*len, dy=Math.sin(ang)*len;
+  let getroffen=0;
+  for(const en of enemies){
+    // Projektion auf den Strahl: t=0 am Spieler, t=1 am Strahlende; nur dazwischen zaehlt.
+    const t=((en.x-player.x)*dx+(en.y-player.y)*dy)/(len*len);
+    if(t<0||t>1) continue;
+    const px=player.x+dx*t, py=player.y+dy*t;
+    if(Math.hypot(en.x-px,en.y-py)>half+en.radius) continue;
+    en.hp-=dmg; getroffen++;
+    pushFloat(en.x,en.y-18,dmg+'!','#ffd257',1.3);
+    spawnParticles(en.x,en.y,'#ffd257',6);
+  }
+  powerFields.push({kind:'strahl',hidden:true,x:player.x,y:player.y,ang,len,half,t:220,max:220,tick:0,color:'#ffd257'});
+  particles.push({ring:true,x:player.x,y:player.y,color:'#ffd257',life:.3,max:.3});
+  if(PERF_DEBUG){ treeFlags.debugDurchschlagAusloesungen=(treeFlags.debugDurchschlagAusloesungen||0)+1; treeFlags.debugDurchschlagTreffer=(treeFlags.debugDurchschlagTreffer||0)+getroffen; }
+  if(sfx) sfx('nova');
+  return getroffen;
+}
 function handlePowerModule(id){
   const rank=treeFlags.powerModule||0;if(!rank)return;
   if(id==='wirbel'){
@@ -3904,6 +3934,10 @@ function update(dt){
     // Lichtbund ist absichtlich vom Orbitimpuls entkoppelt: Wird die Ladung nach
     // dem ersten Sweet derselben Runde voll, verstärkt bereits der nächste Sweet-Tick.
     const lightTick=figur().id==='held' && tickSweet && orbitRoundLight;
+    // Schnappschuss VOR orbitSweetPulse(): So kann der Treffer, der die Serie erst auf drei
+    // bringt und den Durchschlag laedt, ihn nicht im selben Tick auch schon entladen — das
+    // waere kein "naechster" Volltreffer mehr, sondern derselbe.
+    const durchschlagVorTick = treeFlags.kronenform==='praez' && !!treeFlags.durchschlagBereit;
     if(tickSweet && !orbitRoundSweet) orbitSweetPulse();
     const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+leerenBonus) * sweetKlingenFaktor() * (lightTick?1.35:1));
     if(lightTick){ orbitRoundDistance=0; orbitRoundLight=false; if(PERF_DEBUG)treeFlags.debugLichtbund=(treeFlags.debugLichtbund||0)+1; pushFloat(player.x,player.y-38,'LICHTBUND ×1.35','#ffd257',1.05); }
@@ -3952,6 +3986,11 @@ function update(dt){
         handleBladeModuleSweet(en,toEnemy,dmg);
         handleBladeEchoSweet(en,toEnemy,dmg);
         handleOrbitCrownSweet(en,toEnemy,trefferIndex);
+        // Orbitkrone (Präzisionsorbit): war der Durchschlag schon VOR diesem Tick geladen
+        // (durchschlagVorTick), entlädt ihn der erste Volltreffer dieses Ticks. Die Funktion
+        // löscht das Flag selbst, ein zweiter Treffer im selben Tick kann also nicht doppelt
+        // auslösen — und der ladende dritte Serientreffer selbst kann es nicht vorzeitig tun.
+        if(durchschlagVorTick && treeFlags.durchschlagBereit) triggerDurchschlag(anglesNow[trefferIndex],dmg);
         if(en.shockMarkUntil>Date.now()){
           const bonus=Math.round(dmg*.38); en.hp-=bonus; en.shockMarkUntil=0;
           if((treeFlags.powerMaster||0)>=2) en.stunT=Math.max(en.stunT||0,520);
@@ -5527,6 +5566,17 @@ function draw(){
     ctx.save(); ctx.globalAlpha=.18+.22*rest; ctx.fillStyle=f.color; ctx.strokeStyle=f.color;
     ctx.setLineDash(f.kind==='stase'?[5,7]:[12,5]); ctx.lineDashOffset=-now/65;
     ctx.lineWidth=2; ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  // Orbitkrone-Durchschlag: eigener Strahl statt der Kreisdarstellung oben, da er keine
+  // Fläche sondern eine Linie ist. Kurz und deutlich, wie im Konzept gefordert.
+  for(const f of powerFields){
+    if(f.kind!=='strahl') continue;
+    const mx=f.x+Math.cos(f.ang)*f.len/2, my=f.y+Math.sin(f.ang)*f.len/2;
+    if(!sichtbar(mx,my,f.len/2+f.half)) continue;
+    ctx.save(); ctx.globalAlpha=Math.max(0,f.t/f.max); ctx.strokeStyle=f.color; ctx.lineWidth=f.half*2; ctx.lineCap='round';
+    sbc(f.color,30);
+    ctx.beginPath(); ctx.moveTo(f.x,f.y); ctx.lineTo(f.x+Math.cos(f.ang)*f.len, f.y+Math.sin(f.ang)*f.len); ctx.stroke();
     ctx.restore();
   }
   // Bomben: ticken – Kern wächst, Ring läuft ab (Zünd-Anzeige)

@@ -1484,6 +1484,65 @@ freigeschaltet ist, und fällt sonst still auf den Lichthüter zurück. Ein erst
 verglich dadurch den Lichthüter mit sich selbst und zeigte identische Werte. Wer künftig
 Charakterwerte misst, muss `save.unlocks.figur.konstrukt` setzen.
 
+## Volltreffer, klare Texte, mächtige Krone (umgesetzt 18.08.2026)
+
+Drei Spieltestbefunde in einem Zug.
+
+### „Sweet Spot" heißt jetzt „Volltreffer"
+
+Der englische Begriff passte nicht in ein deutsches Spiel, das auch Kinder verstehen
+sollen. 32 sichtbare Strings umbenannt (31 in `game.js`, einer in `index.html`).
+
+**Codebezeichner blieben unangetastet** — `sweetArcHalf`, `sweetKlingenFaktor`,
+`orbitRoundSweet`, `orbitSweetPulse`, `splitterSweetZaehler` und die interne Auftrags-Id
+`panzer_sweet` heißen weiter so. Eine Umbenennung dort wäre reine Unruhe ohne Nutzen für
+den Spieler.
+
+### Beschreibungen: von Patchnotes zu Spielertexten
+
+Die Texte waren wie Änderungsprotokolle geschrieben. Beispiele vorher/nachher:
+
+| vorher | jetzt |
+|---|---|
+| `2 Klingen π-versetzt: Sweet je ×0,72, Zone ×0,75, Schub 16 px.` | Zwei Klingen kreisen dir gegenüber: verlässlich, aber jede trifft schwächer. |
+| `3 Sweet-Pulse starten 3 s Sonnentempo ×1,22.` | Drei Volltreffer in Folge beschleunigen kurz deinen Orbit. |
+| `Fokus: 8% Barriere, 150 px Slow 1200 ms.` | Voller Fokus gibt dir Barriere und verlangsamt Gegner in der Nähe. |
+| `Fokussierter Wirbel setzt 3 Sonnenpulse.` | Solange dein Orbit beschleunigt ist, wird die Volltreffer-Zone schmaler und trifft härter. |
+
+Regeln, nach denen umgeschrieben wurde: sagen was passiert statt welcher Faktor sich
+ändert; Sekunden statt Millisekunden; höchstens eine Zahl je Satz und nur wenn sie eine
+Entscheidung steuert; kein „Aktiv 1", sondern „deine Hauptmacht"; `short` bis 14 Zeichen
+und die Wirkung benennen, nicht den Mechanismus.
+
+Zwei Genauigkeitsfehler fielen dabei auf und sind mitkorrigiert: `Satter Abgrund` sagte
+„Klingen-Kills heilen stärker", obwohl `killEnemy()` **jeden** Tod behandelt, nicht nur
+Klingentreffer. Und sechs `short`-Kürzel lagen schon vorher über 14 Zeichen.
+
+### Orbitkrone: `Durchschlag` statt Abklingzeit
+
+Die Krone hat zwei Formen. Bei **Doppelorbit** markiert sie nach jedem Machteinsatz eine
+Klinge gold, deren nächster Treffer ein Machtecho zündet — unverändert, das ist eine
+echte Mechanik.
+
+Bei **Präzisionsorbit** verkürzte sie nur eine Abklingzeit um 1600 ms. Als Abschluss
+eines ganzen Laufs war das zu wenig. Neu: Drei Volltreffer in Folge laden die Klinge;
+der **nächste** Volltreffer entlädt einen Strahl über 900 px, der alles auf seiner Linie
+trifft und Panzerung ignoriert, mit dem Vierfachen eines normalen Volltreffers.
+
+Gemessen mit Präzisionsorbit und Krone über 60 s gegen acht Gegner: **18 Auslösungen,
+also alle 3,3 Sekunden**, 665 Schaden je Strahl über alle getroffenen Gegner.
+
+**Beim Bau fiel eine Zeitfalle auf:** Aufladen und Entladen liegen im selben 120-ms-
+Trefferintervall. Ohne Gegenmaßnahme hätte derselbe Treffer, der die Serie vollmacht,
+den Strahl sofort selbst gezündet — „der nächste Treffer" wäre derselbe gewesen. Der
+Ladezustand wird deshalb vor `orbitSweetPulse()` gesichert und die Entladung daran
+gemessen. Nachgemessen liegen zwischen Laden und Feuern nie null Frames.
+
+Der Zähler `praezSerie` zählt jetzt immer, nicht mehr nur während einer laufenden
+Abklingzeit — diese Bedingung ergab nur für die alte Wirkung Sinn. Der `praezBoost` beim
+Sturmwirbel liest denselben Zähler und bleibt bewusst unangetastet: Er erzeugt jetzt eine
+echte Spannung zwischen „kleine Serie sofort verbrauchen" und „auf den Strahl warten".
+
 ## Ideen aus dem Spieltest (17.08.2026)
 
 Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.
