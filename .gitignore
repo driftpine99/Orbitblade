@@ -1,0 +1,19 @@
+# Grosse Arbeitsordner, die nicht ins Repo gehoeren. Sie lagen unversioniert im
+# Wurzelverzeichnis und summierten sich auf rund 378 MB — ein einziges unbedachtes
+# "git add -A" haette sie eingecheckt, und aus der History bekommt man sie nur mit
+# einem Rewrite wieder heraus.
+artifacts/
+trailer_cine/
+trailer_clean/
+trailer_ffmpeg/
+trailer_frames/
+
+# Lokale Werkzeugkonfiguration (Vorschau-Server), nicht projektrelevant
+.claude/
+
+# Betriebssystem- und Editor-Reste
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+node_modules/
