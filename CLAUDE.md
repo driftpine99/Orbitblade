@@ -1658,9 +1658,31 @@ Wellen wie vor der Änderung.
   Skript setzte Leben erst nach dem Bild zurück. Wer Wellendauer misst, muss Unsterblichkeit
   vor `update()` herstellen und den Zustand `gameover` abfragen.
 
-### Offen und ernst
+### Zeichenlast nachgemessen — Entwarnung mit Vorbehalt
 
-**Die Bildrate bei 51 gleichzeitigen Gegnern ist ungemessen.** Die Performancearbeit vom
+Zeichenoperationen je Bild bei fester Gegnerzahl, Welle 25:
+
+| Gegner | Füllen | Linien | **mit Leuchten** | Gradienten |
+|---|---|---|---|---|
+| 10 | 109 | 47 | **87** | 10 |
+| 20 | 165 | 57 | **157** | 20 |
+| 25 | 170 | 62 | **0** | 0 |
+| 55 | 320 | 92 | **0** | 0 |
+| 70 | 395 | 107 | **0** | 0 |
+
+Der vorhandene Effekt-Sparmodus schaltet Leuchten und Verläufe **ab 22 Gegnern
+vollständig ab** — genau in dem Bereich, den die Verdichtung erzeugt. `shadowBlur` ist
+die teuerste Canvas-Operation auf Mobilgeräten. Bei 55 Gegnern zeichnet das Spiel 320
+einfache Füllungen ohne ein einziges Leuchten; bei 20 Gegnern waren es 165 Füllungen
+**plus 157 leuchtende**. Die dichtere Fassung könnte damit sogar billiger sein.
+
+**Vorbehalt:** Das zählt Operationen, keine Pixel. Der Engpass war laut Befund vom
+16.08. die Füllrate, und 55 Gegner bedecken mehr Fläche als 20. Die Entwarnung ist damit
+stark, aber nicht vollständig.
+
+### Offen
+
+**Die Bildrate bei 51 gleichzeitigen Gegnern ist auf echter Hardware ungemessen.** Die Performancearbeit vom
 16.08. wurde bei 11–13 Gegnern bestätigt; das ist jetzt der vierfache Spitzenwert. Der
 Befund von damals — die Füllrate des Hintergrunds ist der Engpass, nicht die Gegnerzahl —
 spricht dafür, dass es trägt, aber das ist eine Ableitung, keine Messung. Der
@@ -1730,6 +1752,32 @@ drei anfasst, braucht erst ein Maß für Überleben und Machtnutzung.
 - Standard 11:21, Meister 15:04, max 44 bzw. 55 Gegner gleichzeitig
 - Ein sterblicher, mittelmäßiger Bot gewinnt weiterhin auf Entdecker (9,3 min) und
   stirbt auf Standard bei Welle 12 — unverändert gegenüber vor allen Eingriffen
+
+## Laufprofil nach der Verdichtung (19.08.2026)
+
+Gemessen, um zu prüfen, welche Empfehlungen des Designgutachtens die Verdichtung bereits
+erledigt hat.
+
+| | vor der Verdichtung | jetzt |
+|---|---|---|
+| Bossanteil an der Laufzeit | 7 % | **17,4 %** |
+| Bossfähigkeiten je Kampf | 1–3 | **rund 6** |
+| Krone bei | 97 % der Laufzeit (35 s Rest) | 89 % (71 s Rest) |
+| Punkte im Lauf verdient | 13, Rest im Siegfenster geschenkt | **15, alle im Lauf** |
+| größte Lücke zwischen zwei Käufen | — | 52 s (Standard), 91 s (Meister) |
+
+**Empfehlung „Bosse vervierfachen" ist damit gegenstandslos.** Sie haben ihren Platz
+bekommen, ohne dass ein Boss angefasst wurde — die normalen Wellen sind geschrumpft,
+die Bosskämpfe nicht.
+
+Die Punktökonomie stimmt jetzt ebenfalls: Alle 15 Punkte werden im Lauf verdient,
+`ensureFinalRegularBudget()` muss nichts mehr nachschenken.
+
+**Kronentiming geprüft und bewusst so belassen:** `minInvested` von 14 auf 12 zu senken
+ändert **nichts** — die Krone hängt nicht an der Punktzahl, sondern an ihrer
+Voraussetzungskette (Evolution bei 8:49, Krone bei 10:10). Früher wäre sie nur durch eine
+geringere Baumtiefe zu bekommen, und das wäre ein Umbau ohne erkennbaren Gewinn: Mit
+71 Sekunden plus dem Finalboss danach landet die Krone jetzt genau vor dem Höhepunkt.
 
 ## Ideen aus dem Spieltest (17.08.2026)
 
