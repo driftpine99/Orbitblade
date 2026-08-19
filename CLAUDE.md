@@ -1436,6 +1436,54 @@ aus der älteren Prosa — bei allen fünf Hauptmächten.
 - Im Browser bei 393 × 873 px: acht Reihen, keine Überlappung, nichts abgeschnitten,
   kein horizontaler Überlauf.
 
+## Leerenklinge geschärft: der Handel geht jetzt auf (umgesetzt 18.08.2026)
+
+Frage aus dem Spieltest: „Müssen wir das Profil vom zweiten Avatar noch weiter schärfen?"
+Gemessen: ja, und zwar deutlich.
+
+### Der Befund
+
+Schaden je Sekunde gegen acht Gegner, relativ zum Lichthüter bei vollem Leben:
+
+| Leben | Lichthüter | Leerenklinge **vorher** | + Haltung Abgrund |
+|---|---|---|---|
+| 100 % | 102 % | 102 % | 100 % |
+| 50 % | 101 % | **106 %** | 111 % |
+| 20 % | 101 % | **111 %** | 120 % |
+
+Dabei hat die Leerenklinge dauerhaft **19 % weniger Leben** (167 gegen 205). Sie bezahlte
+also ein Fünftel ihrer Lebensleiste für sechs Prozent Schaden bei halbem Leben. Selbst
+einen Treffer vor dem Tod waren es nur elf Prozent. Das ist kein Risiko-Charakter,
+sondern ein schlechter Handel — die versprochene Identität feuerte praktisch nie.
+
+### Die Korrektur
+
+Beide Hälften des Startpassivs `Leerenhunger` waren vorhanden, nur zu schwach:
+
+- Orbittempo `1 + fehlendesLeben × 0,28` → `× 0,45`
+- Sweet-Schaden `fehlendesLeben × 0,32` → `× 0,78` (Haltung `Abgrund` legt weiterhin
+  0,28 obendrauf)
+
+Gemessen danach:
+
+| Leben | Leerenklinge | + Haltung Abgrund |
+|---|---|---|
+| 100 % | 101 % | 101 % |
+| 75 % | 106 % | 110 % |
+| 50 % | **116 %** | 121 % |
+| 20 % | **121 %** | 128 % |
+
+Bei vollem Leben bleibt sie ohne Vorteil — es gibt kein Freibier. Ab halbem Leben trägt
+der Handel, und einen Treffer vor dem Tod zahlt er sich deutlich aus.
+
+Geprüft: vollständige Läufe mit der Leerenklinge bis Welle 30 mit Sieg auf Standard und
+Meister, dazu die üblichen Auslese- und Boss-Prüfungen.
+
+**Beim Messen fiel eine Falle auf:** `figur()` liefert die Leerenklinge nur, wenn sie
+freigeschaltet ist, und fällt sonst still auf den Lichthüter zurück. Ein erster Messlauf
+verglich dadurch den Lichthüter mit sich selbst und zeigte identische Werte. Wer künftig
+Charakterwerte misst, muss `save.unlocks.figur.konstrukt` setzen.
+
 ## Ideen aus dem Spieltest (17.08.2026)
 
 Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.

@@ -3868,7 +3868,12 @@ function update(dt){
   }
   // Plasmaklinge rotiert permanent um den Spieler
   const fehlendesLeben=1-player.hp/player.maxHp;
-  const leerenTempo=figur().id==='konstrukt' ? 1+fehlendesLeben*0.28 : 1;
+  /* Leerenhunger war seinen Preis nicht wert: Die Leerenklinge hat dauerhaft 19 %
+     weniger Leben (167 statt 205), bekam dafür bei halbem Leben aber nur +6 % Schaden
+     und bei 20 % Leben +11 % — gemessen gegen den Lichthüter. Ein Fünftel der
+     Lebensleiste für sechs Prozent ist kein Risiko-Charakter, sondern ein schlechter
+     Handel. Beide Hälften des Passivs sind deshalb angezogen. */
+  const leerenTempo=figur().id==='konstrukt' ? 1+fehlendesLeben*0.45 : 1;
   const vorSwordAngle=swordAngle;
   swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * (sonnenTempoUntil>Date.now()?1.22:1) * dt/1000;
   if(swordAngle>Math.PI*2){ swordAngle-=Math.PI*2; resetMissedOrbit(); }
@@ -3889,7 +3894,7 @@ function update(dt){
     const boost = dmgBoostUntil>Date.now()?2:1;
     const resonanz=treeFlags.resonanzUntil>Date.now()?1.25:1;
     const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz);
-    const leerenBonus=figur().id==='konstrukt' ? fehlendesLeben*(0.32+(treeFlags.leerenRisikoBonus||0)) : 0;
+    const leerenBonus=figur().id==='konstrukt' ? fehlendesLeben*(0.78+(treeFlags.leerenRisikoBonus||0)) : 0;
     const anglesNow=bladeAngles();
     const sweetTargets=enemies.filter(en=>{
       const dx=en.x-player.x,dy=en.y-player.y,d=Math.hypot(dx,dy);
