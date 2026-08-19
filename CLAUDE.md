@@ -1667,6 +1667,70 @@ spricht dafür, dass es trägt, aber das ist eine Ableitung, keine Messung. Der
 Browser-Bereich dieser Umgebung rendert keine Bilder, deshalb war es hier nicht prüfbar.
 **Das ist der erste Punkt, der auf echter Hardware nachzumessen ist.**
 
+## Fokus und Kartenrangliste nach der Verdichtung (19.08.2026)
+
+Nacharbeit direkt nach den Schüben, weil beide Werte davon abhängen.
+
+### Fokus: die Entscheidung existiert jetzt
+
+Ich hatte den Fokus mit der Begründung vertagt, seine Ladegeschwindigkeit hänge an der
+Trefferrate. **Das war falsch** — gemessen lädt er praktisch dichteunabhängig: 6,3 s bei
+einem Gegner, 5,3 s ab acht. Die Doku sagte das bereits („Fokus lädt dichteunabhängig").
+
+Bei `fokusZiel: 12` war die Leiste nach 5,3 s voll, die kürzeste Abklingzeit liegt bei
+5,0 s — die beworbene Entscheidung „sparen oder ausgeben" konnte rechnerisch nie
+existieren, perfektes Timing war gemessen 0,6 % wert.
+
+Jetzt `fokusZiel: 18`, Füllzeit 8,4 s:
+
+| Fokusziel | voll nach | Entscheidung existiert bei |
+|---|---|---|
+| 12 | 5,3 s | nirgends |
+| **18** | **8,4 s** | **Bombe, Sog** |
+| 20 | 9,5 s | Bombe, Sog, Wirbel, Nova |
+
+Bewusst 18 und nicht 20: Bei 20 wären die meisten Einsätze unverstärkt. Das Spiel soll
+nicht anspruchsvoller werden, nur ehrlicher. Die Lauflänge ändert sich dadurch nicht
+(10:13 gegen 10:44).
+
+### Nachhall war nach der Verdichtung eine Pflichtkarte
+
+Flächeneffekte profitieren am stärksten davon, dass jetzt bis zu 51 statt 20 Gegner
+gleichzeitig da sind. Nachhall sprang von +125 % auf **+268 %** auf der Sprungstufe —
+dreimal so stark wie die zweitbeste Karte. Schaden 26 → 10 und Radius 95 → 82 bringen
+ihn auf +34/+89 %, gemessen bei dichter wie bei verteilter Gegnerlage nahezu gleich.
+
+Kartenwert bei 16 Gegnern, Welle 20, nach allen Korrekturen dieser Sitzung:
+
+| Ding | Neu | Verstärkt |
+|---|---|---|
+| Nachhall | +34 % | +89 % |
+| Glasklinge | +43 % | +82 % |
+| Kettenblitz | +14 % | +54 % |
+| Konterstoß | +21 % | +47 % |
+| Klingenteilung | +24 % | +44 % |
+| Schneide | +3 % | +12 % |
+| Nachfassen | +11 % | +11 % |
+| Taktschlag | +6 % | +10 % |
+| Phaser | +1 % | +3 % |
+| Lebensregen | 0 % | 0 % |
+| Kurzschluss | 0 % | 0 % |
+
+Fünf Karten liegen jetzt zwischen +44 und +89 % — kein Pflichtkauf mehr. Vorher war
+Konterstoß bei −35 % und Nachfassen bei 0 %.
+
+**Grenze dieser Messung, wichtig für künftige Balancearbeit:** Der Prüfstand misst nur
+Klingenschaden gegen viele Ziele. Er kann Lebensregen (setzt Leben zurück), Kurzschluss
+(setzt keine Mächte ein) und Phaser (Einzelziel gegen eine Klinge, die sechzehn trifft)
+strukturell nicht bewerten. Deren 0 bis 3 % sind **kein Beleg für Schwäche.** Wer diese
+drei anfasst, braucht erst ein Maß für Überleben und Machtnutzung.
+
+### Stand nach allen Änderungen
+
+- Standard 11:21, Meister 15:04, max 44 bzw. 55 Gegner gleichzeitig
+- Ein sterblicher, mittelmäßiger Bot gewinnt weiterhin auf Entdecker (9,3 min) und
+  stirbt auf Standard bei Welle 12 — unverändert gegenüber vor allen Eingriffen
+
 ## Ideen aus dem Spieltest (17.08.2026)
 
 Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.

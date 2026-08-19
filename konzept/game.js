@@ -30,14 +30,25 @@ const CONFIG = {
   spinDamage: 12,          // Rundum-Grundschaden pro Treffer-Tick
   spinArcBonus: 26,        // Zusatzschaden, wenn die Klinge den Gegner wirklich trifft
   spinArcHalf: 0.5,        // halbe Trefferbreite der Klinge (rad) → ca. 57° gesamt
-  fokusZiel: 12,           // so viele Sweet-Spot-Treffer laden die Fokus-Leiste
+  /* Fokusziel 18 statt 12. Bei 12 war die Leiste nach 5,3 s voll, die kuerzeste
+     Abklingzeit liegt bei 5,0 s — die beworbene Entscheidung "sparen oder ausgeben"
+     konnte rechnerisch nie existieren, gemessen war perfektes Timing 0,6 % wert. Bei 18
+     dauert es 8,4 s: fuer Bombe und Sog entsteht eine echte Wahl, fuer Wirbel, Nova und
+     Schock bleibt der Fokus bequem rechtzeitig da. Absichtlich nicht 20 — dort waeren
+     die meisten Einsaetze unverstaerkt, und das Spiel soll nicht anspruchsvoller werden. */
+  fokusZiel: 18,           // so viele Volltreffer laden die Fokus-Leiste
   fokusBonus: 1.9,         // damit schlägt die nächste aktive Macht zu
   panzerAbWelle: 12,       // ab hier tauchen Panzergegner auf (auf „Meister" früher)
   // Sog zieht Gegner heran, statt sie wegzustoßen — er SETZT Sweet-Spot-Treffer auf,
   // statt selbst viel Schaden zu machen. Deshalb bewusst schwach im Schaden.
   sog:   { range:300, kraft:150, dmg:8, cooldown:6500, stun:450 },
   schneide: { proStufe:0.08 },     // zusätzlicher Sweet-Spot-Schaden je Stufe
-  nachhall: { alle:4, radius:95, dmg:26 },
+  /* Nachhall war nach der Verdichtung mit +268 % auf der Sprungstufe eine Pflichtkarte
+     — dreimal so stark wie die zweitbeste. Flaecheneffekte profitieren am staerksten
+     davon, dass jetzt bis zu 51 Gegner gleichzeitig da sind. Schaden 26 -> 10 und
+     Radius 95 -> 82 bringen sie auf +34/+89 %, also auf Augenhoehe mit der Glasklinge.
+     Gemessen bei dichter wie bei verteilter Gegnerlage nahezu gleich. */
+  nachhall: { alle:4, radius:82, dmg:10 },
   siegWelle: 30,           // hier steht der Endgegner — bis dahin ist das Spiel gewinnbar
   spinHitInterval: 120,    // ms zwischen den Treffer-Ticks
   // Tempo bewusst nah am Spieler (175): Weglaufen soll Zeit kosten, nicht alles lösen
