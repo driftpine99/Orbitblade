@@ -69,7 +69,16 @@ const CONFIG = {
   barriere: { proKugel:0.06, max:0.30 },
   // Etwas kürzere, dichtere Wellen: weniger Leerlauf und rund 10 % weniger Masse,
   // ohne die Gegnermechaniken oder den 30-Wellen-Bogen zu beschneiden.
-  wave: { baseCount:5, perWave:2.55, hpScale:0.08, dmgScale:0.08, spawnInterval: 580 },
+  /* Gegner kommen in Schueben, nicht im Metronom. Vorher erschien alle 580 ms genau ein
+     Gegner — dadurch bestimmte ein Timer die Wellendauer und nicht die Toetungsrate des
+     Spielers. Gemessen: 1.418 Gegner in den Nicht-Bosswellen 1..29 ergaben 13:42 harte
+     Untergrenze bei 19:04 Gesamtlauf, und zwischen einem Anfaengerbuild und einem
+     unbesiegbaren Spieler lagen in Welle 29 nur 17 % Zeitunterschied. Kein Baumknoten
+     und keine Karte konnte sich dadurch maechtig anfuehlen. */
+  wave: { baseCount:5, perWave:2.55, hpScale:0.08, dmgScale:0.08, spawnInterval: 580,
+          schubMin:5, schubMax:12,        // Groesse eines Schubs, waechst mit der Welle
+          schubRest:0.35,                 // naechster Schub, sobald so wenig vom letzten uebrig ist
+          schubMaxWarten:2600 },          // Notbremse, damit ein passiver Spieler nicht feststeckt
   // 15 reguläre Punkte sollen den kompakten Orbitbaum bis Welle 30 füllen. Die
   // Anforderungen liegen etwa beim alten Gesamt-XP bis Level 29: Derselbe Lauf endet
   // dadurch nahe Level 16, also bei den vorgesehenen 15 regulären Punkten.
@@ -4118,8 +4127,18 @@ function update(dt){
   // spawn
   if(wave%5!==0){
     spawnTimer+=dt;
-    if(waveSpawned < waveEnemiesToSpawn && spawnTimer > CONFIG.wave.spawnInterval){
-      spawnTimer=0; enemies.push(makeEnemy(randomEnemyType())); waveSpawned++;
+    /* Schubweise statt tropfenweise: Der naechste Schub kommt, sobald der Spieler den
+       vorigen weitgehend abgeraeumt hat — oder nach schubMaxWarten, damit auch ein
+       zoegerlicher Spieler vorankommt. Damit bestimmt die Toetungsrate die Wellendauer. */
+    if(waveSpawned < waveEnemiesToSpawn){
+      const W=CONFIG.wave;
+      const schub=Math.min(W.schubMax, Math.max(W.schubMin, Math.ceil(waveEnemiesToSpawn/8)));
+      const abgeraeumt = enemies.length <= Math.ceil(schub*W.schubRest);
+      if(abgeraeumt || spawnTimer > W.schubMaxWarten){
+        spawnTimer=0;
+        const n=Math.min(schub, waveEnemiesToSpawn-waveSpawned);
+        for(let k=0;k<n;k++){ enemies.push(makeEnemy(randomEnemyType())); waveSpawned++; }
+      }
     }
   }
   // Gegner drängen sich auseinander, statt exakt übereinander zu stapeln.

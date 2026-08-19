@@ -1599,6 +1599,74 @@ Resonanz-Ast im Baum hängt daran. Die Ladegeschwindigkeit hängt aber an der Tr
 und die ändert die geplante Verdichtung grundlegend. Jede Zahl, die jetzt gesetzt wird,
 wäre danach wieder falsch. Wird zusammen mit der Verdichtung neu justiert.
 
+## Verdichtet: Gegner kommen in Schüben (umgesetzt 19.08.2026)
+
+Die folgenreichste Änderung bisher. Sie ersetzt neun Zeilen und macht alles andere im
+Spiel erst spürbar.
+
+### Der Befund
+
+Gegner erschienen im festen Takt von 580 ms — **ein Timer bestimmte die Wellendauer,
+nicht die Tötungsrate des Spielers.** Gemessen:
+
+- 1.418 Gegner in den Nicht-Bosswellen 1–29 auf Standard ergaben **13:42 harte
+  Untergrenze** bei einem Gesamtlauf von 19:04. 72 % der Laufzeit waren eine Konstante.
+- In Welle 29 brauchte ein Anfängerbuild 96,0 s, ein voller 15-Punkte-Build 84,3 s und
+  ein **unbesiegbarer Spieler, der jeden Gegner sofort tötet, 79,4 s.**
+
+Zwischen Anfänger und Gott lagen 17 %. Das war die Obergrenze dessen, was Fortschritt im
+Spiel überhaupt bewirken konnte. Kein Baumknoten, keine Karte und kein Werkstattprojekt
+konnte sich mächtig anfühlen — unabhängig davon, wie gut die Zahlen waren.
+
+Bosswellen waren die einzige Ausnahme (`waveEnemiesToSpawn = (wave%5===0)? 1 : count`) und
+prompt der einzige Inhalt, dessen Dauer auf die Spielerstärke reagierte: Faktor 1,6 bis 3,6.
+
+### Die Änderung
+
+`CONFIG.wave` bekommt `schubMin:5`, `schubMax:12`, `schubRest:0.35`, `schubMaxWarten:2600`.
+Der nächste Schub kommt, sobald der Spieler den vorigen weitgehend abgeräumt hat — oder
+spätestens nach 2,6 s, damit auch ein zögerlicher Spieler vorankommt. `spawnInterval`
+bleibt als Feld stehen, wird aber nicht mehr gelesen.
+
+### Gemessen danach
+
+Ehrliche Laufmessung mit **echtem Klingenschaden**, Bot kreist auf Klingendistanz:
+
+| | vorher | jetzt |
+|---|---|---|
+| Standard, voller Lauf | 19:04 | **10:44** |
+| Meister | ~24 min | 13:49 |
+| Gegner gleichzeitig | ~20 | **max 51, im Schnitt 14** |
+| Welle 29 | 96 s Boden | 37 s |
+
+Die Wellendauer **wächst jetzt mit der Welle** (10 s → 12 s → 37 s) statt flach zu bleiben.
+Und sie reagiert linear auf die Tötungsrate: bei 6 Kills/s dauert Welle 29 22,7 s, bei 12
+noch 11,3 s, bei 24 noch 6,8 s. Bei 1,5 bis 3 Kills/s stirbt der Spieler — richtiges
+Spielverhalten, kein Stillstand.
+
+Hilfsstufen bleiben intakt: Ein sterblicher, mittelmäßiger Bot **gewinnt auf Entdecker**
+(9,4 min) und stirbt auf Standard bei Welle 12 sowie auf Meister bei Welle 7 — dieselben
+Wellen wie vor der Änderung.
+
+### Zwei Fallen beim Messen
+
+- **`vollerlauf.js` ist keine Pacing-Messung mehr.** Es tötet in festem Takt (15 Kills/s)
+  und meldet seit der Verdichtung 1:34 statt 19 Minuten. Solange der Spawn-Timer bremste,
+  fiel das nicht auf. Für Struktur (Sieg, Auslese-Wellen, Baumkäufe) bleibt es gültig,
+  für Zeiten nicht — dafür ist `pacing.js` da.
+- Ein erster Messlauf meldete „Welle endet nie". Tatsächlich war **der Spieler tot**: Das
+  Skript setzte Leben erst nach dem Bild zurück. Wer Wellendauer misst, muss Unsterblichkeit
+  vor `update()` herstellen und den Zustand `gameover` abfragen.
+
+### Offen und ernst
+
+**Die Bildrate bei 51 gleichzeitigen Gegnern ist ungemessen.** Die Performancearbeit vom
+16.08. wurde bei 11–13 Gegnern bestätigt; das ist jetzt der vierfache Spitzenwert. Der
+Befund von damals — die Füllrate des Hintergrunds ist der Engpass, nicht die Gegnerzahl —
+spricht dafür, dass es trägt, aber das ist eine Ableitung, keine Messung. Der
+Browser-Bereich dieser Umgebung rendert keine Bilder, deshalb war es hier nicht prüfbar.
+**Das ist der erste Punkt, der auf echter Hardware nachzumessen ist.**
+
 ## Ideen aus dem Spieltest (17.08.2026)
 
 Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.
