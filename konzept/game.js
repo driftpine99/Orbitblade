@@ -78,7 +78,8 @@ const CONFIG = {
   // Freischaltbare Fähigkeiten (passiv, kein neuer Knopf)
   abil: {
     chainDamage:14, chainRange:140,          // Kettenblitz: springt zum nächsten Gegner
-    counterDamage:22, counterRadius:110, counterCd:600, counterPush:90,  // Konterstoß bei Treffer
+    counterDamage:22, counterRadius:110, counterCd:600, counterPush:20,  // Konterstoß bei Treffer;
+    // Rueckstoss war 90 und schob Gegner aus der Klingenbahn — die Passive machte dadurch schwaecher
     splitterDamage:9, splitterCount:2, splitterRadius:70, splitterSpeed:3.2, splitterHitCd:250 // kreisende Splitter
   },
   // Boss-Fähigkeiten. shockInner MUSS klar größer sein als die Angriffsreichweite
@@ -1214,10 +1215,14 @@ function angleDiff(a,b){ let d=Math.abs(a-b)%(Math.PI*2); return d>Math.PI ? Mat
    Gesamtabdeckung WÄCHST weiter (16 % → 24 % → 27 %), nur langsamer. Sonst wären
    Doppel- und Dreifachklinge wertlos, und das sind die stärksten Karten im Spiel. */
 function sweetArcHalf(){
+  /* Auslese-Modul Nachfassen: die eigentliche Verbreiterung. Sie fehlte bisher komplett —
+     nachfassenBereit wurde nur für den Panzerdurchschlag gelesen, weshalb die Karte
+     gemessen 0,0 % brachte, obwohl sie "doppelt so breit" versprach. */
+  const nachfassen=nachfassenBereit?2:1;
   const singular=treeFlags.singularorbit?0.68:1;
   const sync=treeFlags.sweetWeite||0;
   const sonne=sonnenTempoUntil>Date.now() && treeFlags.sonnenorbit ? .78 : 1;
-  return CONFIG.spinArcHalf * singular * sonne * Math.pow(0.75+sync, Math.max(0, effektiveKlingen()-1));
+  return CONFIG.spinArcHalf * nachfassen * singular * sonne * Math.pow(0.75+sync, Math.max(0, effektiveKlingen()-1));
 }
 
 function sweetKlingenFaktor(){
@@ -1228,7 +1233,7 @@ function sweetKlingenFaktor(){
      Positionieren zählt; nur der Treffer wiegt schwerer. */
   let f=treeFlags.singularorbit?1.45:1;
   if(runModule.klingenteilung>=2) f*=1.42; else if(runModule.klingenteilung) f*=1.22;
-  if(treeFlags.doppelorbit) f*=.72;
+  if(treeFlags.doppelorbit) f*=.84;   // war .72 — machte den Kauf schwaecher als gar keinen Kauf
   if(sonnenTempoUntil>Date.now() && treeFlags.sonnenorbit) f*=1.30;
   return f;
 }
@@ -1275,8 +1280,6 @@ function orbitSweetPulse(){
 function resetMissedOrbit(){
   if(!orbitRoundSweet){
     sonnenSerie=0; praezSerie=0;
-    // Auslese-Modul Nachfassen: ein verfehlter Umlauf verbreitert einmalig den nächsten Sweet-Bogen.
-    if(runModule.nachfassen) nachfassenBereit=true;
   }
   orbitRoundSweet=false;
 }
@@ -1819,7 +1822,7 @@ const AUSLESE_MODULE={
                 desc:'Jeder 3. volle Umlauf stößt eine Schadenswelle aus',
                 sprung:'Schon jeder 2. Umlauf; die Welle verlangsamt zusätzlich' },
   nachfassen: { name:'Nachfassen',  icon:'nachfassen',
-                desc:'Ein Umlauf ohne Treffer macht die nächste Volltreffer-Zone doppelt so breit',
+                desc:'Wirst du getroffen, wird dein nächster Volltreffer doppelt so breit',
                 sprung:'Dieser breite Treffer durchschlägt zusätzlich Panzerung' },
   glasklinge: { name:'Glasklinge',  icon:'glasklinge',
                 desc:'Klingenschaden ×1,45, dafür nur 60 % maximales Leben',
@@ -3438,6 +3441,10 @@ function separiereGegner(){
 // Zentraler Spieler-Schaden: Effekte, Konterstoß, Tod an einer Stelle
 function hurtPlayer(dmg){
   if(PERF_GOD) return false;                     // Messlauf: der Tod würde die Messung abbrechen
+  /* Auslese-Modul Nachfassen: Der nächste Volltreffer wird breiter, nachdem man etwas
+     eingesteckt hat. Vorher hing es an einem Umlauf ohne Treffer — im Gedränge verfehlt
+     man nie, die Karte feuerte gemessen in 0,0 % der Fälle. */
+  if(runModule.nachfassen) nachfassenBereit=true;
   if(Date.now()<=shieldUntil) return false;      // Schild absorbiert
   dmg *= hilfe().schaden;                        // Rückenwind der gewählten Hilfsstufe
   // Barriere zuerst: hält sie den Schlag komplett auf, bleibt die Lebensleiste unberührt

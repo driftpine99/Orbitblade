@@ -1543,6 +1543,62 @@ Abklingzeit — diese Bedingung ergab nur für die alte Wirkung Sinn. Der `praez
 Sturmwirbel liest denselben Zähler und bleibt bewusst unangetastet: Er erzeugt jetzt eine
 echte Spannung zwischen „kleine Serie sofort verbrauchen" und „auf den Strahl warten".
 
+## Vier kaputte Wertigkeiten behoben (umgesetzt 19.08.2026)
+
+Aus einem externen Designgutachten. Drei davon waren keine Balancefragen, sondern Fehler.
+
+### Doppelorbit war ein negativer Kauf
+
+Über den echten Knotenkauf gemessen, gegen „gar nichts kaufen":
+
+| Ziele | Doppelorbit vorher | Präzisionsorbit |
+|---|---|---|
+| 1 | **−3,6 %** | +4,2 % |
+| 8 | **−3,5 %** | +3,2 % |
+| 16 | **−3,1 %** | +4,5 % |
+
+Die **erste Entscheidung des Spiels** machte den Spieler schwächer, als den Punkt liegen
+zu lassen. Ursache: Die Volltreffer-Zone schrumpft auf ×0,75 **und** der Schaden je
+Klinge auf ×0,72 — das Produkt liegt unter 1. Die Zone bleibt unangetastet, sie ist die
+Kernmechanik; der Schadensabschlag steigt von ×0,72 auf ×0,84. Danach: Doppelorbit +4,1
+bis +5,0 %, Präzisionsorbit +3,6 bis +4,2 % — beide Zweige gleich stark, wie es die
+Doku immer versprochen hatte.
+
+**Achtung für künftige Messungen:** Eine frühere Messung hatte Doppelorbit bei 113 %
+ausgewiesen. Sie setzte `bonuses.blades=2` von Hand und übersprang damit den
+Schadensabschlag, der an `treeFlags.doppelorbit` hängt. Klingenwerte müssen über
+`kaufenTreeKnoten('blade_multi')` gemessen werden, nie über `bonuses`.
+
+### Konterstoß trieb Gegner aus der Klingenbahn
+
+`counterPush` war 90 und schob getroffene Gegner von 109 auf 181 px — die Klinge reicht
+72 px. In einem Spiel, dessen ganzer Zweck es ist, Gegner *in* der Orbitbahn zu halten,
+ist starker Rückstoß strukturell falsch. Gemessen kostete die Passive rund ein Drittel
+des Schadens.
+
+Rückstoß jetzt 20. Gemessen mit Gegnern, die den Spieler tatsächlich erreichen:
+**+24,3 % auf Stufe 1, +54,9 % auf der Sprungstufe**, mittlere Distanz 98 → 106 px.
+
+### Nachfassen war nie implementiert
+
+Die Karte versprach „doppelt so breit", aber `nachfassenBereit` wurde nur für den
+Panzerdurchschlag auf Rang 2 gelesen — **die Verbreiterung selbst gab es im Code nicht.**
+Deshalb maß sie 0,0 %.
+
+Zwei Änderungen: `sweetArcHalf()` verdoppelt jetzt tatsächlich, und der Auslöser hängt
+nicht mehr an einem Umlauf ohne Treffer (im Gedränge verfehlt man nie, die Karte feuerte
+genau dort nicht, wo man sie braucht), sondern an einem **kassierten Treffer**. Das passt
+zum Namen und feuert verlässlich. Gemessen: +19,3 % gegen Soldaten; gegen Panzer +8,8 %
+auf Rang 1 und **+83,1 %** auf Rang 2, wo der Panzerdurchschlag greift.
+
+### Fokus bewusst noch nicht angefasst
+
+Die Fokusleiste ist nach 5,3 s voll, die Abklingzeiten liegen bei 5 bis 12 s — die
+beworbene Entscheidung „sparen oder ausgeben" kann rechnerisch nicht existieren, und der
+Resonanz-Ast im Baum hängt daran. Die Ladegeschwindigkeit hängt aber an der Trefferrate,
+und die ändert die geplante Verdichtung grundlegend. Jede Zahl, die jetzt gesetzt wird,
+wäre danach wieder falsch. Wird zusammen mit der Verdichtung neu justiert.
+
 ## Ideen aus dem Spieltest (17.08.2026)
 
 Vom Nutzer eingebracht, noch nicht entschieden und nicht eingeplant.
