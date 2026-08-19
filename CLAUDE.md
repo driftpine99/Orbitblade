@@ -700,7 +700,7 @@ statt sie zu erraten.
 
 ## Umgesetzter Stand vom 13.08.2026
 
-- Orbitpfad v2 besitzt 14 sichtbare reguläre Knoten, 18 mögliche Investitionen und
+- (Überholt durch Orbitpfad v3, siehe unten.) Orbitpfad v2 besitzt 14 sichtbare reguläre Knoten, 18 mögliche Investitionen und
   maximal 15 reguläre Levelpunkte. `Startimpuls` bleibt ein separater Punkt 16.
 - Partner, Haltung, Meisterschaft, Synergie, Evolution und Resonanz öffnen den
   Hauptpfad jeweils ab Rang 1. Ein dynamischer Budgetschutz reserviert nur dann die
@@ -1377,6 +1377,64 @@ kurzen Schritt erreichbar. Falls der Spieltest zeigt, dass es zu leicht wurde, i
 
 `CONFIG.jaeger.shootRange` und `en.shootRange` werden seit der Umstellung nirgends mehr
 gelesen, nur noch zugewiesen. Totes Feld, bewusst stehen gelassen.
+
+## Orbitpfad v3: jeder Punkt eine ganze Mechanik (umgesetzt 18.08.2026)
+
+Spieltestbefund: „jeder Punkt sollte einen stärker machen, keine Mehrfachpunkte pro Baum.
+Inkl. Abzweigungen, damit es etwas weh tut, wenn man sich für eins entscheidet."
+
+Gemessen war das genau richtig: Der Pfad hatte 14 Knoten, aber **fünf davon fraßen zwölf
+der fünfzehn Punkte über Rangleitern** — Partnerpassiv (2), Klingenmodul (2),
+Machtmeisterschaft (3), Machtmodul (2), Orbitresonanz (3). Ein einzelner Punkt kaufte
+dort nur einen Bruchteil einer Mechanik.
+
+### Neue Form
+
+Alle Rangleitern sind aufgelöst. **Jeder Knoten kostet einen Punkt und schaltet eine
+vollständige, benannte Mechanik frei**; nur die Krone behält ihre zwei Ränge wegen
+`Startimpuls`/Kernreserve.
+
+| Reihe | Knoten |
+|---|---|
+| 0 | Doppelorbit / Präzisionsorbit *(Weiche)* |
+| 1 | Hauptmacht A / B *(Weiche)* |
+| 2 | Partnerpassiv · Klingenmodul I · Klingenmodul II |
+| 3 | Charakterhaltung A / B *(Weiche)* |
+| 4 | Meisterschaft I · II · III |
+| 5 | Machtmodul I · II · Klingensynergie |
+| 6 | Evolution · Kopplung · Sofortschaltung |
+| 7 | Resonanzklinge · Orbitkrone |
+
+20 Knoten, 17 kaufbare Punkte bei 15 Budget, acht Reihen wie zuvor — das Raster hat
+sieben Spalten, drei Knoten je Reihe passen ohne Scrollen.
+
+### Warum keine zusätzlichen A/B-Weichen
+
+Ursprünglich sollten Klingen- und Machtmodul zu Weichen werden. Beim Lesen des Codes
+zeigte sich, dass `treeFlags.bladeModule`, `powerModule` und `powerMaster` überall
+**kumulativ** gelesen werden (`>=1`, `>=2`). Eine Weiche hätte rund zehn Lesestellen
+umbauen müssen, mit echtem Risiko für die Wirkungen. Die Module bleiben deshalb
+aufeinanderfolgend — der Verzicht sitzt weiterhin in den drei vorhandenen Weichen plus
+den zwei Punkten, die bei 17 Angeboten und 15 Budget liegen bleiben.
+
+### Nebenbefund: die Doku war an einer Stelle falsch
+
+Der Auftrag beschrieb die Wirbel-Meisterschaft nach dem Konzeptabschnitt weiter oben in
+dieser Datei („Fokus-Wirbel erlaubt kurz das Durchlaufen kleiner Gegner"). Diese Mechanik
+existiert im Code nicht. Die tatsächlichen drei Stufen sind Radius +14 %, ein Extra-Treffer
+im Zentrum und ein zweiter äußerer Ring. Die neuen Knotentexte stammen aus dem Code, nicht
+aus der älteren Prosa — bei allen fünf Hauptmächten.
+
+### Geprüft
+
+- 60 Strukturprüfungen über alle fünf Hauptmächte mal beide Charaktere: 20 Knoten, kein
+  Knoten über Reihe 7, höchstens drei je Reihe, überall Name und Kurztext, keine
+  hängenden Voraussetzungen.
+- Krone in **600 von 600** Läufen mit zufälliger Kaufreihenfolge erreicht, sowohl wenn
+  alle 15 Punkte auf einmal vorliegen als auch wenn sie einzeln eintreffen. Keine
+  Sackgassen, keine Restpunkte.
+- Im Browser bei 393 × 873 px: acht Reihen, keine Überlappung, nichts abgeschnitten,
+  kein horizontaler Überlauf.
 
 ## Ideen aus dem Spieltest (17.08.2026)
 

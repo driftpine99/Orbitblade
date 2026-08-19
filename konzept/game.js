@@ -483,29 +483,61 @@ const MODULE_TEXT={
     blade:[['Kernkerbe','SWEET LENKT KERN','Sweet Hits lenken den Gravitationskern durch die Gruppe.'],['Gravschnitt','3. HIT: NACHHALL','Der dritte Kerntreffer löst einmalig eine Nachhallwelle aus.']],
     power:[['Gravbindung','ZIELE IM UMLAUF','Gezogene Ziele kreisen kurz auf Klingenreichweite.'],['Kernbruch','UMLAUF ENDET','Der Umlauf endet in einer machtbezogenen Gruppenwelle.']]}
 };
-function moduleText(kind,id){
-  const rang=treeRang(kind==='blade'?'blade_module':'power_module');
-  return MODULE_TEXT[id][kind][Math.min(rang,1)];
-}
+/* Machtmeisterschaft: früher EIN Knoten mit 3 Rängen, jetzt drei Knoten mit je
+   einem — ein Punkt kauft eine ganze, benannte Mechanik statt eines Drittels davon.
+   Die Wirkung selbst steht unverändert in den execute*-Funktionen (treeFlags.powerMaster
+   bzw. der über steigereMacht() gesetzte Fähigkeitslevel); hier nur Name/Kurztext je Rang. */
+const POWER_MASTER_TEXT={
+  wirbel:[
+    ['Außenbahn','ÄUSSERE BAHN','Der Wirbelradius wächst um 14 % – die Klinge trifft weiter außen.'],
+    ['Kernschlag','TRIFFT KERN','Ein zusätzlicher Kernschlag im Zentrum trifft mit 42 % Schaden.'],
+    ['Doppelring','ZWEITER RING','Ein zweiter äußerer Ring trifft zusätzlich mit halbem Schaden.']],
+  stoss:[
+    ['Schockmarke','MARKIERT ZIELE','Jeder Treffer markiert sein Ziel 3,2 s; ein Sweet Hit löst +38 % Entladung aus.'],
+    ['Marklähmung','MARKE: BETÄUBT','Die Entladung einer Marke betäubt das Ziel zusätzlich 520 ms.'],
+    ['Stoßbetäubung','ALLE BETÄUBT','Jeder Stoßtreffer betäubt kurz – auch ohne Marke.']],
+  bombe:[
+    ['Kernzone','STARKER KERN','Treffer im Bombenkern verursachen 45 % mehr Schaden.'],
+    ['Panzerbruch','ENTPANZERT','Kernnahe Treffer entfernen 2,6 s lang die Panzerung.'],
+    ['Doppelwurf','2. BOMBE','Jeder Wurf legt eine zweite, versetzt zündende Bombe.']],
+  nova:[
+    ['Novasalve','4 GESCHOSSE','Nova feuert vier Geschosse radial aus.'],
+    ['Novaecho','2. WELLE','Eine verzögerte zweite Nova-Welle folgt automatisch.'],
+    ['Sternenschauer','8 GESCHOSSE','Acht Geschosse statt vier; das Echo trifft deutlich härter.']],
+  sog:[
+    ['Kernbindung','KERN MARKIERT','Der nächstgezogene Gegner wird 3,6 s zum Gravitationskern.'],
+    ['Kernsammlung','ZIEHT GRUPPE','Ein Sweet Hit am Kern zieht nahe Gegner zusammen.'],
+    ['Sogbetäubung','BETÄUBT ALLE','Jeder gezogene Gegner wird kurz betäubt.']]
+};
 function treeNodes(){
   const id=activeSlot1, pair=Object.entries(EVOLUTIONS).find(([,e])=>e.base===id);
   const evoId=pair[0], evo=pair[1], power='power_'+id, partner='partner_'+id;
-  const bm=moduleText('blade',id), pm=moduleText('power',id);
+  // Vormals moduleText(kind,id) mit rangabhängiger Auswahl — jeder Rang ist jetzt ein
+  // eigener Knoten und greift fest auf seinen Tabelleneintrag zu.
+  const bm1=MODULE_TEXT[id].blade[0], bm2=MODULE_TEXT[id].blade[1];
+  const pm1=MODULE_TEXT[id].power[0], pm2=MODULE_TEXT[id].power[1];
+  const mt=POWER_MASTER_TEXT[id];
   const n=[
-    {id:'blade_multi',stage:0,col:3,kind:'major',name:'Doppelorbit',short:'2 KLINGEN',desc:'2 Klingen π-versetzt: Sweet je ×0,72, Zone ×0,75, Schub 16 px.',icon:'Ⅱ',exclusiveGroup:'orbit',spine:'blade',apply:()=>{bonuses.blades=2;treeFlags.doppelorbit=true;earnBadge('doppel');}},
-    {id:'blade_single',stage:0,col:5,kind:'major',name:'Präzisionsorbit',short:'SWEET ×1,45',desc:'1 Klinge, Länge ×1,20, Sweet-Bogen ×0,68; nur Sweet durchschlägt Panzer.',icon:'┃',exclusiveGroup:'orbit',spine:'blade',apply:()=>{treeFlags.singularorbit=true;}},
-    {id:power+'_a',stage:1,col:3,kind:'major',name:ABILITIES[id].name+' · A',short:ACTIVE_MOD_SHORT[id][0],desc:ACTIVE_MODS[id][0],icon:'A',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='a'},
-    {id:power+'_b',stage:1,col:5,kind:'major',name:ABILITIES[id].name+' · B',short:ACTIVE_MOD_SHORT[id][1],desc:ACTIVE_MODS[id][1],icon:'B',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='b'},
-    {id:partner,stage:2,col:3,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'SPRUNG',desc:ABILITIES[evo.req].desc+'; Rang 1 aktiviert die Passive, Rang 2: '+STUFEN[evo.req].sprung+'.',icon:'✦',maxRank:2,reqAny:[power+'_a',power+'_b'],spine:'partner',apply:rank=>runAbilities[evo.req]=(rank>=2?SPRUNG_STUFE:1)},
-    {id:'blade_module',stage:2,col:5,kind:'buff',name:bm[0],short:bm[1],desc:bm[2],icon:'◒',maxRank:2,reqAny:[power+'_a',power+'_b'],apply:rank=>treeFlags.bladeModule=rank},
-    {id:'char_route_a',stage:3,col:3,kind:'major',name:figur().id==='held'?'Wächter':'Verschlinger',short:figur().id==='held'?'BARRIERE':'LEBENSRAUB',desc:figur().id==='held'?'Fokus: 8% Barriere, 150 px Slow 1200 ms.':'Besiegte Gegner heilen einen kleinen Teil deines Lebens.',icon:figur().id==='held'?'◈':'◆',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.waechter=true;waechterLadung=false;}else treeFlags.leerenHeilung=.006;}},
-    {id:'char_route_b',stage:3,col:5,kind:'major',name:figur().id==='held'?'Sonnenjäger':'Abgrund',short:figur().id==='held'?'3 SWEET':'RISIKO-DMG',desc:figur().id==='held'?'3 Sweet-Pulse starten 3 s Sonnentempo ×1,22.':'Fehlendes Leben steigert den Sweet-Spot-Schaden stark.',icon:figur().id==='held'?'☀':'▼',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.sonnenjaeger=true;sonnenSerie=0;sonnenTempoUntil=0;}else treeFlags.leerenRisikoBonus=.28;}},
-    {id:'power_master',stage:4,col:4,kind:'buff',name:'Machtmeisterschaft',short:'MACHT +1',desc:'Rang 1 öffnet Super-Macht und Synergie; Rang 2/3 vertiefen die Mechanik.',icon:'⬡',maxRank:3,reqAny:['char_route_a','char_route_b'],spine:'master',apply:rank=>{steigereMacht(id,rank+1);treeFlags.powerMaster=rank;}},
-    {id:'power_module',stage:4,col:6,kind:'buff',name:pm[0],short:pm[1],desc:pm[2],icon:'◉',maxRank:2,reqAny:['char_route_a','char_route_b'],apply:rank=>treeFlags.powerModule=rank},
-    {id:'blade_synergy',stage:5,col:3,kind:'major',name:figur().id==='held'?(treeRang('char_route_a')?'Leuchtfeuer':'Sonnenorbit'):(treeRang('char_route_a')?'Satter Abgrund':'Ereignishorizont'),short:figur().id==='held'?(treeRang('char_route_a')?'LICHTPFAD':'SONNENBAHN'):(treeRang('char_route_a')?'HEIL-KOMBO':'3 KLINGEN'),desc:figur().id==='held'?(treeRang('char_route_a')?'Barriere: kurze Lichtspuren bremsen Gegner.':'Fokussierter Wirbel setzt 3 Sonnenpulse.'): (treeRang('char_route_a')?'Klingen-Kills heilen stärker, solange du angeschlagen bist.':'Unter 35 % Leben kreisen drei Klingen um dich.'),icon:'✦',reqAll:['power_master'],reqRanks:{power_master:1},spine:'synergy',apply:()=>{if(figur().id==='held'){if(treeRang('char_route_a'))treeFlags.leuchtfeuer=true;else treeFlags.sonnenorbit=true;}else{if(treeRang('char_route_a'))treeFlags.satterAbgrund=true;else treeFlags.ereignishorizont=true;}}},
-    {id:'evo_'+evoId,stage:5,col:5,kind:'evo',power:id,name:evo.name,short:'SUPER-MACHT',desc:evo.desc,icon:'✹',reqAll:['power_master'],reqRanks:{power_master:1,[partner]:1},spine:'evolution',evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}},
-    {id:'orbit_resonance',stage:6,col:4,kind:'buff',name:'Orbitresonanz',short:'KOPPLUNG',desc:'Rang 1 koppelt Klinge und Mächte: ein Machteinsatz kürzt die andere Macht. Rang 2: ein fokussierter Einsatz macht sie sofort bereit. Rang 3: ein fokussierter Einsatz lässt 4 s eine Zusatzklinge mitkreisen.',icon:'◎',maxRank:3,reqAll:['blade_synergy','evo_'+evoId],spine:'resonance',apply:rank=>{treeFlags.orbitResonanz=true;if(rank>=2)treeFlags.resonanzSofort=true;if(rank>=3)treeFlags.resonanzKlinge=true;}},
-    {id:'orbit_crown',stage:7,col:4,kind:'capstone',name:'Orbitkrone',short:treeRang('orbit_crown')?'KERNRESERVE':'FINALE',desc:treeRang('orbit_crown')?'Kernreserve gibt +10 % maximales Leben und vollen Fokus bei jedem Bossbeginn.':(treeRang('blade_multi')?'Machtechos wechseln sauber zwischen 2 Zielklingen.':'3 Sweet-Pulse verkürzen Aktiv 1 um 1600 ms.'),icon:'★',maxRank:metaLevel('startimpuls')?2:1,reqAll:['orbit_resonance','evo_'+evoId],reqRanks:{orbit_resonance:1},minInvested:14,spine:'crown',apply:rank=>{if(rank===1){treeFlags.orbitKrone=true;treeFlags.kronenform=treeRang('blade_multi')?'dopp':'praez';praezSerie=0;kronenZielklinge=0;kronenMachtId='';kronenMachtUntil=0;}else{const vorher=player.maxHp;treeFlags.kernreserve=true;player.maxHp=Math.round(player.maxHp*1.1);player.hp=Math.min(player.maxHp,player.hp+player.maxHp-vorher);}}},
+    {id:'blade_multi',stage:0,col:2,kind:'major',name:'Doppelorbit',short:'2 KLINGEN',desc:'2 Klingen π-versetzt: Sweet je ×0,72, Zone ×0,75, Schub 16 px.',icon:'Ⅱ',exclusiveGroup:'orbit',spine:'blade',apply:()=>{bonuses.blades=2;treeFlags.doppelorbit=true;earnBadge('doppel');}},
+    {id:'blade_single',stage:0,col:6,kind:'major',name:'Präzisionsorbit',short:'SWEET ×1,45',desc:'1 Klinge, Länge ×1,20, Sweet-Bogen ×0,68; nur Sweet durchschlägt Panzer.',icon:'┃',exclusiveGroup:'orbit',spine:'blade',apply:()=>{treeFlags.singularorbit=true;}},
+    {id:power+'_a',stage:1,col:2,kind:'major',name:ABILITIES[id].name+' · A',short:ACTIVE_MOD_SHORT[id][0],desc:ACTIVE_MODS[id][0],icon:'A',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='a'},
+    {id:power+'_b',stage:1,col:6,kind:'major',name:ABILITIES[id].name+' · B',short:ACTIVE_MOD_SHORT[id][1],desc:ACTIVE_MODS[id][1],icon:'B',reqAny:['blade_multi','blade_single'],exclusiveGroup:'power_mod',spine:'mutation',apply:()=>treeFlags['mod_'+id]='b'},
+    {id:partner,stage:2,col:2,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'VOLL',desc:ABILITIES[evo.req].desc+'; '+STUFEN[evo.req].sprung+'.',icon:'✦',reqAny:[power+'_a',power+'_b'],spine:'partner',apply:()=>runAbilities[evo.req]=SPRUNG_STUFE},
+    {id:'blade_module',stage:2,col:4,kind:'buff',name:bm1[0],short:bm1[1],desc:bm1[2],icon:'◒',reqAny:[power+'_a',power+'_b'],apply:()=>treeFlags.bladeModule=1},
+    {id:'blade_module_2',stage:2,col:6,kind:'buff',name:bm2[0],short:bm2[1],desc:bm2[2],icon:'◒',reqAll:['blade_module'],apply:()=>treeFlags.bladeModule=2},
+    {id:'char_route_a',stage:3,col:2,kind:'major',name:figur().id==='held'?'Wächter':'Verschlinger',short:figur().id==='held'?'BARRIERE':'LEBENSRAUB',desc:figur().id==='held'?'Fokus: 8% Barriere, 150 px Slow 1200 ms.':'Besiegte Gegner heilen einen kleinen Teil deines Lebens.',icon:figur().id==='held'?'◈':'◆',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.waechter=true;waechterLadung=false;}else treeFlags.leerenHeilung=.006;}},
+    {id:'char_route_b',stage:3,col:6,kind:'major',name:figur().id==='held'?'Sonnenjäger':'Abgrund',short:figur().id==='held'?'3 SWEET':'RISIKO-DMG',desc:figur().id==='held'?'3 Sweet-Pulse starten 3 s Sonnentempo ×1,22.':'Fehlendes Leben steigert den Sweet-Spot-Schaden stark.',icon:figur().id==='held'?'☀':'▼',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.sonnenjaeger=true;sonnenSerie=0;sonnenTempoUntil=0;}else treeFlags.leerenRisikoBonus=.28;}},
+    {id:'power_master_1',stage:4,col:2,kind:'buff',name:mt[0][0],short:mt[0][1],desc:mt[0][2],icon:'⬡',reqAny:['char_route_a','char_route_b'],spine:'master',apply:()=>{steigereMacht(id,2);treeFlags.powerMaster=1;}},
+    {id:'power_master_2',stage:4,col:4,kind:'buff',name:mt[1][0],short:mt[1][1],desc:mt[1][2],icon:'⬡',reqAll:['power_master_1'],apply:()=>{steigereMacht(id,3);treeFlags.powerMaster=2;}},
+    {id:'power_master_3',stage:4,col:6,kind:'buff',name:mt[2][0],short:mt[2][1],desc:mt[2][2],icon:'⬡',reqAll:['power_master_2'],apply:()=>{steigereMacht(id,4);treeFlags.powerMaster=3;}},
+    {id:'power_module',stage:5,col:2,kind:'buff',name:pm1[0],short:pm1[1],desc:pm1[2],icon:'◉',reqAny:['char_route_a','char_route_b'],apply:()=>treeFlags.powerModule=1},
+    {id:'power_module_2',stage:5,col:4,kind:'buff',name:pm2[0],short:pm2[1],desc:pm2[2],icon:'◉',reqAll:['power_module'],apply:()=>treeFlags.powerModule=2},
+    {id:'blade_synergy',stage:5,col:6,kind:'major',name:figur().id==='held'?(treeRang('char_route_a')?'Leuchtfeuer':'Sonnenorbit'):(treeRang('char_route_a')?'Satter Abgrund':'Ereignishorizont'),short:figur().id==='held'?(treeRang('char_route_a')?'LICHTPFAD':'SONNENBAHN'):(treeRang('char_route_a')?'HEIL-KOMBO':'3 KLINGEN'),desc:figur().id==='held'?(treeRang('char_route_a')?'Barriere: kurze Lichtspuren bremsen Gegner.':'Fokussierter Wirbel setzt 3 Sonnenpulse.'): (treeRang('char_route_a')?'Klingen-Kills heilen stärker, solange du angeschlagen bist.':'Unter 35 % Leben kreisen drei Klingen um dich.'),icon:'✦',reqAll:['power_master_1'],spine:'synergy',apply:()=>{if(figur().id==='held'){if(treeRang('char_route_a'))treeFlags.leuchtfeuer=true;else treeFlags.sonnenorbit=true;}else{if(treeRang('char_route_a'))treeFlags.satterAbgrund=true;else treeFlags.ereignishorizont=true;}}},
+    {id:'evo_'+evoId,stage:6,col:2,kind:'evo',power:id,name:evo.name,short:'SUPER-MACHT',desc:evo.desc,icon:'✹',reqAll:['power_master_1',partner],spine:'evolution',evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}},
+    {id:'orbit_resonance_1',stage:6,col:4,kind:'buff',name:'Kopplung',short:'KOPPELT MÄCHTE',desc:'Koppelt beide Mächte: ein Einsatz kürzt danach die Abklingzeit der anderen.',icon:'◎',reqAll:['blade_synergy','evo_'+evoId],spine:'resonance',apply:()=>{treeFlags.orbitResonanz=true;}},
+    {id:'orbit_resonance_2',stage:6,col:6,kind:'buff',name:'Sofortschaltung',short:'SOFORT BEREIT',desc:'Ein fokussierter Einsatz macht die andere Macht sofort bereit.',icon:'◎',reqAll:['orbit_resonance_1'],apply:()=>{treeFlags.resonanzSofort=true;}},
+    {id:'orbit_resonance_3',stage:7,col:2,kind:'buff',name:'Resonanzklinge',short:'ZUSATZKLINGE',desc:'Ein fokussierter Einsatz lässt 4 s eine Zusatzklinge mitkreisen.',icon:'◎',reqAll:['orbit_resonance_2'],apply:()=>{treeFlags.resonanzKlinge=true;}},
+    {id:'orbit_crown',stage:7,col:5,kind:'capstone',name:'Orbitkrone',short:treeRang('orbit_crown')?'KERNRESERVE':'FINALE',desc:treeRang('orbit_crown')?'Kernreserve gibt +10 % maximales Leben und vollen Fokus bei jedem Bossbeginn.':(treeRang('blade_multi')?'Machtechos wechseln sauber zwischen 2 Zielklingen.':'3 Sweet-Pulse verkürzen Aktiv 1 um 1600 ms.'),icon:'★',maxRank:metaLevel('startimpuls')?2:1,reqAll:['orbit_resonance_1','evo_'+evoId],minInvested:14,spine:'crown',apply:rank=>{if(rank===1){treeFlags.orbitKrone=true;treeFlags.kronenform=treeRang('blade_multi')?'dopp':'praez';praezSerie=0;kronenZielklinge=0;kronenMachtId='';kronenMachtUntil=0;}else{const vorher=player.maxHp;treeFlags.kernreserve=true;player.maxHp=Math.round(player.maxHp*1.1);player.hp=Math.min(player.maxHp,player.hp+player.maxHp-vorher);}}},
   ];
   if(regularTreeFrozen){
     n.push(
