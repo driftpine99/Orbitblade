@@ -963,6 +963,107 @@ fertige Ursachenmessung.
   Gegnerdichte oder Wirkungsbalance wird nur verändert, wenn Messung und Spielgefühl
   zeigen, dass nicht allein die Implementierung das Problem ist.
 
+## Tageslauf, Wellenereignisse, Auslese v3 und Treffermomente (umgesetzt 25.08.2026)
+
+Antwort auf den Nutzersbefund „zu eintönig, man verliert zu schnell den Spaß" und das
+Ziel „täglich spielen wollen". Vier unabhängige Hebel, alle aus vorhandenen Reglern.
+Umsetzung begleitet von einer neuen Agentenstruktur unter `.opencode/` (siehe unten).
+
+### Agententeam (.opencode/)
+
+Vier Rollen als opencode-Agenten plus drei Kommandos: `spielarchitekt` (Entwurf,
+Entscheidungen), `balancer` (Messung am echten Code), `bauer` (Umsetzung in konzept/),
+`pruefer` (Prüfkatalog ohne Schreibrecht). Kommandos: `/runde` (ganze Kette),
+`/pruefung`, `/balance`. Der Node-Harness `tools/sim.js` lädt game.js mit DOM-Stubs
+headless; Messskripte stehen daneben (`mess_tageslauf.js`, `mess_juice.js`,
+`mess_entdecker.js`). Der Bot kauft bewusst keine Baumknoten — Bot-Zeiten sind nur
+relativ vergleichbar, nicht mit Menschen.
+
+### Lauf-RNG mit Zweckströmen
+
+- `laufRnd()` (mulberry32) speist reaktiven Laufinhalt: Gegnerarten, Bosswürfe,
+  Kartenziehung, Spawn-/Repositionswinkel. Gesät wird pro Lauf; der Tageslauf nutzt
+  den Datums-Seed, normale Läufe Zufall.
+- Vollständige Lauf-Determinismus ist bewusst NICHT behauptet: Kill-Timing verschiebt
+  Spawns und damit den Strom. Was geräteunabhängig gleich sein soll, leitet sich
+  indexbasiert über `laufStrom(zweck,index)` vom Seed ab: die Ereignisfolge und die
+  jeweils n-te Kartenziehung. Die erste Auslese eines Laufs ist damit für alle Spieler
+  desselben Tages identisch (Zustand noch leer); später entscheidet die Gewichtung.
+- Inhaltsträger, die kosmetisch bleiben, nutzen weiterhin Math.random (Partikel,
+  Orb-Offsets, Boss-Minion-Winkel, Shake, Audio-Rauschen).
+
+### Tagessignal
+
+- Ein Angebot pro Tag aus `tagesSeed('OB5-'+UTC-Datum)`: Charakter (nur freigeschaltete),
+  zwei Hauptmächte (nur freigeschaltete; Slot 2 nur mit gebautem Werkstattprojekt),
+  je ein Twist und eine Regel. Kein Streak, kein Verfall, kein Loginzwang.
+- Startmenü: violette Karte `start-tagessignal` + Knopf `tages-btn`. Während des
+  Tageslaufs setzt `laufVorgabe` Figur/Slots zentral (`figur()` liest sie), die
+  Hilfsstufe wird auf Standard gesetzt und nach dem Lauf über `beendeTageslaufVorgabe()`
+  zurückgegeben; Bestmarken bleiben je Stufe getrennt.
+- Twists: Geschärfte Klinge (Klinge ×1,3), Strömender Fokus (×2), Leichtfuß (Tempo
+  ×1,15), Beutezug (Beute ×1,5), Fliegender Start (+2 Punkte außerhalb der regulären
+  Ökonomie, wie Startimpuls), Quellwasser (Lebenskugeln ×2).
+- Regeln: Eiliger Schwarm (Gegnertempo ×1,12), Zähe Haut (Gegnerleben ×1,15), Schwere
+  Kronen (Bossleben ×1,2), Dürre (Lebenskugeln ×0,5), Bleiwalzen (Panzer ab Welle 4,
+  Chance 0,38), Enge Auslese (zwei Karten).
+- Faktoren greifen zentral: `curDiff()` für Gegner-/Bosswerte, Klingenschaden an den
+  beiden Schadensstellen, Fokusgewinn im Orbitimpuls, Beute in `killEnemy()`.
+- Lohn 250 ◆ einmal je Kalendertag (`tagesLohnTag`), gezahlt bei Tod UND Sieg sowie
+  beim freiwilligen Beenden; beste Welle je Tag bleibt sieben Tage lang in `save.tage`.
+  Messläufe schreiben nichts. Neue Felder laufen über Defaults; SAVE_VERSION bleibt 9.
+
+### Wellenereignisse
+
+Fünf Slots pro Standardlauf, zwischen die Bosse gelegt (Wellen 6/11/16/21/26, nie
+Bosswelle), Folge indexbasiert aus dem Seed, keine Wiederholung hintereinander. Vier
+Typen: Schwarm (Anzahl ×1,30, Leben ×0,55), Bleiregen (Panzer ab 3, Chance 0,34,
+Durchlass halbiert), Turbulenz (Tempo ×1,20, Beute ×1,6), Meteorschatz (vier Sterne
+um den Spieler, Beute ×1,25). Ansage über `announce()`, Wellentext trägt das Kürzel.
+Kalibriert gegen den Gott-Bot: erste Werte (Schwarm ×1,45/0,62, Blei 0,45) blähten
+den Lauf auf 40 min (Baseline 33,6); nach Korrektur 27,9 — schneller als die Baseline,
+kein Bloat.
+
+### Auslese v3 — gewichtetes Ziehen
+
+Nach Hades-Vorbild zustandsabhängig: unbesessenes Passiv 3,0, besessenes Passiv
+(Verstärkt) 2,4, Modul neu 2,0, Modul Vertiefung 1,5, direkte Verstärkt-Karte ohne
+Besitz 1,4. Simuliert: 40/40 erste Ziehungen lieferten Neu-Fundamente. Die Tagesregel
+„Enge Auslese" deckelt die Kartenzahl vor der Gewichtung.
+
+### Treffermomente
+
+- Hitstop über `hitstopMs` (Deckel 140 ms): Killkette 40 ms, Bossphasenwechsel 90 ms,
+  Boss-Tod 140 ms. In `update()` friert dt=0 die Simulation; Date.now()-Effekte laufen
+  weiter, bei diesen kurzen Fenstern unsichtbar.
+- Killketten: Kills innerhalb von 2 s zählen; jede 15. löst Float „KETTE n", Shake,
+  40 ms Hitstop und +1 Fokus.
+- Klangvariation: Effektklänge erhalten ±3 % Tonhöhenstreuung (`klangVar`), Musik ruft
+  tone() ungestört. Gegen den mechanischen Wiederholungsklang; der grundsätzliche
+  „Ton ist schlecht"-Befund bleibt offen.
+
+### Gemessen (Bot-Maßstab, kein Baumkauf)
+
+| Lauf | vor | nach |
+|---|---|---|
+| Gott, Standard bis Sieg | 33,6 min | **27,9 min** |
+| Sterblich, Standard | Tod Welle 7 / 1,4 min | Tod Welle 5–8 / ~1,7 min |
+| Sterblich, Entdecker | Sieg (~9,3 min, Referenzbot) | Tod Welle 20 / 9,2 min |
+
+Der schwächere neue Bot verliert früher als der alte Referenzbot; Richtung und
+Abstand der Hilfsstufen bleiben intakt (Entdecker deutlich weiter als Standard).
+Determinismusprüfung: Signal, Startkomposition (24 Typwürfe), Ereignisfolge und erstes
+Kartenangebot über frische Ladevorgänge identisch; bei unterschiedlichem Spieltempo
+bleibt die Ereignisfolge gleich. Tageslohn genau einmal je Tag.
+
+### Offen
+
+- Echte Geräte-/Touchprobe der Startmenü-Erweiterungen und des Tageslaufs steht aus;
+  Bot-Anker sind relativ, keine Menschenmessung.
+- Sound-Grundproblem (Spieltest 17.08.) ist damit nur gemildert, nicht gelöst.
+- Endlos ab Welle 31 läuft der Ereignisrhythmus weiter ((wave−1)%5); ob das dort
+  angenehm bleibt, muss ein echter Endloslauf zeigen.
+
 ## Nächste Arbeitsreihenfolge
 
 1. Performancepunkt 1 ist abgeschlossen; der Orbitauftrag ist umgesetzt.
