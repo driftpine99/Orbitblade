@@ -195,7 +195,15 @@ function diffAt(w){
     bossWarn:   Math.max(1.35, L(1.70,1.35)),
   };
 }
-function curDiff(){ return diffAt(wave); }
+function curDiff(){
+  const d=diffAt(wave);
+  /* Tageslauf-Regeln greifen zentral hier statt an jeder Gegnerstelle —
+     so kann eine Regel keine Stelle vergessen werden. */
+  if(tagesFaktoren.gegnerTempo) d.enemySpeed*=tagesFaktoren.gegnerTempo;
+  if(tagesFaktoren.gegnerLeben) d.enemyHp*=tagesFaktoren.gegnerLeben;
+  if(tagesFaktoren.bossLeben)   d.bossHp*=tagesFaktoren.bossLeben;
+  return d;
+}
 
 /* ============================================================
    PROGRESSION — Skins, Meilensteine, Abzeichen, Speicherstand
@@ -370,7 +378,197 @@ const FIGUREN = {
                staerke:'Leerenhunger · fehlendes Leben verstärkt Volltreffer und Orbit',
                fuer:'Hohes Risiko, aggressives Kreisen und starke Klingen-Kombos' },
 };
-function figur(){ return isAvailable('figur', save.figur)? FIGUREN[save.figur] : FIGUREN.held; }
+function figur(){
+  const wahl = laufVorgabe ? laufVorgabe.figur : save.figur;
+  return isAvailable('figur', wahl)? FIGUREN[wahl] : FIGUREN.held;
+}
+
+/* ---- Tageslauf, Lauf-RNG, Wellenereignisse und Treffermomente ----
+   Antwort auf „zu eintönig, der Spaß vergeht zu schnell": drei unabhängige
+   Quellen für Abwechslung plus ein Grund, morgen wieder zu starten.
+   - Tagessignal: ein festgelegter Lauf pro Tag (Charakter + Hauptmacht + je ein
+     Twist und eine Regel), aus einem Datums-Seed gezogen — alle Spieler bekommen
+     am selben Tag dasselbe Angebot. Kein Zwang, kein Streak, kein Login.
+   - Lauf-RNG: der Inhalt eines Laufs (Gegnerarten, Bosswürfe, Karten, Drops)
+     läuft über eine eigene zählwerksgesteuerte Zufallsquelle. Nur so ist der
+     Tageslauf zwischen zwei Geräten vergleichbar; im normalen Lauf wird sie mit
+     Zufall gesät.
+   - Ereigniswellen: alle vierte reguläre Welle trägt einen angekündigten Modifikator
+     aus vorhandenen Reglern — kein neues System, nur neue Kombinationen.
+   - Hitstop und Killketten: kurze Zeitlupe in den größten Momenten, Serienzähler
+     mit kleinem Fokuslohn. Alles über die vorhandenen Effektwege (Floats, Shake). */
+var laufVorgabe=null;          // gesetzt, während ein Tageslauf läuft
+var tagesFaktoren={};          // zusammengeführte Faktoren aus Twist+Regel
+var laufEreignis=null, letztesEreignisId='';
+var hitstopMs=0, kettenZahl=0, kettenBis=0;
+var ausleseZiehungen=0;   // fortlaufende Nummer jeder Kartenziehung im Lauf
+const TAGES_LOHN=250;
+
+function mulberry32(a){
+  return function(){
+    a=(a+0x6D2B79F5)|0;
+    let t=Math.imul(a^(a>>>15),1|a);
+    t=(t+Math.imul(t^(t>>>7),61|t))^t;
+    return ((t^(t>>>14))>>>0)/4294967296;
+  };
+}
+let laufRndZustand=1;
+var laufSeedRaw=1;
+function setzeLaufSeed(seed){ laufSeedRaw=(seed>>>0)||1; laufRndZustand=laufSeedRaw; }
+function laufRnd(){
+  let a=laufRndZustand;
+  a=(a+0x6D2B79F5)|0;
+  let t=Math.imul(a^(a>>>15),1|a);
+  t=(t+Math.imul(t^(t>>>7),61|t))^t;
+  laufRndZustand=a;
+  return ((t^(t>>>14))>>>0)/4294967296;
+}
+/* Eigene Zufallsströme pro Zweck: Der reaktive Kampf (Kills verschieben Spawns)
+   verschiebt einen einzelnen Strom — Inhalte, die für alle Spieler am selben Tag
+   gleich sein sollen, leiten sich deshalb indexbasiert vom Tages-Seed ab. */
+function laufStrom(zweck, idx){
+  let h=laufSeedRaw>>>0;
+  const s=zweck+':'+(idx|0);
+  for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); }
+  return mulberry32(h>>>0);
+}
+
+/* Ein Twist verstärkt, eine Regel macht den Tag eigen — beide benutzen nur
+   vorhandene Hebel, damit der Tageslauf nie ein zweites Balancing wird. */
+const TAGES_TWISTS=[
+  { id:'klinge', name:'Geschärfte Klinge', text:'Deine Klinge trifft heute deutlich härter.', faktor:{klinge:1.3} },
+  { id:'fokus', name:'Strömender Fokus', text:'Volltreffer laden deinen Fokus doppelt so schnell.', faktor:{fokus:2} },
+  { id:'tempo', name:'Leichtfuß', text:'Du läufst heute spürbar schneller.', faktor:{tempo:1.15} },
+  { id:'beute', name:'Beutezug', text:'Gegner lassen heute deutlich mehr Fragmente fallen.', faktor:{beute:1.5} },
+  { id:'start', name:'Fliegender Start', text:'Der Lauf beginnt mit zwei freien Orbitpunkten.' },
+  { id:'quelle', name:'Quellwasser', text:'Lebenskugeln erscheinen heute doppelt so oft.', faktor:{hpOrb:2} },
+];
+const TAGES_REGELN=[
+  { id:'eilig', name:'Eiliger Schwarm', text:'Gegner sind heute etwas schneller.', faktor:{gegnerTempo:1.12} },
+  { id:'zah', name:'Zähe Haut', text:'Gegner halten heute etwas länger durch.', faktor:{gegnerLeben:1.15} },
+  { id:'kronen', name:'Schwere Kronen', text:'Bossgegner haben heute mehr Leben.', faktor:{bossLeben:1.2} },
+  { id:'duerre', name:'Dürre', text:'Lebenskugeln sind heute selten.', faktor:{hpOrb:0.5} },
+  { id:'bleiwalze', name:'Bleiwalzen', text:'Gepanzerte Gegner kommen früh und häufig.', panzer:{ab:4, chance:0.38} },
+  { id:'eng', name:'Enge Auslese', text:'Die Auslese bietet heute nur zwei Karten.', ausleseKarten:2 },
+];
+
+/* Ereigniswellen: kurz angekündigte Modifikatoren für genau eine Welle.
+   Bewusst nur vier, alle aus vorhandenen Reglern — Abwechslung statt System.
+   Die Zahlen sind gegen den Gott-Lauf kalibriert: mehr Volumen oder mehr Panzer
+   haben die Laufzeit messbar aufgebläht (40 statt 34 min im Bot-Maßstab). */
+const EREIGNISSE=[
+  { id:'schwarm', name:'Der Schwarm', kurz:'SCHWARM', accent:'#4de0a0',
+    text:'Mehr Gegner — aber jeder fällt fast von allein.', countMult:1.30, hpMult:0.55 },
+  { id:'blei', name:'Bleiregen', kurz:'BLEI', accent:'#9aa7b8',
+    text:'Panzer überall. Volltreffer durchschlagen hier doppelt so gut.',
+    panzerChance:0.34, panzerAb:3, durchlassMult:0.5 },
+  { id:'turbulenz', name:'Turbulenz', kurz:'TURBULENZ', accent:'#ffd257',
+    text:'Alles ist schneller — und die Beute lohnt sich.', speedMult:1.20, beuteMult:1.6 },
+  { id:'schatz', name:'Meteorschatz', kurz:'SCHATZ', accent:'#c77dff',
+    text:'Träge Träger, reiche Fracht. Sammel, was fliegt!', schatz:true, beuteMult:1.25 },
+];
+
+function tagesDatum(){ return new Date().toISOString().slice(0,10); }
+function tagesSeed(datum){
+  const s='OB5-'+datum;
+  let h=2166136261>>>0;
+  for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); }
+  return h>>>0;
+}
+/* Der Tagesvorschlag hängt nur am Datum und an den Freischaltungen: Am selben Tag
+   sehen zwei Spieler mit gleichem Stand dasselbe Signal. */
+function tagesSignal(datum){
+  datum=datum||tagesDatum();
+  const rng=mulberry32(tagesSeed(datum));
+  const figuren=['held'];
+  if(save.unlocks['figur:konstrukt']) figuren.push('konstrukt');
+  const fig=figuren[Math.floor(rng()*figuren.length)];
+  const frei=ACTIVE_IDS.filter(abilUnlocked);
+  const m1=frei[Math.floor(rng()*frei.length)]||'wirbel';
+  const rest=frei.filter(id=>id!==m1);
+  const m2=rest.length? rest[Math.floor(rng()*rest.length)] : null;
+  const twist=TAGES_TWISTS[Math.floor(rng()*TAGES_TWISTS.length)];
+  const regel=TAGES_REGELN[Math.floor(rng()*TAGES_REGELN.length)];
+  return { datum, seed:tagesSeed(datum), figur:fig, slot1:m1, slot2:m2, twist, regel };
+}
+function baueTagesFaktoren(){
+  tagesFaktoren={};
+  if(laufVorgabe&&laufVorgabe.twist&&laufVorgabe.twist.faktor) Object.assign(tagesFaktoren,laufVorgabe.twist.faktor);
+  if(laufVorgabe&&laufVorgabe.regel&&laufVorgabe.regel.faktor) Object.assign(tagesFaktoren,laufVorgabe.regel.faktor);
+}
+function tagesFaktor(key){ return tagesFaktoren[key]||1; }
+function beuteFaktor(){ return tagesFaktor('beute')*((laufEreignis&&laufEreignis.beuteMult)||1); }
+
+function startTageslauf(){
+  const sig=tagesSignal();
+  sig.altHilfe=save.hilfe;
+  laufVorgabe=sig;
+  save.hilfe='standard';        // der Tageslauf zählt auf Standard — Bestmarken bleiben getrennt
+  resetGame();
+}
+/* Ende eines Tageslaufs: die Hilfsstufe des Spielers wird zurückgegeben, damit der
+   Tageslauf sie nicht dauerhaft überschreibt. */
+function beendeTageslaufVorgabe(){
+  if(laufVorgabe&&laufVorgabe.altHilfe) save.hilfe=laufVorgabe.altHilfe;
+  laufVorgabe=null;
+  renderTagessignal();
+}
+function tagesAbschluss(){
+  if(!laufVorgabe||messlauf) return '';
+  save.tage=save.tage||{};
+  const tag=laufVorgabe.datum, vor=save.tage[tag]||0;
+  if(wave>vor) save.tage[tag]=wave;
+  const schluessel=Object.keys(save.tage).sort();
+  while(schluessel.length>7) delete save.tage[schluessel.shift()];   // nur die letzten sieben Tage bleiben
+  let text='';
+  if(save.tagesLohnTag!==tag){
+    save.tagesLohnTag=tag; save.stars+=TAGES_LOHN;
+    text=' · +'+TAGES_LOHN+' ◆';
+    pushToast('Tageslauf geschafft'+text);
+  } else {
+    pushToast('Tageslauf: beste Welle '+save.tage[tag]);
+  }
+  persist();
+  return text;
+}
+function renderTagessignal(){
+  const karte=document.getElementById('start-tagessignal');
+  const knopf=document.getElementById('tages-btn');
+  if(!karte&&!knopf) return;
+  const sig=tagesSignal();
+  const best=((save.tage||{})[sig.datum])||0;
+  const machtnamen=[sig.slot1,sig.slot2].filter(Boolean).map(id=>ABILITIES[id]?ABILITIES[id].name:id).join(' + ');
+  if(karte){
+    karte.innerHTML=
+      '<span class="orbitauftrag-label">Tageslauf · '+sig.datum+'</span>'+
+      '<div class="orbitauftrag-kopf"><b>'+FIGUREN[sig.figur].name+'</b><span>'+(best>0?'Beste Welle '+best:'offen')+'</span></div>'+
+      '<span class="orbitauftrag-figur">'+machtnamen+'</span>'+
+      '<p>✦ '+sig.twist.name+' — '+sig.twist.text+'<br>⚑ '+sig.regel.name+' — '+sig.regel.text+'</p>'+
+      '<div class="orbitauftrag-fuss"><span>'+(best>0? 'Erneut spielen erlaubt':'Lohn: '+TAGES_LOHN+' ◆ für den ersten Abschluss heute')+'</span></div>';
+  }
+  if(knopf) knopf.textContent='⚡ Tageslauf'+(best>0?' · Welle '+best:'');
+}
+function waehleWellenEreignis(){
+  laufEreignis=null;
+  if(wave%5===0) return;                                   // nie im Bosskampf
+  /* Fünf Ereignisse pro Standardlauf, gleichmäßig zwischen die Bosse gelegt:
+     6/11/16/21/26 — kollidiert nie mit dem Bossrhythmus 5/10/15/20/25/30. */
+  if(wave>=6 && (wave-1)%5===0){
+    const nr=(wave-6)/5;
+    const pool=EREIGNISSE.filter(e=>e.id!==letztesEreignisId);
+    // Indexbasiert aus dem Tages-Seed: dieselbe Ereignisfolge für alle,
+    // unabhängig vom Spieltempo.
+    laufEreignis=pool[Math.floor(laufStrom('ereignis',nr)()*pool.length)];
+    letztesEreignisId=laufEreignis.id;
+  }
+}
+function streueMeteorschatz(){
+  for(let i=0;i<4;i++){
+    const a=laufRnd()*Math.PI*2, rr=120+laufRnd()*160;
+    dropStar(player.x+Math.cos(a)*rr, player.y+Math.sin(a)*rr, Math.round(12*beuteFaktor()));
+  }
+}
+function hitstop(ms){ hitstopMs=Math.min(140,hitstopMs+ms); }
 
 // Freischaltbare Fähigkeiten (Metadaten für Gating + Anzeige + Buff-Stufen)
 // slot: 'active' (2 Slots, im Codex umrüstbar) | 'passive' (max 5) | 'weapon' (Waffen-Upgrade)
@@ -619,7 +817,8 @@ const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin
   // Mit welchen aktiven Mächten jeder Lauf beginnt. Vorher war das fest verdrahtet,
   // sodass später freigeschaltete Mächte nie am Start standen.
   startMaechte:{ slot1:'wirbel', slot2:'stoss' },
-  klingenform:'strahl', figur:'held', orbitauftrag:null, orbitauftragTauschTag:'', orbitauftragLetzterId:'' };
+  klingenform:'strahl', figur:'held', orbitauftrag:null, orbitauftragTauschTag:'', orbitauftragLetzterId:'',
+  tage:{}, tagesLohnTag:'' };
 let save = clone(DEFAULT_SAVE);
 
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
@@ -793,6 +992,10 @@ function initAudio(){
 }
 function tone(freq,dur,type,vol,when,slideTo){
   if(!audioCtx) return;
+  /* Leichte Tonhöhenstreuung für Effektklänge: derselbe Treffer klingt nie exakt
+     gleich — wiederholte Kills wirken weniger mechanisch. Musik ruft tone()
+     mit klangVar=0 und bleibt sauber gestimmt. */
+  if(klangVar!==0) freq=Math.max(30,freq*(1+klangVar));
   const t0=audioCtx.currentTime+(when||0);
   const o=audioCtx.createOscillator(), g=audioCtx.createGain();
   o.type=type||'square'; o.frequency.setValueAtTime(freq,t0);
@@ -888,10 +1091,11 @@ const SFX={
   focus:   ()=>{tone(360,.16,'sine',.08,0,720);tone(1080,.22,'triangle',.065,.04,1620);tone(2160,.12,'sine',.035,.1,1320);},
 };
 const SFX_LIMIT={bladeHit:75,sweet:90,armor:160,laserPlayer:70,laserEnemy:90,kill:45}, sfxLast={};
+let klangVar=0;   // aktuelle Tonhöhenstreuung (nur innerhalb eines sfx-Aufrufs gesetzt)
 function sfx(name){
   if(save.muted||!audioCtx)return;
   const now=performance.now(),limit=SFX_LIMIT[name]||0;if(limit&&now-(sfxLast[name]||0)<limit)return;sfxLast[name]=now;
-  const f=SFX[name];if(f){try{f();}catch(e){}}
+  const f=SFX[name];if(f){try{ klangVar=Math.random()*0.06-0.03; f(); }catch(e){}finally{ klangVar=0; }}
 }
 function updateMuteBtn(){ const b=document.getElementById('mute-btn'); if(b) b.textContent=save.muted?'🔇':'🔊'; }
 function toggleMute(){ save.muted=!save.muted; persist(); updateMuteBtn(); if(!save.muted){ initAudio(); if(audioCtx&&audioCtx.state==='suspended') audioCtx.resume(); } setMusicLevel(); }
@@ -1293,7 +1497,7 @@ function orbitSweetPulse(){
       if(sfx) sfx('counter');
     }
   }
-  fokus=Math.min(fokusZiel(),fokus+2);
+  fokus=Math.min(fokusZiel(), fokus+Math.round(2*tagesFaktor('fokus')));
   if(fokus>=fokusZiel()) fokusVoll('orbit');
   return true;
 }
@@ -1881,9 +2085,34 @@ function ausleseTopf(){
 }
 // Bis zu drei verschiedene Karten, ohne Gewichtung; ein kleinerer Topf zeigt entsprechend
 // weniger. Prüfstufe „Knappe Wahl" senkt das Ziel auf zwei (hilfe().ausleseKarten).
+/* Gewichtetes Ziehen (Auslese v3): Fundamente zuerst — eine noch nicht getragene
+   Fähigkeit wiegt schwerer als ihre Vertiefung. So wird die Wahl eher eine
+   Richtung als ein Zufallsstapel. Nach Hades-Vorbild zustandsabhängig, gemessen
+   über den Topf: 11 Dinge tragen sich am Ende zu rund zwei Dritteln. */
+function ausleseGewicht(karte){
+  const istModul=!!AUSLESE_MODULE[karte.id];
+  const besitzt=istModul? (runModule[karte.id]||0) : (runAbilities[karte.id]||0);
+  if(istModul) return besitzt? 1.5 : 2.0;
+  return karte.kind==='verstaerkt'? (besitzt? 2.4 : 1.4) : (besitzt? 2.4 : 3.0);
+}
 function ausleseZiehen(){
-  const pool=ausleseTopf(), gezogen=[], ziel=hilfe().ausleseKarten||3;
-  while(pool.length && gezogen.length<ziel) gezogen.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
+  const pool=ausleseTopf();
+  // Tages-Regel „Enge Auslese": zwei Karten statt drei.
+  const ziel=Math.min(hilfe().ausleseKarten||3, (laufVorgabe&&laufVorgabe.regel&&laufVorgabe.regel.ausleseKarten)||99);
+  const gezogen=[];
+  /* Jede Ziehung bekommt ihren eigenen, fortlaufend nummerierten Strom vom
+     Lauf-Seed. Die erste Auslese eines Laufs ist damit für alle Spieler am selben
+     Tag identisch — später weicht der Zustand (getragene Karten) ohnehin auseinander,
+     und genau dafür ist die Gewichtung da. */
+  const zufall=laufStrom('karte', ++ausleseZiehungen);
+  while(pool.length && gezogen.length<ziel){
+    let summe=0;
+    for(const k of pool) summe+=ausleseGewicht(k);
+    let r=zufall()*summe, idx=0;
+    for(; idx<pool.length; idx++){ r-=ausleseGewicht(pool[idx]); if(r<=0) break; }
+    if(idx>=pool.length) idx=pool.length-1;
+    gezogen.push(pool.splice(idx,1)[0]);
+  }
   return gezogen;
 }
 function auslesePreis(){ return AUSLESE_PREISE[Math.min(ausleseBezahlteWuerfe,AUSLESE_PREISE.length-1)]; }
@@ -2032,7 +2261,7 @@ function newPlayer(){
 }
 player = newPlayer();
 window.playerRef = player;
-window.addEventListener('load',()=>{ player = newPlayer(); window.playerRef = player; if(state==='menu'){ sorgeOrbitauftrag(); updateHUD(); renderOrbitauftrag(); } });
+window.addEventListener('load',()=>{ player = newPlayer(); window.playerRef = player; if(state==='menu'){ sorgeOrbitauftrag(); updateHUD(); renderOrbitauftrag(); renderTagessignal(); } });
 function resetGame(){
   // Erst jetzt, vor dem nächsten Lauf, folgt auf einen erledigten Auftrag ein neuer.
   sorgeOrbitauftrag();
@@ -2041,22 +2270,30 @@ function resetGame(){
   activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}; phaserCd=0; dmgBoostUntil=0; shieldUntil=0; moveBoostUntil=0; stossWaveT=0; wirbelT=0; spinHitTimer=0;
   bonuses={dmg:0, speed:0, range:0, fireRate:0, maxHp:0, blades:1, regen:0};
   counterCd=0; shards=[]; bossActive=false; bossHitClean=true; flashUntil=0; helferOverdriveUntil=0;
-  const vw=startMaechte();
-  activeSlot1=vw.slot1; activeSlot2 = hasSlot2()? vw.slot2 : null;
+  const vw = laufVorgabe ? { slot1:laufVorgabe.slot1, slot2:laufVorgabe.slot2 } : startMaechte();
+  activeSlot1=vw.slot1; activeSlot2 = hasSlot2()? (vw.slot2||null) : null;
   runAbilities={}; runEvolutions={}; runTree={}; skillPoints=0; treeFlags={}; treeUndo=null; runModule={};
   regularPointsEarned=0; regularTreeFrozen=false; echoPoints=0; echoMilestones=0; treeReturnState='playing';
   bombs=[]; pShots=[]; powerFields=[]; powerEchoes=[]; novaFx=0; novaEcho=0; barriere=0; bossHazards=[];
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
   wiederaufBenutzt=false; nachhallZaehler=0; splitterSweetZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false;
   taktschlagZaehler=0; nachfassenBereit=false;
+  // Tageslauf und Ereigniswellen: Zustand gehört immer zum Lauf, nie zum letzten.
+  setzeLaufSeed(laufVorgabe ? laufVorgabe.seed : (Math.random()*4294967296));
+  baueTagesFaktoren();
+  laufEreignis=null; letztesEreignisId=''; hitstopMs=0; kettenZahl=0; kettenBis=0;
   // Auslese ist laufgebunden: sonst wirkt der Freiwurf, die Preissteigerung oder eine
   // schon "verbrauchte" Welle aus dem vorigen Lauf im neuen Lauf nach.
   ausleseKarten=[]; letzteAusleseWelle=0; ausleseReturnState='playing'; ausleseFreiwurfBenutzt=false; ausleseBezahlteWuerfe=0; ausleseOffenSeit=0;
+  ausleseZiehungen=0;
   swordAngle=0; orbitRoundSweet=false; orbitRoundLight=false; orbitRoundDistance=0; orbitLastX=player.x; orbitLastY=player.y;
   waechterLadung=false; sonnenSerie=0; sonnenTempoUntil=0; praezSerie=0; kronenMachtId=''; kronenMachtUntil=0; kronenZielklinge=0;
   toasts=[]; banner=null;
   tutStep=0; tutT=0; tutorialCircleUntil=0; tutorialBladeUntil=0; unlockFx=0; combatResumeUntil=0; combatResumeStep=''; setzeHelfer();
   if(metaLevel('startimpuls')>0) skillPoints=1;
+  // Tages-Twist „Fliegender Start": zwei zusätzliche Punkte, wie beim Startimpuls
+  // außerhalb der regulären Ökonomie — ein guter Tag darf mächtig beginnen.
+  if(laufVorgabe&&laufVorgabe.twist&&laufVorgabe.twist.id==='start') skillPoints+=2;
   /* Messlauf-Einstieg (nur mit ?perf=1): direkt in die fragliche Welle springen und
      Orbitpunkte mitgeben, damit ein realistischer Build gebaut werden kann. Ohne das
      wäre Welle 26 nur mit einem 20-Minuten-Lauf erreichbar und damit nicht wiederholbar. */
@@ -2076,11 +2313,17 @@ function hideAll(){
 }
 function startWave(){
   const d=curDiff();
-  const count=Math.max(3, Math.floor((CONFIG.wave.baseCount + wave*CONFIG.wave.perWave)*d.enemyCount*hilfe().gegner));
+  waehleWellenEreignis();   // jede vierte reguläre Welle trägt ein Ereignis — Abwechslung ohne neues System
+  const ereignisCount=(laufEreignis&&laufEreignis.countMult)||1;
+  const count=Math.max(3, Math.floor((CONFIG.wave.baseCount + wave*CONFIG.wave.perWave)*d.enemyCount*hilfe().gegner*ereignisCount));
   waveEnemiesToSpawn = (wave%5===0)? 1 : count;
   waveSpawned=0; spawnTimer=0;
-  waveText.textContent='Welle '+wave;
+  waveText.textContent='Welle '+wave+(laufEreignis?' · '+laufEreignis.kurz:'');
   if(wave%5===0) spawnBoss();                                  // Boss-Welle (mit eigener Ansage)
+  else if(laufEreignis){
+    announce(laufEreignis.name, laufEreignis.text, laufEreignis.accent);
+    if(laufEreignis.schatz) streueMeteorschatz();
+  }
   else if(wave>1){ const b=biomeForWave(); announce('Welle '+wave, (wave-1)%5===0? b.name : '', b.accent); }  // Biome-Name, wenn Zone wechselt
   recordBest();
   checkMilestones();   // Erreichen der Welle genügt — Freischaltungen sollen ankommen
@@ -2149,7 +2392,7 @@ function pickBossAbility(wave, leit){
     if(leit && erlaubt.includes(leit)) gewichtet.push(leit);
   } else if(leit && erlaubt.includes(leit)) gewichtet.push(leit, leit);
   const list=gewichtet.filter(a=>a!==lastBossAbility);
-  const a=list[Math.floor(Math.random()*list.length)] || leit || 'shock';
+  const a=list[Math.floor(laufRnd()*list.length)] || leit || 'shock';
   lastBossAbility=a;
   return a;
 }
@@ -2235,6 +2478,7 @@ function fireBossAbility(en){
 // Boss besiegt -> Etappe geschafft: Abzeichen, Freischaltung, Statistik
 function onBossDefeated(){
   bossActive=false;
+  hitstop(140);   // der Boss-Tod ist der größte Moment des Laufs — kurz stehen lassen
   bossHazards=[];   // sonst blieben Brandspuren nach dem Kampf sichtbar liegen
   // Übrige Brutknoten überleben ihren Boss nicht — sonst stünde eine sinnlose Heilquelle
   // weiter im Feld. hp=0 statt Splice: die aufrufende Sweep-Schleife entfernt tote
@@ -2278,16 +2522,21 @@ function makeEnemy(type){
   const diff=curDiff();
   const w=canvas.clientWidth||window.innerWidth,h=canvas.clientHeight||window.innerHeight;
   const spawnDist=Math.hypot(w,h)/2 + 60;
-  const ang=Math.random()*Math.PI*2;
+  const ang=laufRnd()*Math.PI*2;
   const x=player.x+Math.cos(ang)*spawnDist, y=player.y+Math.sin(ang)*spawnDist;
   // Leben nach Schwierigkeit: Bosse bekommen einen eigenen, stärkeren Nachlass
   const hpMult = (type==='boss' ? (diff.bossHp!==undefined?diff.bossHp:1) : (diff.enemyHp!==undefined?diff.enemyHp:1));
-  const hp = Math.max(1, Math.round(t.hp*scale*hpMult));
+  let hp = Math.max(1, Math.round(t.hp*scale*hpMult));
   // Bosse zusätzlich verlangsamt UND hart gedeckelt: der Spieler muss dem Gefahrenband
   // in JEDER Welle entkommen können. Die Bedrohung kommt aus den Fähigkeiten (Ramme,
   // Minions, Spiralen), nicht aus reinem Hinterherlaufen.
   let spd = t.speed*diff.enemySpeed*(type==='boss' ? (diff.bossSpeed!==undefined?diff.bossSpeed:1) : 1);
   if(type==='boss') spd = Math.min(spd, CONFIG.playerBaseSpeed*0.6);
+  // Ereigniswellen verändern nur normale Gegner — Bosse behalten ihre geprüfte Härte.
+  if(type!=='boss'&&laufEreignis){
+    if(laufEreignis.hpMult) hp=Math.max(1,Math.round(hp*laufEreignis.hpMult));
+    if(laufEreignis.speedMult) spd*=laufEreignis.speedMult;
+  }
   return { type, x,y, hp, maxHp:hp, dmg:Math.round(t.dmg*dScale*diff.enemyDmg), speed:spd, radius:t.radius, color:t.color, panzer:!!t.panzer, hitCd:0, bossTimer:0, shootRange:t.shootRange||0, chargeT:0, shootCd:0, jagdPhase:'an', bossPhase:'', ability:'', ramT:0, ramRecoverT:0, shockFx:0, warnT:0,
            phase2:false, phaseT:0, hpDavor:0, schildT:0, schildDir:0, schildHitCd:0, brandTick:0 };
 }
@@ -2298,17 +2547,21 @@ function randomEnemyType(){
   const exotic = d.enemyCount>=1.2 ? 0.28 : (d.enemyCount<=0.8 ? 0.10 : 0.18);
   // Panzer erscheinen ab der eingestellten Welle — auf „Meister" deutlich früher.
   // Sie sind der Grund, warum Positionieren spät im Lauf wieder zählt.
-  const panzerAb = hilfe().panzerAb || CONFIG.panzerAbWelle;
+  // Tages-Regel und Bleiregen-Ereignis verschieben Welle und Häufigkeit nach oben.
+  const panzerAb = (laufVorgabe&&laufVorgabe.regel&&laufVorgabe.regel.panzer&&laufVorgabe.regel.panzer.ab)
+    || (laufEreignis&&laufEreignis.panzerAb) || hilfe().panzerAb || CONFIG.panzerAbWelle;
+  const panzerChance = (laufEreignis&&laufEreignis.panzerChance)
+    || (laufVorgabe&&laufVorgabe.regel&&laufVorgabe.regel.panzer&&laufVorgabe.regel.panzer.chance) || 0.22;
   // Die Gewichte werden nacheinander vom selben Zufallsraum abgezogen. Vorher
   // blockierte „Panzer" alle kleineren Schwellen: Exploder erschienen ab Welle 12
   // gar nicht mehr und Jäger fast nie.
-  let r=Math.random();
-  if(wave>=panzerAb){ if(r<0.22) return 'panzer'; r-=0.22; }
+  let r=laufRnd();
+  if(wave>=panzerAb){ if(r<panzerChance) return 'panzer'; r-=panzerChance; }
   const exploderChance=wave>=8 ? exotic*0.45 : 0;
   if(r<exploderChance) return 'exploder'; r-=exploderChance;
   const jaegerChance=wave>=6 ? exotic : 0;
   if(r<jaegerChance) return 'jaeger';
-  r=Math.random();
+  r=laufRnd();
   if(wave<3) return r<0.75? 'drohne':'soldat';   // frühe Wellen: nur leichte Gegner
   if(r<0.40) return 'drohne';
   if(r<0.68) return 'soldat';
@@ -2436,6 +2689,8 @@ document.getElementById('resume-btn').addEventListener('click',resumeGame);
    sondern lassen sich absichtlich töten — das ist für alle schlechter.
    Die Rückfrage kommt nur, wenn wirklich etwas auf dem Spiel steht. */
 function laufBeenden(){
+  tagesAbschluss();        // auch ein freiwilliges Ende zählt für den Tageslauf
+  beendeTageslaufVorgabe();
   bucheFragmente();
   state='menu'; setMusicLevel();
   updateTreeButton();
@@ -2804,6 +3059,7 @@ wendeBedienungAn();
    festgelegt werden, muss der Weg dorthin außerdem offensichtlich sein. */
 function zumHauptmenue(){
   overlayOver.classList.add('hidden');
+  beendeTageslaufVorgabe();
   refreshMenuVisibility();
   document.getElementById('overlay-start').classList.remove('hidden');
   state='menu'; setMusicLevel();
@@ -2818,6 +3074,8 @@ document.getElementById('sieg-menue').addEventListener('click',()=>{
 });
 document.getElementById('wieder-btn').addEventListener('click',()=>resetGame());
 document.getElementById('start-btn').addEventListener('click',resetGame);
+document.getElementById('tages-btn').addEventListener('click',startTageslauf);
+renderTagessignal();
 function openHangar(){
   openMetaShop('start');
 }
@@ -3556,8 +3814,8 @@ function killEnemy(en,i){
     }
     spawnParticles(en.x,en.y,'#4de0a0',8); if(sfx)sfx('minionDie'); return;
   }
-  dropStar(en.x,en.y, CONFIG.enemyTypes[en.type].star);
-  player.xp+=laufXp(CONFIG.enemyTypes[en.type].xp);
+  dropStar(en.x,en.y, Math.round(CONFIG.enemyTypes[en.type].star*beuteFaktor()));
+  player.xp+=laufXp(CONFIG.enemyTypes[en.type].xp)*beuteFaktor();
   if(treeFlags.leerenHeilung && player.hp<player.maxHp){
     const verwundet=1-player.hp/player.maxHp;
     const heilung=player.maxHp*treeFlags.leerenHeilung*(treeFlags.satterAbgrund && verwundet>.45?1.8:1);
@@ -3570,15 +3828,25 @@ function killEnemy(en,i){
     if(player.hp<player.maxHp){ player.hp=Math.min(player.maxHp, player.hp+heal); pushFloat(player.x,player.y-26,'+'+Math.round(heal)+' HP','#4de0a0'); }
   }
   killCount++;
+  // Killkette: Serien innerhalb von zwei Sekunden. Alle 15 ein kleiner Moment —
+  // kurze Zeitlupe, Fokus, Float — damit Serien sich anfühlen statt nur zu zählen.
+  const jetztMs=Date.now();
+  kettenZahl = jetztMs<kettenBis ? kettenZahl+1 : 1;
+  kettenBis=jetztMs+2000;
+  if(kettenZahl%15===0){
+    pushFloat(player.x,player.y-56,'KETTE '+kettenZahl,'#ffd257',1.25);
+    hitstop(40); shake=Math.max(shake,2.5);
+    fokus=Math.min(fokusZiel(), fokus+1);
+  }
   let dropped=false;
   if(en.type==='boss'){ dropOrb(en.x,en.y,true); dropped=true; }
   else if(en.type==='schwer'){ dropOrb(en.x,en.y,false); dropped=true; }
-  else if(killCount>=CONFIG.xpOrb.pity || Math.random()<CONFIG.xpOrb.chance){ dropOrb(en.x,en.y,false); dropped=true; }
+  else if(killCount>=CONFIG.xpOrb.pity || laufRnd()<CONFIG.xpOrb.chance){ dropOrb(en.x,en.y,false); dropped=true; }
   if(dropped) killCount=0;
   // Lebenskugeln unabhängig davon, mit eigenem Pity-Zähler
   hpKillCount++;
   const hpOrbAllowed=(player.hp < player.maxHp) || (treeFlags.waechter && !waechterLadung);
-  if(hpOrbAllowed && (hpKillCount>=CONFIG.hpOrb.pity || Math.random()<CONFIG.hpOrb.chance)){
+  if(hpOrbAllowed && (hpKillCount>=CONFIG.hpOrb.pity || laufRnd()<CONFIG.hpOrb.chance*tagesFaktor('hpOrb'))){
     dropHpOrb(en.x,en.y); hpKillCount=0;
   }
   spawnParticles(en.x,en.y,en.color,en.type==='boss'?24:10);
@@ -3831,6 +4099,7 @@ function sieg(){
     if(n>(save.pruefFrei||0)){ save.pruefFrei=n; neuFrei=PRUEFSTUFEN[n-1]; }
   }
   const verdient=bucheFragmente();
+  const tagesLohn=tagesAbschluss();
   const ersterSieg=!save.gewonnen;
   save.gewonnen=true; save.endlosFrei=true; persist();
   document.getElementById('sieg-text').innerHTML=
@@ -3839,7 +4108,8 @@ function sieg(){
     `Level ${player.level} · Orbitpfad abgeschlossen`+
     (finalePunkte? `<br><b style="color:var(--gold)">+${finalePunkte} Finale-${finalePunkte===1?'Punkt':'Punkte'}</b> · Orbit jetzt abschließen` : '')+
     (neuFrei? `<br><b style="color:var(--gold)">${neuFrei.name} freigeschaltet</b> · ${neuFrei.kurz}` : '')+
-    (verdient>0? `<br><b style="color:var(--gold)">+${verdient} ◆</b> Fragmente` : '');
+    (verdient>0? `<br><b style="color:var(--gold)">+${verdient} ◆</b> Fragmente` : '')+
+    (tagesLohn? `<br><b style="color:var(--accent)">Tageslauf geschafft${tagesLohn}</b>` : '');
   hideAll();
   document.getElementById('overlay-sieg').classList.remove('hidden');
   renderOrbitauftrag();
@@ -3874,11 +4144,13 @@ function gameOver(){
   setMusicLevel();
   updateTreeButton();
   recordBest();
+  const tagesLohn=tagesAbschluss();
   const earned=bucheFragmente();
   const best=bestFuer();
   document.getElementById('gameover-stats').innerHTML=
     `Erreicht: <b>Welle ${wave}</b> · Level ${player.level}<br>`+
     (earned>0? `<b style="color:var(--gold)">+${earned} ◆</b> Fragmente · ${save.stars} ◆ insgesamt<br>`:'')+
+    (tagesLohn? `<b style="color:var(--accent)">Tageslauf geschafft${tagesLohn}</b><br>`:'')+
     `<span style="color:var(--muted)">Bestmarke: Welle ${best}</span>`;
   renderOrbitauftrag();
   overlayOver.classList.remove('hidden');
@@ -3887,6 +4159,11 @@ function gameOver(){
 // Loop
 function update(dt){
   if(state!=='playing') return;
+  /* Hitstop: In den größten Momenten (Ketten, Bosswechsel) steht die Simulation für
+     wenige Millisekunden still — der Treffer bekommt Gewicht. dt=0 friert alles
+     Simulierte, Date.now()-Effekte laufen weiter, was bei so kurzen Fenstern unsichtbar bleibt. */
+  if(hitstopMs>0){ hitstopMs-=dt; dt=0; }
+  if(kettenZahl&&Date.now()>kettenBis) kettenZahl=0;
   musicTick(dt);
   // cooldowns (aktive Fähigkeiten) + Cooldown-Anzeige auf den Buttons
   for(const id of ACTIVE_IDS) if(activeCd[id]>0) activeCd[id]=Math.max(0, activeCd[id]-dt);
@@ -3903,7 +4180,7 @@ function update(dt){
   if(keys['d']||keys['arrowright']) ix+=1;
   const mlen=Math.hypot(ix,iy);
   if(mlen>1){ ix/=mlen; iy/=mlen; }          // Diagonale nicht schneller; Joystick bleibt analog
-  const pspeed=CONFIG.playerBaseSpeed*(1+bonuses.speed)*(moveBoostUntil>Date.now()?1.25:1)*figur().tempo;
+  const pspeed=CONFIG.playerBaseSpeed*(1+bonuses.speed)*(moveBoostUntil>Date.now()?1.25:1)*figur().tempo*tagesFaktor('tempo');
   player.x += ix*pspeed*dt/1000;
   player.y += iy*pspeed*dt/1000;
   const moved=Math.hypot(player.x-orbitLastX,player.y-orbitLastY);
@@ -3950,7 +4227,7 @@ function update(dt){
     }
     const boost = dmgBoostUntil>Date.now()?2:1;
     const resonanz=treeFlags.resonanzUntil>Date.now()?1.25:1;
-    const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz);
+    const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz * tagesFaktor('klinge'));
     const leerenBonus=figur().id==='konstrukt' ? fehlendesLeben*(0.78+(treeFlags.leerenRisikoBonus||0)) : 0;
     const anglesNow=bladeAngles();
     const sweetTargets=enemies.filter(en=>{
@@ -3966,7 +4243,7 @@ function update(dt){
     // waere kein "naechster" Volltreffer mehr, sondern derselbe.
     const durchschlagVorTick = treeFlags.kronenform==='praez' && !!treeFlags.durchschlagBereit;
     if(tickSweet && !orbitRoundSweet) orbitSweetPulse();
-    const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+leerenBonus) * sweetKlingenFaktor() * (lightTick?1.35:1));
+    const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+leerenBonus) * sweetKlingenFaktor() * (lightTick?1.35:1) * tagesFaktor('klinge'));
     if(lightTick){ orbitRoundDistance=0; orbitRoundLight=false; if(PERF_DEBUG)treeFlags.debugLichtbund=(treeFlags.debugLichtbund||0)+1; pushFloat(player.x,player.y-38,'LICHTBUND ×1.35','#ffd257',1.05); }
     for(const en of enemies){
       const dx=en.x-player.x, dy=en.y-player.y;
@@ -4005,7 +4282,7 @@ function update(dt){
       const durchschlag = runAbilities.schneide>=SPRUNG_STUFE || !!(treeFlags.singularorbit && treffer)
         || !!(runModule.nachfassen>=2 && nachfassenBereit && treffer);
       const abgeprallt = en.panzer && !(en.panzerAusUntil>Date.now()) && !durchschlag;
-      if(abgeprallt) dmg = Math.max(1, Math.round(dmg*hilfe().panzerDurchlass));
+      if(abgeprallt) dmg = Math.max(1, Math.round(dmg*hilfe().panzerDurchlass*((laufEreignis&&laufEreignis.durchlassMult)||1)));
       en.hp -= dmg;
       if(treffer){
         tutorialSweetSpotTreffer();
@@ -4163,7 +4440,7 @@ function update(dt){
     let dx=player.x-en.x, dy=player.y-en.y; let d=Math.hypot(dx,dy);
     // Dauerhaftes Weglaufen soll die Welle nicht einfrieren: Nachzügler rücken nach
     if(d>recycleDist){
-      const a=Math.random()*Math.PI*2, sd=Math.hypot(w,h)/2+40;
+      const a=laufRnd()*Math.PI*2, sd=Math.hypot(w,h)/2+40;
       en.x=player.x+Math.cos(a)*sd; en.y=player.y+Math.sin(a)*sd;
       dx=player.x-en.x; dy=player.y-en.y; d=Math.hypot(dx,dy);
     }
@@ -4237,6 +4514,7 @@ function update(dt){
         const bk=BOSS_KINDS.find(k=>k.id===en.kind)||BOSS_KINDS[0];
         announce(bk.name+' — Phase 2', 'Er wird gefährlicher', en.color||bk.color);
         spawnParticles(en.x,en.y,en.color||bk.color,22); shake=Math.max(shake,10);
+        hitstop(90);   // der Phasenwechsel soll einen Moment stehen bleiben
       }
       // Brutknoten-Heilung: 0,6 % Bossleben/s je lebendem Knoten — der Raumhebel, der
       // reines Ankleben im sicheren Band bestraft. Läuft unabhängig von Stun/phaseT,

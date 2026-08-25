@@ -126,6 +126,12 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .orbitauftrag-leiste{height:5px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.12)}.orbitauftrag-leiste i{display:block;height:100%;background:linear-gradient(90deg,#6ec8ff,#ffd257);transition:width .16s}
 .orbitauftrag-fuss{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:7px;color:var(--gold);font-size:11px;font-weight:750}.orbitauftrag-tausch{min-height:44px;padding:4px 10px;border:1px solid var(--line);border-radius:5px;background:rgba(110,200,255,.1);color:var(--text);font-size:11px;font-weight:700;cursor:pointer}.orbitauftrag-tausch:disabled{opacity:.58;cursor:default}
 .orbitauftrag-karte.erledigt{border-color:rgba(77,224,160,.7)}.orbitauftrag-karte.erledigt .orbitauftrag-kopf b{color:var(--good)}
+/* Tageslauf: gleiche Kartensprache wie der Orbitauftrag, eigener violetter Akzent —
+   er ist ein Angebot für heute, kein dauerhafter Auftrag. */
+.tagessignal-karte{border-color:rgba(199,125,255,.55);box-shadow:0 0 18px rgba(199,125,255,.10)}
+.tagessignal-karte .orbitauftrag-label{color:#dcb5ff}
+.tages-btn{border-color:rgba(199,125,255,.6);color:#e7ccff}
+.tages-btn:active{transform:translateY(1px)}
 
 @media(max-width:520px){
   #hud{gap:6px;padding-left:calc(8px + env(safe-area-inset-left));padding-right:calc(8px + env(safe-area-inset-right))}
