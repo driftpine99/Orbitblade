@@ -440,7 +440,7 @@ const TAGES_TWISTS=[
   { id:'fokus', name:'Strömender Fokus', text:'Volltreffer laden deinen Fokus doppelt so schnell.', faktor:{fokus:2} },
   { id:'tempo', name:'Leichtfuß', text:'Du läufst heute spürbar schneller.', faktor:{tempo:1.15} },
   { id:'beute', name:'Beutezug', text:'Gegner lassen heute deutlich mehr Fragmente fallen.', faktor:{beute:1.5} },
-  { id:'start', name:'Fliegender Start', text:'Der Lauf beginnt mit zwei freien Orbitpunkten.' },
+  { id:'start', name:'Fliegender Start', text:'Der Lauf beginnt mit zwei zusätzlichen Freischaltungen.' },
   { id:'quelle', name:'Quellwasser', text:'Lebenskugeln erscheinen heute doppelt so oft.', faktor:{hpOrb:2} },
 ];
 const TAGES_REGELN=[
@@ -2182,7 +2182,7 @@ resize();
 // Icon-Namen (Strings) werden erst beim Rendern über ICON aufgelöst, damit dieser
 // Block vor newPlayer() stehen darf (newPlayer liest metaValue bereits beim Start).
 const META_UPGRADES=[
-  {gruppe:'Kernsysteme',id:'startimpuls',name:'Startimpuls',desc:'Jeder Lauf beginnt mit 1 zusätzlichen Orbitpunkt.',icon:'tempo',base:700},
+  {gruppe:'Kernsysteme',id:'startimpuls',name:'Startimpuls',desc:'Jeder Lauf beginnt mit 1 zusätzlichen Freischaltung.',icon:'tempo',base:700},
   {gruppe:'Kernsysteme',id:'slot2',name:'Zweite Macht',desc:'Schaltet den zweiten aktiven Werkzeug-Slot frei.',icon:'doppel',base:1000},
   {gruppe:'Kernsysteme',id:'orbitarchiv',name:'Orbitarchiv',desc:'Speichert zwei Startkonfigurationen in der Vorbereitung.',icon:'reichweite',base:1800},
   {gruppe:'Blaupausen',id:'bombenkern',name:'Bombenkern',desc:'Macht die Bombe als Startmacht verfügbar.',icon:'bombe',base:1800,blueprint:['ability','bombe']},
@@ -2754,9 +2754,9 @@ function renderCodex(){
     const lv=runAbilities[partner]||0, kachel=document.createElement('div');
     kachel.className='slot-kachel'+(lv?'':' leer');
     kachel.innerHTML=`<span class="slot-nr">Partner</span>${svg(abilIcon(partner))}<span class="slot-name">${ABILITIES[partner].name}</span>
-      <span class="slot-sub">${lv?'Rang '+lv+' von 3':'Im Orbitbaum noch nicht aktiviert'}</span>${pipsHTML(lv)}`;
+      <span class="slot-sub">${lv?'Rang '+lv+' von 3':'Im Lauf noch nicht freigeschaltet'}</span>${pipsHTML(lv)}`;
     pSlots.appendChild(kachel);
-    if(pHint) pHint.textContent='Dieser Partner gehört fest zu '+ABILITIES[activeSlot1].name+' und entwickelt sich automatisch im Orbitbaum.';
+    if(pHint) pHint.textContent='Dieser Partner gehört fest zu '+ABILITIES[activeSlot1].name+' und entwickelt sich im Lauf von selbst.';
   }
   // Nur die eine relevante Super-Macht zeigen.
   const evoBox=document.getElementById('codex-evo');
@@ -2765,7 +2765,7 @@ function renderCodex(){
     const pair=Object.entries(EVOLUTIONS).find(([,e])=>e.base===activeSlot1), evoId=pair[0], e=pair[1], fertig=runEvolutions[e.base]===evoId;
     const row=document.createElement('div'); row.className='codex-row'+(fertig?' is-evo':' locked');
     row.innerHTML=`${svg(abilIcon(e.base))}<div class="info"><h3>${e.name}</h3><div class="desc">${e.desc}</div>
-      <div class="lv">Im Orbitbaum nach Machtmeisterschaft und ${ABILITIES[e.req].name}</div></div><span class="slot-badge ${fertig?'in':''}">${fertig?'Aktiv':'Ziel'}</span>`;
+      <div class="lv">Im Lauf nach Machtmeisterschaft und ${ABILITIES[e.req].name}</div></div><span class="slot-badge ${fertig?'in':''}">${fertig?'Aktiv':'Ziel'}</span>`;
     evoBox.appendChild(row);
   }
 }
@@ -3905,7 +3905,7 @@ function checkLevelUp(){
     let text;
     if(frei.length) text=frei.join(' · ');
     else if(skillPoints>0) text='Wähle deinen Weg';
-    else text=echoText||'Kein neuer Orbitpunkt';
+    else text=echoText||'Nichts Neues';
     announce('Level '+player.level, text, '#ffd257');
     pushFloat(player.x,player.y-38,frei.length?frei[0]:text,'#ffd257',1.15);
     if(sfx) sfx('levelup');
