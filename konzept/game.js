@@ -6,7 +6,7 @@ const CONFIG = {
   wirbelDamageMult: 1.5,
   stossCooldown: 12000,
   stossRange: 200,
-  stossPush: 120,
+  stossPush: 20,           // 120 schob Gegner aus der Klingenreichweite (72 px) heraus — derselbe Fehler wie einst counterPush 90
   stossDamage: 30,
   bombeCooldown: 5000,
   novaCooldown: 9000,
@@ -1111,10 +1111,8 @@ const coinText=document.getElementById('coin-text'), waveText=document.getElemen
 const healthWrap=document.getElementById('health-wrap');
 const overlayStart=document.getElementById('overlay-start'), overlayPause=document.getElementById('overlay-pause');
 const overlayOver=document.getElementById('overlay-gameover');
-const treeBtn=document.getElementById('tree-btn'), overlayTree=document.getElementById('overlay-tree');
 const combatResume=document.getElementById('combat-resume');
 const overlayAuslese=document.getElementById('overlay-auslese');
-const treePunkte=document.getElementById('tree-punkte'), treeBranches=document.getElementById('tree-branches');
 const btnWirbel=document.getElementById('btn-wirbel'), btnStoss=document.getElementById('btn-stoss');
 let cdWirbel=document.getElementById('cd-wirbel'), cdStoss=document.getElementById('cd-stoss');
 const joystickZone=document.getElementById('joystick-zone');   // unsichtbare Ziehfläche über dem Spielfeld
@@ -1820,11 +1818,7 @@ function updateActiveButtons(){
   updateCooldownUI(btnStoss, cdStoss, activeCd[activeSlot2]||0, activeCdMax(activeSlot2), 'b');
 }
 
-let treeSelected=null, treeUndo=null;
-// Wann der gewählte Knoten gewählt wurde — sperrt den Zweittipp-Kauf kurz, damit ein
-// schneller Doppeltipp nicht ungewollt kauft.
-let treeSelectedAt=0;
-const TREE_ZWEITTIPP_MS=250;
+let treeUndo=null;
 const REGULAR_POINT_CAP=15;
 const CROWN_SPINE=['blade','mutation','partner','char','master','synergy','evolution','resonance','crown'];
 function crownSpineMissingAfter(node,nodes){
@@ -1838,7 +1832,6 @@ function blocksCrownBudget(node,nodes){
   if(node.endless || treeRang('orbit_crown')) return false;
   return regularInvested()+1+crownSpineMissingAfter(node,nodes)>REGULAR_POINT_CAP;
 }
-function visibleTreePoints(){ return regularTreeFrozen?echoPoints:skillPoints; }
 function treeStatus(node, nodes){
   const rang=treeRang(node.id), max=node.maxRank||1;
   if(node.free) return {art:'bought',text:'Ausgangspunkt',rang:1,max:1};
@@ -1870,122 +1863,45 @@ function treeStatus(node, nodes){
   if(punkte<1) return {art:'locked', text:node.endless?'Kein Echo-Punkt verfügbar':'Kein Punkt verfügbar'};
   return {art:'ready', text:(node.endless?'1 Echo-Punkt':'1 Punkt')+' · Rang '+(rang+1)+' / '+max,rang,max};
 }
-function renderSkillTree(){
-  if(!treeBranches) return;
-  const nodes=treeNodes();
-  const punkte=visibleTreePoints();
-  treePunkte.textContent=punkte+' '+(regularTreeFrozen?(punkte===1?'Echo-Punkt':'Echo-Punkte'):(punkte===1?'Punkt':'Punkte'))+' verfügbar';
-  treeBranches.style.setProperty('--tree-rows',regularTreeFrozen?9:8);
-  treeBranches.style.setProperty('--tree-height',regularTreeFrozen?'684px':'610px');
-  treeBranches.style.setProperty('--tree-small-height',regularTreeFrozen?'648px':'578px');
-  treeBranches.innerHTML='';
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.classList.add('orbit-lines'); treeBranches.appendChild(svg);
-  for(const node of nodes){
-    const status=treeStatus(node,nodes), b=document.createElement('button');
-    const optionalReady=status.art==='ready'&&(!node.spine||treeRang(node.id)>0);
-    b.className='orbit-node '+(node.kind||'buff')+' '+status.art+(optionalReady?' optional-ready':'')+(treeSelected===node.id?' selected':'');
-    b.dataset.node=node.id; b.style.gridColumn=node.col; b.style.gridRow=node.stage+1;
-    b.setAttribute('aria-label',node.name+', '+status.text);
-    b.innerHTML='<span class="orbit-icon">'+(status.art==='bought'&&node.kind!=='root'?'✓':node.icon||'✦')+'</span>'+
-      (node.short?'<span class="orbit-short">'+node.short+'</span>':'')+
-      '<span class="orbit-label">'+node.name+'</span>'+((node.maxRank||1)>1?'<span class="rank-badge">'+treeRang(node.id)+'/'+node.maxRank+'</span>':'');
-    /* Der ERSTE Tipp kauft nie — er wählt nur aus und zeigt die Beschreibung unten.
-       Vorher kaufte ein Tipp auf einen bereiten Knoten sofort; damit konnte man sich
-       nicht informieren, und der vorhandene „Freischalten"-Knopf war unerreichbar.
-       Seit der Pfad 19 Plätze bei 15 Punkten hat, kostet ein Fehlgriff eine echte
-       Entscheidung — und rückgängig geht nur der letzte Kauf.
-       Gekauft wird jetzt auf zwei Wegen: über den Knopf im Detailfenster oder durch
-       erneutes Antippen desselben Knotens. Die kurze Sperre verhindert, dass ein
-       hastiger Doppeltipp den zweiten Schritt gleich mitnimmt. */
-    b.onclick=()=>{
-      const schonGewaehlt = treeSelected===node.id;
-      const entsperrt = Date.now()-treeSelectedAt >= TREE_ZWEITTIPP_MS;
-      if(schonGewaehlt && entsperrt && treeStatus(node,nodes).art==='ready'){
-        kaufenTreeKnoten(node.id);
-        return;
-      }
-      if(!schonGewaehlt){ treeSelected=node.id; treeSelectedAt=Date.now(); }
-      renderSkillTree();
-    };
-    treeBranches.appendChild(b);
-  }
-  renderTreeDetail(nodes.find(n=>n.id===treeSelected)||nodes[0],nodes);
-  requestAnimationFrame(()=>drawOrbitLines(nodes));
-}
-function renderTreeDetail(node,nodes){
-  const box=document.getElementById('tree-detail'); if(!box||!node) return;
-  const status=treeStatus(node,nodes), max=node.maxRank||1, rang=treeRang(node.id);
-  const rangText=max>1?'Rang '+rang+' / '+max:'Mechanik';
-  const actions=(status.art==='ready'?'<button id="tree-buy">'+(rang?'Verbessern':'Freischalten')+'</button>':'<span class="detail-state">'+rangText+'</span>')+
-    (treeUndo?'<button id="tree-undo" class="tree-undo">↶ Letzten Punkt</button>':'');
-  // Der zweite Kaufweg (nochmal auf den Knoten tippen) wäre sonst nicht auffindbar
-  const zweitTipp = status.art==='ready' ? '<em class="detail-tipp">oder den Knoten nochmal antippen</em>' : '';
-  box.innerHTML='<span class="detail-icon '+(node.kind||'buff')+'">'+(node.icon||'✦')+'</span><span><b>'+node.name+'</b><small>'+node.desc+'</small><em>'+status.text+'</em>'+zweitTipp+'</span>'+
-    '<span class="tree-actions">'+actions+'</span>';
-  const buy=document.getElementById('tree-buy'); if(buy) buy.onclick=()=>kaufenTreeKnoten(node.id);
-  const undo=document.getElementById('tree-undo'); if(undo) undo.onclick=rueckgaengigTreeKnoten;
-}
-function drawOrbitLines(nodes){
-  const svg=treeBranches.querySelector('.orbit-lines'); if(!svg) return;
-  const area=treeBranches.getBoundingClientRect(); svg.setAttribute('viewBox','0 0 '+area.width+' '+area.height); svg.innerHTML='';
-  for(const node of nodes){
-    for(const req of [...(node.reqAll||[]),...(node.reqAny||[])]){
-      const from=treeBranches.querySelector('[data-node="'+req+'"]'), to=treeBranches.querySelector('[data-node="'+node.id+'"]'); if(!from||!to) continue;
-      const a=from.getBoundingClientRect(),b=to.getBoundingClientRect(), line=document.createElementNS('http://www.w3.org/2000/svg','path');
-      const x1=a.left+a.width/2-area.left,y1=a.top+a.height/2-area.top,x2=b.left+b.width/2-area.left,y2=b.top+b.height/2-area.top,mid=(y1+y2)/2;
-      line.setAttribute('d','M '+x1+' '+y1+' C '+x1+' '+mid+', '+x2+' '+mid+', '+x2+' '+y2);
-      line.classList.add(treeRang(node.id)?'lit':treeStatus(node,nodes).art==='ready'?'open':'dim'); svg.appendChild(line);
-    }
-  }
-}
-function treeMeldung(text){
-  const el=document.getElementById('tree-message'); if(!el) return;
-  el.textContent=text; el.classList.add('show'); clearTimeout(treeMeldung.timer);
-  treeMeldung.timer=setTimeout(()=>el.classList.remove('show'),1800);
-}
 function kaufenTreeKnoten(id){
   const nodes=treeNodes(), node=nodes.find(n=>n.id===id);
   if(!node || (regularTreeFrozen&&!node.endless)) return;
   if(!node || treeStatus(node,nodes).art!=='ready') return;
-  treeUndo={name:node.name,snapshot:{
-    runTree:{...runTree}, skillPoints, echoPoints, bonuses:{...bonuses}, treeFlags:{...treeFlags},
-    runAbilities:{...runAbilities}, runEvolutions:{...runEvolutions},
-    hp:player.hp,maxHp:player.maxHp,stars:player.stars,badges:{...save.badges},barriere,
-    toasts:toasts.map(t=>({...t})),banner:banner?{...banner}:null,unlockFx
-  }};
   if(node.endless) echoPoints--; else skillPoints--;
   const next=treeRang(id)+1; runTree[id]=next; node.apply(next);
   treeFlags.upgradeGlowUntil=Date.now()+2200; treeFlags.lastUpgrade=node.name;
   particles.push({ring:true,x:player.x,y:player.y,color:node.evo?'#ffd257':'#4de0a0',life:.65,max:.65});
   spawnParticles(player.x,player.y,node.evo?'#ffd257':'#4de0a0',node.evo?28:16);
   if(node.evo && sfx) sfx('unlockBig'); else if(sfx) sfx('upgrade');
-  updateActiveButtons(); updateHUD(true); updateTreeButton(); renderSkillTree();
+  updateActiveButtons(); updateHUD(true); updateTreeButton();
 }
-function rueckgaengigTreeKnoten(){
-  if(!treeUndo) return;
-  const s=treeUndo.snapshot;
-  runTree=s.runTree; skillPoints=s.skillPoints; echoPoints=s.echoPoints; bonuses=s.bonuses; treeFlags=s.treeFlags;
-  runAbilities=s.runAbilities; runEvolutions=s.runEvolutions;
-  player.maxHp=s.maxHp; player.hp=Math.min(s.hp,player.maxHp); player.stars=s.stars;
-  save.badges=s.badges; persist(); toasts=s.toasts; banner=s.banner; unlockFx=s.unlockFx;
-  barriere=Math.min(s.barriere,barriereMax());
-  const name=treeUndo.name; treeUndo=null;
-  updateActiveButtons(); updateHUD(true); updateTreeButton(); renderSkillTree(); treeMeldung(name+' rückgängig');
+/* AUTOMATISCHE FREISCHALTUNG
+   Ein Levelaufstieg kauft den nächsten Kettenknoten selbst. Nur Knoten mit
+   exclusiveGroup — Klingenführung, Mutation, Haltung — bleiben eine echte
+   Entscheidung und lassen ihren Punkt stehen; der HUD-Knopf zeigt ihn dann an.
+   Endlosknoten bleiben ebenfalls manuell. */
+function autoFreischalten(){
+  const namen=[];
+  let sicherung=0;
+  while((skillPoints>0 || echoPoints>0) && sicherung++<40){
+    const nodes=treeNodes();
+    const kandidat=nodes.find(n=>{
+      if(treeStatus(n,nodes).art!=='ready') return false;
+      if(istWahlKnoten(n,nodes)) return false;
+      return n.endless ? echoPoints>0 : skillPoints>0;
+    });
+    if(!kandidat) break;
+    kaufenTreeKnoten(kandidat.id);
+    namen.push(kandidat.name);
+  }
+  treeUndo=null;
+  return namen;
 }
 function updateTreeButton(){
-  if(!treeBtn) return;
-  const punkte=visibleTreePoints();
-  treeBtn.classList.toggle('hidden', !(state==='playing' && punkte>0));
-  const count=treeBtn.querySelector('span'); if(count) count.textContent=punkte;
-}
-function openSkillTree(){
-  if((state!=='playing'&&state!=='sieg') || visibleTreePoints()<1) return;
-  treeReturnState=state;
-  if(state==='sieg') document.getElementById('overlay-sieg').classList.add('hidden');
-  // Auswahl zurücksetzen: Sonst wäre der zuletzt betrachtete Knoten beim erneuten
-  // Öffnen noch gewählt, und der erste Tipp darauf würde sofort kaufen.
-  treeSelected=null; treeSelectedAt=0;
-  state='tree'; setMusicLevel(); overlayTree.classList.remove('hidden'); updateTreeButton(); renderSkillTree();
+  /* Der HUD-Knopf für den Orbitpfad ist entfallen — Fortschritt wird
+     freigeschaltet, nicht verwaltet. Die Funktion bleibt als Leerrumpf
+     stehen, weil sie an 19 Stellen gerufen wird; alle Aufrufe zu entfernen
+     wäre mehr Risiko als Nutzen. */
 }
 let combatResumeUntil=0, combatResumeStep='';
 function finishCombatResume(){
@@ -2013,18 +1929,6 @@ function tickCombatResume(now){
     if(step==='LOS' && sfx) sfx('pick');
   }
 }
-function closeSkillTree(){
-  if(state!=='tree') return;
-  const neu=treeFlags.lastUpgrade; treeFlags.lastUpgrade=''; treeUndo=null;
-  overlayTree.classList.add('hidden'); state=treeReturnState||'playing'; treeReturnState='playing'; setMusicLevel();
-  if(state==='playing'&&neu) startCombatResume(neu);
-  else if(state==='playing') lastTime=performance.now();
-  if(state==='sieg'){ document.getElementById('overlay-sieg').classList.remove('hidden'); updateSiegEndlosButton(); }
-  updateTreeButton();
-}
-treeBtn.addEventListener('click',openSkillTree);
-document.getElementById('tree-back').addEventListener('click',closeSkillTree);
-
 /* AUSLESE — alle drei Wellen ein kurzer Zwischenstopp mit drei Karten aus den
    passiven Fähigkeiten. Sie ersetzt nichts am Orbitpfad, sondern ist eine zweite,
    unabhängige Quelle für dieselben Passiven. Je Fähigkeit gibt es nur "Neu" oder
@@ -2061,8 +1965,32 @@ function ausleseAusschluss(){
   const pair=Object.entries(EVOLUTIONS).find(([,e])=>e.base===activeSlot1);
   return pair? pair[1].req : null;
 }
-// Anzeige-Infos einer Auslese-Karte, unabhängig davon ob Passive oder Modul.
+/* Die drei echten Entscheidungen des Orbitpfads — Klingenführung, Mutation, Haltung.
+   Alles andere kauft autoFreischalten() selbst. Liefert das Paar der aktuell
+   kaufbaren Alternativen, damit die Auslese sie als zwei Karten anbieten kann. */
+/* Ein Knoten ist nur dann eine echte Wahl, wenn mindestens zwei Alternativen
+   seiner Gruppe gleichzeitig kaufbar sind. Ist die Gegenwahl bereits gesperrt
+   — etwa Rang 2 und 3 eines gewaehlten Endlos-Echos —, ist es keine
+   Entscheidung mehr und die Automatik darf ihn nehmen. */
+function istWahlKnoten(node, nodes){
+  if(!node.exclusiveGroup) return false;
+  return nodes.filter(n=>n.exclusiveGroup===node.exclusiveGroup
+                      && treeStatus(n,nodes).art==='ready').length>=2;
+}
+function offeneWeiche(){
+  if(skillPoints<1 && echoPoints<1) return [];
+  const nodes=treeNodes();
+  const kand=nodes.find(n=>treeStatus(n,nodes).art==='ready'
+                        && istWahlKnoten(n,nodes)
+                        && (n.endless? echoPoints>0 : skillPoints>0));
+  if(!kand) return [];
+  return nodes.filter(n=>n.exclusiveGroup===kand.exclusiveGroup
+                      && treeStatus(n,nodes).art==='ready');
+}
+// Anzeige-Infos einer Auslese-Karte, unabhängig davon ob Weiche, Passive oder Modul.
 function ausleseKartenInfo(karte){
+  // Weichen tragen ein Textzeichen als Symbol, keine SVG-Pfade — daher glyph:true.
+  if(karte.weiche) return { name:karte.name, icon:karte.icon, text:karte.desc, glyph:true };
   const mod=AUSLESE_MODULE[karte.id];
   if(mod) return { name:mod.name, icon:ICON[mod.icon]||'', text: karte.kind==='verstaerkt'? mod.sprung : mod.desc };
   return { name:ABILITIES[karte.id].name, icon:abilIcon(karte.id), text: karte.kind==='verstaerkt'? STUFEN[karte.id].sprung : ABILITIES[karte.id].desc };
@@ -2117,17 +2045,20 @@ function ausleseZiehen(){
 }
 function auslesePreis(){ return AUSLESE_PREISE[Math.min(ausleseBezahlteWuerfe,AUSLESE_PREISE.length-1)]; }
 function renderAuslese(){
+  const istWeiche = ausleseKarten.length>0 && !!ausleseKarten[0].weiche;
   const hinweis=document.getElementById('auslese-hinweis');
-  if(hinweis) hinweis.textContent='Welle '+wave+' · wähle eine Karte';
+  if(hinweis) hinweis.textContent=istWeiche
+    ? 'Wähle deinen Weg — diese Wahl gilt den ganzen Lauf'
+    : 'Welle '+wave+' · wähle eine Karte';
   const wrap=document.getElementById('auslese-karten'); wrap.innerHTML='';
   for(const karte of ausleseKarten){
-    const stufe=karte.kind==='verstaerkt'?'Verstärkt':'Neu';
+    const stufe=istWeiche?'':(karte.kind==='verstaerkt'?'Verstärkt':'Neu');
     const info=ausleseKartenInfo(karte);
     const b=document.createElement('button');
     b.className='auslese-karte'+(karte.kind==='verstaerkt'?' stark':'');
     // Das Symbol kommt aus derselben Quelle wie Vorbereitung und Sammlung, damit
     // eine Faehigkeit ueberall gleich aussieht und man sie wiedererkennt.
-    b.innerHTML='<span class="ak-icon">'+svg(info.icon)+'</span>'
+    b.innerHTML='<span class="ak-icon">'+(info.glyph?info.icon:svg(info.icon))+'</span>'
       +'<span class="ak-body"><span class="ak-titel">'+info.name+'</span>'
       +'<span class="ak-text">'+info.text+'</span></span>'
       +'<span class="ak-stufe">'+stufe+'</span>';
@@ -2135,6 +2066,8 @@ function renderAuslese(){
     wrap.appendChild(b);
   }
   const reroll=document.getElementById('auslese-reroll'), preis=auslesePreis();
+  // Eine exklusive Wahl darf nicht neu gewuerfelt werden.
+  reroll.classList.toggle('hidden', istWeiche);
   reroll.textContent='Neu würfeln · '+(ausleseFreiwurfBenutzt?preis+' ◆':'gratis');
   reroll.disabled=ausleseFreiwurfBenutzt && player.stars<preis;
 }
@@ -2145,7 +2078,7 @@ function pruefeAuslese(){
   letzteAusleseWelle=wave;
   oeffneAuslese();
 }
-// Exakt das Muster von openSkillTree(): vorherigen state merken, eigenen state setzen,
+// Vorherigen state merken, eigenen state setzen,
 // Overlay einblenden. update() läuft in diesem state nicht weiter (state!=='playing').
 function oeffneAuslese(){
   if(state!=='playing') return false;
@@ -2155,8 +2088,25 @@ function oeffneAuslese(){
   overlayAuslese.classList.remove('hidden'); renderAuslese(); updateTreeButton();
   return true;
 }
+function oeffneWeichenAuslese(){
+  if(state!=='playing') return false;
+  const w=offeneWeiche();
+  if(!w.length) return false;
+  ausleseKarten=w.map(n=>({weiche:true,id:n.id,name:n.name,desc:n.desc,icon:n.icon}));
+  ausleseReturnState=state; state='auslese'; ausleseOffenSeit=Date.now(); setMusicLevel();
+  overlayAuslese.classList.remove('hidden'); renderAuslese(); updateTreeButton();
+  return true;
+}
 function waehleAuslese(karte){
   if(state!=='auslese') return;
+  if(karte.weiche){
+    kaufenTreeKnoten(karte.id);
+    autoFreischalten();          // die Weiche oeffnet die naechsten Kettenknoten
+    pushToast(karte.name);
+    updateHUD(true);
+    schliesseAuslese(karte.name);
+    return;
+  }
   const info=ausleseKartenInfo(karte);
   if(AUSLESE_MODULE[karte.id]){
     const vorher=runModule[karte.id]||0;
@@ -2188,7 +2138,7 @@ function wuerfleAusleseNeu(){
   if(sfx) sfx('pick');
   updateHUD(true); renderAuslese();
 }
-// Exakt das Muster von closeSkillTree(): gemerkten state wiederherstellen, Overlay ausblenden.
+// Gemerkten state wiederherstellen, Overlay ausblenden.
 function schliesseAuslese(name){
   if(state!=='auslese') return;
   overlayAuslese.classList.add('hidden');
@@ -2294,6 +2244,8 @@ function resetGame(){
   // Tages-Twist „Fliegender Start": zwei zusätzliche Punkte, wie beim Startimpuls
   // außerhalb der regulären Ökonomie — ein guter Tag darf mächtig beginnen.
   if(laufVorgabe&&laufVorgabe.twist&&laufVorgabe.twist.id==='start') skillPoints+=2;
+  // Startpunkte sofort in die Kette schieben; nur Weichen bleiben offen.
+  if(skillPoints>0) autoFreischalten();
   /* Messlauf-Einstieg (nur mit ?perf=1): direkt in die fragliche Welle springen und
      Orbitpunkte mitgeben, damit ein realistischer Build gebaut werden kann. Ohne das
      wäre Welle 26 nur mit einem 20-Minuten-Lauf erreichbar und damit nicht wiederholbar. */
@@ -2306,7 +2258,7 @@ function resetGame(){
 }
 function hideAll(){
   overlayStart.classList.add('hidden'); overlayPause.classList.add('hidden');
-  overlayOver.classList.add('hidden'); overlayTree.classList.add('hidden');
+  overlayOver.classList.add('hidden');
   document.getElementById('overlay-hangar').classList.add('hidden');
   overlayAuslese.classList.add('hidden');
   if(combatResume) combatResume.classList.add('hidden');
@@ -2324,10 +2276,15 @@ function startWave(){
     announce(laufEreignis.name, laufEreignis.text, laufEreignis.accent);
     if(laufEreignis.schatz) streueMeteorschatz();
   }
-  else if(wave>1){ const b=biomeForWave(); announce('Welle '+wave, (wave-1)%5===0? b.name : '', b.accent); }  // Biome-Name, wenn Zone wechselt
+  // Nur noch beim Zonenwechsel eine Ansage: 29 Wellenbanner je Lauf waren 13,4 % der
+  // Laufzeit. Die Wellennummer steht ohnehin dauerhaft im HUD (waveText).
+  else if(wave>1 && (wave-1)%5===0){ const b=biomeForWave(); announce(b.name, '', b.accent); }
   recordBest();
   checkMilestones();   // Erreichen der Welle genügt — Freischaltungen sollen ankommen
   pruefeAuslese();     // alle drei Wellen ein Kartenstopp, unabhängig vom Orbitpfad
+  // Absicherung: faellt eine Weiche mit einer Wellen-Auslese zusammen, wird sie
+  // dort nicht geoeffnet. Beim naechsten Wellenstart wird sie nachgeholt.
+  if(state==='playing' && skillPoints>0) oeffneWeichenAuslese();
 }
 // Ist dies der Kampf, der den Lauf gewinnt?
 function istFinale(){ return wave>=CONFIG.siegWelle && !endlosLauf; }
@@ -3601,16 +3558,20 @@ function executeSog(){
   for(const en of enemies){
     const dx=player.x-en.x, dy=player.y-en.y, d=Math.hypot(dx,dy);
     if(d>R || d<1) continue;
-    // nicht ins Zentrum saugen, sondern in Klingenreichweite ziehen
-    const ziel=Math.min(kraft, Math.max(0, d-(player.radius+30)));
+    // Nicht an den Spieler ziehen, sondern ins Trefferband: player.radius+30 waren 48 px,
+    // also 58 ms vor dem Kontaktschaden. Die Klinge trifft bis bladeLength()+Gegnerradius.
+    const halteRadius=player.radius+bladeLength()*.92;
+    const ziel=Math.min(kraft, Math.max(0, d-halteRadius));
     en.x += dx/d*ziel; en.y += dy/d*ziel;
     en.hp -= dmg;
     if(master>=1 && d<kernDist){kern=en;kernDist=d;}
     if(activeSlot1==='sog'&&(treeFlags.bladeModule||0)>0) en.sogModuleUntil=Date.now()+4300;
-    if(activeSlot1==='sog'&&(treeFlags.powerModule||0)>0){
-      en.moduleOrbitUntil=Date.now()+1200;en.moduleOrbitAngle=Math.atan2(en.y-player.y,en.x-player.x);
-      en.moduleOrbitDir=treeFlags.mod_sog==='b'?1:-1;
-    }
+    // Festhalten ist jetzt Grundverhalten: Ohne Halten ist das Trefferband gegen
+    // bewegte Gegner nur 116 ms breit. Das Machtmodul verlängert nur noch.
+    const halteMs=(activeSlot1==='sog'&&(treeFlags.powerModule||0)>0)?1200:900;
+    en.moduleOrbitUntil=Date.now()+halteMs;
+    en.moduleOrbitAngle=Math.atan2(en.y-player.y,en.x-player.x);
+    en.moduleOrbitDir=treeFlags.mod_sog==='b'?1:-1;
     if(treeFlags.mod_sog==='a') en.stunT=Math.max(en.stunT||0,900);
     if(treeFlags.mod_sog==='b'){
       const a=Math.atan2(en.y-player.y,en.x-player.x)+0.8;
@@ -3939,11 +3900,17 @@ function checkLevelUp(){
   }
   if(neueLevel){
     const echoText=impulse?triggerEndlessLevelImpulse():'';
-    const text=neuePunkte?('+'+neuePunkte+' Orbit'+(neuePunkte===1?'punkt':'punkte')):(echoText||'Kein neuer Orbitpunkt');
+    // Erst automatisch freischalten, dann berichten, was tatsächlich passiert ist.
+    const frei=neuePunkte?autoFreischalten():[];
+    let text;
+    if(frei.length) text=frei.join(' · ');
+    else if(skillPoints>0) text='Wähle deinen Weg';
+    else text=echoText||'Kein neuer Orbitpunkt';
     announce('Level '+player.level, text, '#ffd257');
-    pushFloat(player.x,player.y-38,text,'#ffd257',1.15);
+    pushFloat(player.x,player.y-38,frei.length?frei[0]:text,'#ffd257',1.15);
     if(sfx) sfx('levelup');
     updateTreeButton(); updateHUD(true);
+    if(skillPoints>0) oeffneWeichenAuslese();
   }
 }
 function metaLevel(id){ return (save.meta&&save.meta[id])||0; }
@@ -4123,12 +4090,18 @@ function grantEchoMilestone(target,openAfter=false){
   echoMilestones+=neu; echoPoints+=neu;
   announce(target===1?'Endlosresonanz':'Echo-Rang bereit',target===1?'Wähle Klinge oder Macht':'Ein neuer mechanischer Rang wartet','#c77dff');
   if(sfx)sfx('levelup'); updateTreeButton();
-  if(openAfter && state==='playing') openSkillTree();
+  // Rang 1 ist die Wahl Klingenecho/Machtecho und geht ueber die Auslese.
+  // Rang 2 und 3 sind keine Wahl mehr — die nimmt die Automatik.
+  autoFreischalten();
+  if(state==='playing') oeffneWeichenAuslese();
 }
 // Nach dem Sieg weiterspielen: erst verteilen, dann Build unveränderlich einfrieren.
 function startEndlosmodus(restVerwerfen=false){
   if(state!=='sieg') return;
-  if(skillPoints>0&&(!restVerwerfen||!treeRang('orbit_crown'))){ openSkillTree(); return; }
+  // Restpunkte in die Kette schieben, BEVOR eingefroren wird — danach sind
+  // regulaere Knoten gesperrt. Bleibt eine Weiche offen, holt der Sicherungs-
+  // aufruf in startWave() sie nach, sobald state wieder 'playing' ist.
+  autoFreischalten();
   if(!treeRang('orbit_crown')) return;
   document.getElementById('overlay-sieg').classList.add('hidden');
   if(restVerwerfen) skillPoints=0;
@@ -4447,7 +4420,8 @@ function update(dt){
     const modulOrbit=en.moduleOrbitUntil>Date.now();
     if(modulOrbit){
       en.moduleOrbitAngle=(en.moduleOrbitAngle||Math.atan2(en.y-player.y,en.x-player.x))+(en.moduleOrbitDir||1)*2.5*dt/1000;
-      const rr=player.radius+bladeLength()*.78;
+      // .78 hielt bei 48 px — nur 8 px vor dem Kontaktschaden (40 px). .92 liegt im Trefferband.
+      const rr=player.radius+bladeLength()*.92;
       en.x=player.x+Math.cos(en.moduleOrbitAngle)*rr;en.y=player.y+Math.sin(en.moduleOrbitAngle)*rr;
       dx=player.x-en.x;dy=player.y-en.y;d=Math.hypot(dx,dy);
     }
@@ -4932,9 +4906,20 @@ function update(dt){
 
   // wave clear check — der Shop zwischen den Wellen ist entfallen (#11):
   // Heilung/Stärke gibt es nur noch im Lauf (Regen, Fähigkeiten) und dauerhaft im Meta-Shop.
-  if(waveSpawned>=waveEnemiesToSpawn && enemies.length===0 && state==='playing'){
-    einsammelnAmWellenende();
-    wave++; startWave();
+  /* Wellenwechsel: Früher musste das Feld LEER sein. Gemessen kostete das 12,6 % der
+     Laufzeit als Restejagd und 19,4 % als fast leeres Feld. Jetzt startet die nächste
+     Welle, sobald das Spawn-Budget verbraucht und der Rest klein genug ist; die
+     Nachzügler laufen in die neue Welle über.
+     Bosswellen behalten die alte Bedingung — ein Boss darf nicht überlaufen werden. */
+  if(waveSpawned>=waveEnemiesToSpawn && state==='playing'){
+    const bossWelle=(wave%5===0);
+    const restGrenze=Math.max(3, Math.round(waveEnemiesToSpawn*CONFIG.wave.schubRest));
+    const bereit = bossWelle ? (enemies.length===0 && !bossActive)
+                             : (enemies.length<=restGrenze);
+    if(bereit){
+      einsammelnAmWellenende();
+      wave++; startWave();
+    }
   }
   if(shake>0) shake-= dt*0.04;
   updateHUD();

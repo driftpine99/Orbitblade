@@ -20,7 +20,7 @@
     <div id="hud-right">
       <div id="run-status"><div id="wave-text">Welle 1</div><div id="coin-text">◆ 0</div></div>
       <div id="hud-orbitauftrag" class="hidden" aria-live="polite"></div>
-      <div id="run-actions"><button id="tree-btn" class="tree-btn hidden" aria-label="Orbitpfad öffnen">✦ <span>0</span></button><button id="pause-btn" aria-label="Pause">⏸</button></div>
+      <div id="run-actions"><button id="pause-btn" aria-label="Pause">⏸</button></div>
     </div>
   </div>
 
@@ -137,20 +137,6 @@
     <p class="subtitle" id="pick-hinweis"></p>
     <div id="pick-liste"></div>
     <button id="pick-back" class="primary">Abbrechen</button>
-  </div>
-
-  <!-- Laufgebundener Skill-Tree: Punkte werden nur freiwillig zwischen Kämpfen verteilt. -->
-  <div id="overlay-tree" class="overlay compact-overlay hidden">
-    <header class="compact-head">
-      <button id="tree-back" class="icon-back" aria-label="Weiterkämpfen">‹</button>
-      <h2>Orbitbaum</h2>
-      <strong id="tree-punkte">0 Punkte</strong>
-    </header>
-    <div id="tree-scroll">
-      <div id="tree-branches" aria-label="Orbitbaum"></div>
-    </div>
-    <aside id="tree-detail"><span class="detail-icon">◉</span><span><b>Wähle deinen Weg</b><small>Tippe einen Knoten an — die Wirkung steht dann hier. Erst der zweite Tipp schaltet frei.</small></span></aside>
-    <div id="tree-message" role="status"></div>
   </div>
 
   <!-- Auslese: alle drei Wellen hält der Kampf an und bietet drei Karten zur Wahl.
