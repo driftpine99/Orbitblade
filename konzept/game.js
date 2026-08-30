@@ -1,4 +1,4 @@
-/* Orbitblade — CONFIG zentral anpassbar */
+﻿/* Orbitblade — CONFIG zentral anpassbar */
 const CONFIG = {
   baseDamage: 25,          // Basiswert, auf dem der Wirbelangriff aufbaut
   wirbelCooldown: 8000,
@@ -728,6 +728,33 @@ const POWER_MASTER_TEXT={
     ['Kernsammlung','ZIEHT GRUPPE','Ein Volltreffer am Kern zieht nahe Gegner zusammen.'],
     ['Sogbetäubung','BETÄUBT ALLE','Jeder gezogene Gegner wird kurz betäubt.']]
 };
+
+/* DIE VIER HALTUNGEN
+   Früher zwei Knoten, deren Inhalt von der Figur abhing. Jetzt vier eigene Knoten
+   in derselben exclusiveGroup — die Weiche zieht zwei davon. Damit können sich
+   Lichthüter- und Leerenklingen-Identität erstmals mischen. */
+const HALTUNGEN=[
+  {id:'haltung_waechter', name:'Wächter', short:'BARRIERE', icon:'◈',
+   desc:'Voller Fokus gibt dir Barriere und verlangsamt Gegner in der Nähe.',
+   apply:()=>{treeFlags.waechter=true;waechterLadung=false;},
+   evo:['Leuchtfeuer','LICHTPFAD','Während einer Barriere hinterlässt deine Klinge bremsende Lichtspuren.',()=>{treeFlags.leuchtfeuer=true;}]},
+  {id:'haltung_sonne', name:'Sonnenjäger', short:'SONNENSERIE', icon:'☀',
+   desc:'Drei Volltreffer in Folge beschleunigen kurz deinen Orbit.',
+   apply:()=>{treeFlags.sonnenjaeger=true;sonnenSerie=0;sonnenTempoUntil=0;},
+   evo:['Sonnenorbit','SONNENBAHN','Solange dein Orbit beschleunigt ist, wird die Volltreffer-Zone schmaler und trifft härter.',()=>{treeFlags.sonnenorbit=true;}]},
+  {id:'haltung_verschlinger', name:'Verschlinger', short:'LEBENSRAUB', icon:'◆',
+   desc:'Besiegte Gegner heilen einen kleinen Teil deines Lebens.',
+   apply:()=>{treeFlags.leerenHeilung=.006;},
+   evo:['Satter Abgrund','HEIL-KOMBO','Besiegte Gegner heilen dich stärker, solange du angeschlagen bist.',()=>{treeFlags.satterAbgrund=true;}]},
+  {id:'haltung_abgrund', name:'Abgrund', short:'RISIKO-SCHADEN', icon:'▼',
+   desc:'Fehlendes Leben steigert deinen Volltreffer-Schaden stark.',
+   apply:()=>{treeFlags.leerenRisikoBonus=.28;},
+   evo:['Ereignishorizont','3 KLINGEN','Bei wenig Leben kreisen drei Klingen um dich.',()=>{treeFlags.ereignishorizont=true;}]},
+];
+const HALTUNG_IDS=HALTUNGEN.map(h=>h.id);
+// Welche Haltung wurde in diesem Lauf gewählt? Leer, solange keine gekauft ist.
+function gewaehlteHaltung(){ return HALTUNGEN.find(h=>treeRang(h.id)) || null; }
+
 function treeNodes(){
   const id=activeSlot1, pair=Object.entries(EVOLUTIONS).find(([,e])=>e.base===id);
   const evoId=pair[0], evo=pair[1], power='power_'+id, partner='partner_'+id;
@@ -744,14 +771,14 @@ function treeNodes(){
     {id:partner,stage:2,col:2,kind:'buff',power:id,passive:evo.req,name:ABILITIES[evo.req].name,short:'VOLL',desc:ABILITIES[evo.req].desc+'. '+STUFEN[evo.req].sprung+'.',icon:'✦',reqAny:[power+'_a',power+'_b'],spine:'partner',apply:()=>runAbilities[evo.req]=SPRUNG_STUFE},
     {id:'blade_module',stage:2,col:4,kind:'buff',name:bm1[0],short:bm1[1],desc:bm1[2],icon:'◒',reqAny:[power+'_a',power+'_b'],apply:()=>treeFlags.bladeModule=1},
     {id:'blade_module_2',stage:2,col:6,kind:'buff',name:bm2[0],short:bm2[1],desc:bm2[2],icon:'◒',reqAll:['blade_module'],apply:()=>treeFlags.bladeModule=2},
-    {id:'char_route_a',stage:3,col:2,kind:'major',name:figur().id==='held'?'Wächter':'Verschlinger',short:figur().id==='held'?'BARRIERE':'LEBENSRAUB',desc:figur().id==='held'?'Voller Fokus gibt dir Barriere und verlangsamt Gegner in der Nähe.':'Besiegte Gegner heilen einen kleinen Teil deines Lebens.',icon:figur().id==='held'?'◈':'◆',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.waechter=true;waechterLadung=false;}else treeFlags.leerenHeilung=.006;}},
-    {id:'char_route_b',stage:3,col:6,kind:'major',name:figur().id==='held'?'Sonnenjäger':'Abgrund',short:figur().id==='held'?'SONNENSERIE':'RISIKO-SCHADEN',desc:figur().id==='held'?'Drei Volltreffer in Folge beschleunigen kurz deinen Orbit.':'Fehlendes Leben steigert deinen Volltreffer-Schaden stark.',icon:figur().id==='held'?'☀':'▼',reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:()=>{if(figur().id==='held'){treeFlags.sonnenjaeger=true;sonnenSerie=0;sonnenTempoUntil=0;}else treeFlags.leerenRisikoBonus=.28;}},
-    {id:'power_master_1',stage:4,col:2,kind:'buff',name:mt[0][0],short:mt[0][1],desc:mt[0][2],icon:'⬡',reqAny:['char_route_a','char_route_b'],spine:'master',apply:()=>{steigereMacht(id,2);treeFlags.powerMaster=1;}},
+    ...HALTUNGEN.map((h,i)=>({id:h.id,stage:3,col:i<2?2:6,kind:'major',name:h.name,short:h.short,desc:h.desc,icon:h.icon,reqAll:[partner],reqRanks:{[partner]:1},exclusiveGroup:'char_route',spine:'char',apply:h.apply})),
+    {id:'power_master_1',stage:4,col:2,kind:'buff',name:mt[0][0],short:mt[0][1],desc:mt[0][2],icon:'⬡',reqAny:HALTUNG_IDS,spine:'master',apply:()=>{steigereMacht(id,2);treeFlags.powerMaster=1;}},
     {id:'power_master_2',stage:4,col:4,kind:'buff',name:mt[1][0],short:mt[1][1],desc:mt[1][2],icon:'⬡',reqAll:['power_master_1'],apply:()=>{steigereMacht(id,3);treeFlags.powerMaster=2;}},
     {id:'power_master_3',stage:4,col:6,kind:'buff',name:mt[2][0],short:mt[2][1],desc:mt[2][2],icon:'⬡',reqAll:['power_master_2'],apply:()=>{steigereMacht(id,4);treeFlags.powerMaster=3;}},
-    {id:'power_module',stage:5,col:2,kind:'buff',name:pm1[0],short:pm1[1],desc:pm1[2],icon:'◉',reqAny:['char_route_a','char_route_b'],apply:()=>treeFlags.powerModule=1},
+    {id:'power_module',stage:5,col:2,kind:'buff',name:pm1[0],short:pm1[1],desc:pm1[2],icon:'◉',reqAny:HALTUNG_IDS,apply:()=>treeFlags.powerModule=1},
     {id:'power_module_2',stage:5,col:4,kind:'buff',name:pm2[0],short:pm2[1],desc:pm2[2],icon:'◉',reqAll:['power_module'],apply:()=>treeFlags.powerModule=2},
-    {id:'blade_synergy',stage:5,col:6,kind:'major',name:figur().id==='held'?(treeRang('char_route_a')?'Leuchtfeuer':'Sonnenorbit'):(treeRang('char_route_a')?'Satter Abgrund':'Ereignishorizont'),short:figur().id==='held'?(treeRang('char_route_a')?'LICHTPFAD':'SONNENBAHN'):(treeRang('char_route_a')?'HEIL-KOMBO':'3 KLINGEN'),desc:figur().id==='held'?(treeRang('char_route_a')?'Während einer Barriere hinterlässt deine Klinge bremsende Lichtspuren.':'Solange dein Orbit beschleunigt ist, wird die Volltreffer-Zone schmaler und trifft härter.'): (treeRang('char_route_a')?'Besiegte Gegner heilen dich stärker, solange du angeschlagen bist.':'Bei wenig Leben kreisen drei Klingen um dich.'),icon:'✦',reqAll:['power_master_1'],spine:'synergy',apply:()=>{if(figur().id==='held'){if(treeRang('char_route_a'))treeFlags.leuchtfeuer=true;else treeFlags.sonnenorbit=true;}else{if(treeRang('char_route_a'))treeFlags.satterAbgrund=true;else treeFlags.ereignishorizont=true;}}},
+    (()=>{const h=gewaehlteHaltung(), e=h?h.evo:HALTUNGEN[0].evo;
+      return {id:'blade_synergy',stage:5,col:6,kind:'major',name:e[0],short:e[1],desc:e[2],icon:'✦',reqAll:['power_master_1'],spine:'synergy',apply:e[3]};})(),
     {id:'evo_'+evoId,stage:6,col:2,kind:'evo',power:id,name:evo.name,short:'SUPER-MACHT',desc:evo.desc,icon:'✹',reqAll:['power_master_1',partner],spine:'evolution',evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}},
     {id:'orbit_resonance_1',stage:6,col:4,kind:'buff',name:'Kopplung',short:'KOPPELT MÄCHTE',desc:'Koppelt beide Mächte: ein Einsatz kürzt danach die Abklingzeit der anderen.',icon:'◎',reqAll:['blade_synergy','evo_'+evoId],spine:'resonance',apply:()=>{treeFlags.orbitResonanz=true;}},
     {id:'orbit_resonance_2',stage:6,col:6,kind:'buff',name:'Sofortschaltung',short:'SOFORT BEREIT',desc:'Ein fokussierter Einsatz macht die andere Macht sofort bereit.',icon:'◎',reqAll:['orbit_resonance_1'],apply:()=>{treeFlags.resonanzSofort=true;}},
@@ -1985,8 +2012,16 @@ function offeneWeiche(){
                         && istWahlKnoten(n,nodes)
                         && (n.endless? echoPoints>0 : skillPoints>0));
   if(!kand) return [];
-  return nodes.filter(n=>n.exclusiveGroup===kand.exclusiveGroup
-                      && treeStatus(n,nodes).art==='ready');
+  const gruppe=nodes.filter(n=>n.exclusiveGroup===kand.exclusiveGroup
+                            && treeStatus(n,nodes).art==='ready');
+  if(gruppe.length<=2) return gruppe;
+  /* Mehr als zwei Alternativen — das sind die vier Haltungen. Es werden zwei
+     gezogen, damit die Karte ihre Form behält: zwei große Karten statt vier
+     kleiner. Der Laufseed bestimmt welche, also reproduzierbar und je Lauf anders. */
+  const zufall=laufStrom('weiche', gruppe.length);
+  const rest=gruppe.slice(), zwei=[];
+  while(zwei.length<2 && rest.length) zwei.push(rest.splice(Math.floor(zufall()*rest.length),1)[0]);
+  return zwei;
 }
 // Anzeige-Infos einer Auslese-Karte, unabhängig davon ob Weiche, Passive oder Modul.
 function ausleseKartenInfo(karte){
