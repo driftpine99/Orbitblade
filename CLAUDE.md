@@ -1201,3 +1201,33 @@ niemand mehr auf einem älteren Stand misst.
 Damit sind die Punkte 1 und 2 aus Teil D abgeschlossen. Offen bleiben Punkt 3
 (eine Figur), Punkt 4 (schlanker Einstieg) und Punkt 5 (Langfristfaktor) — sowie
 die Lauflänge, die mit 9,9–11,8 min unter dem Zielkorridor 12–14 liegt.
+
+## Nachtrag: was der erste Blick im Browser fand (30.08.2026)
+
+Alle Messungen des Tages liefen headless. Der erste tatsächliche Klickweg im Browser
+förderte prompt zwei Fehler zutage, die kein Bot finden konnte — beide in der
+Weichen-Auslese, also in der einzigen Entscheidungsoberfläche des Spiels.
+
+**1. Der Neuwürfeln-Knopf blieb bei Weichen sichtbar.** `renderAuslese()` setzt zwar
+`reroll.classList.toggle('hidden', istWeiche)`, aber **es gibt in `style.css` keine
+generische `.hidden`-Regel** — jedes Element bringt seine eigene mit
+(`#combat-resume.hidden`, `#hud-orbitauftrag.hidden`, `.overlay.hidden`). Die passende
+Regel `.tree-btn.hidden` wurde beim Abriss korrekt entfernt, und für den Reroll-Knopf
+existierte nie eine. Ein Klick hätte `wuerfleAusleseNeu()` ausgelöst und die
+Weichenkarten durch normale ersetzt — **der Orbitpunkt wäre verloren gewesen.**
+Behoben mit `#auslese-reroll.hidden{display:none}`.
+
+**2. Die leere Stufen-Plakette blieb als Rahmen stehen.** Weichenkarten tragen kein
+„Neu"/„Verstärkt", das `<span class="ak-stufe">` wurde aber weiter gerendert und zeigte
+einen leeren Pillen-Hintergrund. Behoben mit `.ak-stufe:empty{display:none}`.
+
+**Die Lehre, die in die Arbeitsregeln gehört:** Ein Zustand, den das JS über eine
+CSS-Klasse setzt, ist erst dann geprüft, wenn jemand `getComputedStyle()` gelesen oder
+das Bild gesehen hat. `classList.contains('hidden')` war `true`, während `display`
+`block` blieb. Headless-Messungen sehen davon nichts, weil `tools/sim.js` gar kein CSS
+lädt.
+
+**Empfehlung für künftige UI-Änderungen:** Nach jeder Änderung an einem Overlay einmal
+über den lokalen Server (`.claude/launch.json`, Port 8123) den betroffenen Klickweg
+ansehen. Das kostet zwei Minuten und hat hier einen Fehler gefunden, der einen
+kompletten Orbitpunkt vernichtet hätte.

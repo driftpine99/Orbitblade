@@ -427,6 +427,9 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .ak-stufe{grid-area:stufe;justify-self:end;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
   color:var(--accent);border:1px solid rgba(110,200,255,.45);border-radius:999px;padding:3px 10px;
   background:rgba(110,200,255,.08);white-space:nowrap}
+/* Weichenkarten tragen keine Stufe ("Neu"/"Verstärkt"). Ohne diese Zeile bliebe
+   die leere Plakette als Rahmen mit Hintergrund sichtbar. */
+.ak-stufe:empty{display:none}
 /* .stark = "Verstärkt": setzt das JS zusätzlich zur Klasse — erkennbar hochwertiger, Gold statt Akzentblau */
 .auslese-karte.stark{border-color:var(--gold);
   background:radial-gradient(circle at 25% 15%,rgba(255,210,87,.14),rgba(10,18,32,.65));
@@ -440,6 +443,12 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 @media(prefers-reduced-motion:reduce){.auslese-karte.stark{animation:none}}
 /* #auslese-reroll nutzt bereits .secondary; hier nur der sichtbare Sperr-Zustand,
    falls das Spiel via JS "disabled" setzt (kein Reroll möglich/leistbar) */
+/* Bei einer Weiche wird der Knopf ausgeblendet — eine exklusive Wahl darf nicht
+   gewürfelt werden. Es gibt in dieser Datei bewusst keine generische .hidden-Regel;
+   jedes Element bringt seine eigene mit. Ohne diese Zeile blieb der Knopf sichtbar
+   und ein Klick hätte die Weichenkarten durch normale ersetzt — der Punkt wäre
+   verloren gewesen. */
+#auslese-reroll.hidden{display:none}
 #auslese-reroll:disabled{opacity:.35;cursor:not-allowed;border-color:var(--line);color:var(--muted)}
 #auslese-reroll:disabled:hover{color:var(--muted);border-color:var(--line)}
 #auslese-reroll:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
