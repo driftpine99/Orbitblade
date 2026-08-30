@@ -1344,3 +1344,80 @@ Standardlauf dreimal Sieg bei Welle 30 (10,7 / 12,1 / 13,0 min), Krone erreicht,
 15 Punkte investiert, 9 Karten und 3 Weichen. Endlos bis Welle 43 bestanden.
 `hatLeerenhunger()` schaltet korrekt: false ohne Haltung und mit Wächter, true mit
 Verschlinger und mit Abgrund. Keine Konsolenfehler im Browser.
+
+## Paket 5a: Karten bekommen dauerhafte Akteure (30.08.2026)
+
+Gebaut extern durch Codex, gegengeprüft hier. Auslöser war ein Spieltest: „Die
+Fähigkeiten sind zu passiv — da soll was passieren, so wie bei Brotato oder
+Vampire Survivors."
+
+### Der Befund — es passierte genug, nur in der falschen Form
+
+Gemessene sichtbare Ereignisse je Sekunde (Welle 20, 16 Gegner):
+
+| Zustand | Ringe/s | Blitze/s | Klingen |
+|---|---|---|---|
+| ohne Karten | 13,6 | 0 | 1 |
+| 3 Karten | 22,1 | 27,9 | 2 |
+| 9 Karten | **51,0** | **150,4** | 3 |
+
+Die Dichte wuchs also deutlich. Das Problem war die **Form**:
+
+- Alle Karteneffekte waren Aufblitzer unter einer halben Sekunde (0,28–0,48 s).
+- Alle entstanden an derselben Stelle — am Spieler oder am Trefferpunkt.
+- Alle hatten dieselbe Gestalt: ein Ring oder ein Funke.
+- **Keine einzige Karte erzeugte einen Akteur, der auf dem Bildschirm blieb.**
+
+Alles Liegenbleibende (0,7–1,8 s) kam aus dem Orbitpfad oder den Hauptmächten.
+Deshalb lasen sich 150 Ereignisse je Sekunde als *eine Textur* statt als neun
+Fähigkeiten. Vampire Survivors und Brotato machen es umgekehrt: Jeder Fund ist ein
+eigenständiger Akteur mit eigener Geometrie, eigenem Takt und vor allem **Dauer**.
+
+### Die vier Änderungen
+
+- **Schneide und Kurzschluss verlassen den Topf.** Beide waren reine Zahlenkarten
+  ohne eigene Optik; Kurzschluss maß auf beiden Achsen negativ.
+- **Funkenkranz (neu):** zwei Funken kreisen gegenläufig zur Klinge, Rang 2 vier.
+  Gebaut nach dem vorhandenen `shards`-Muster.
+- **Brandspur (neu):** die Klingenspitze hinterlässt brennende Male, die ~1,4 s
+  liegen bleiben. Gebaut nach dem `powerFields`-Muster, alle 120 ms ein Mal,
+  gedeckelt bei 18. Belohnt Bewegung — also genau das Kernkönnen.
+- **Phaser umgebaut:** Schüsse verlassen die Klingenspitze tangential in
+  Bewegungsrichtung der Klinge statt aus einem Selbstschuss-Turm.
+
+Der Topf bleibt bei 11 Dingen: 11 − 2 + 2.
+
+### Gemessen
+
+| Karte | Schaden | dauerhafte Akteure |
+|---|---|---|
+| Funkenkranz Neu / ++ | +16 % / +33 % | 2 → 4 Umlaufobjekte |
+| Brandspur Neu / ++ | +20 % / +39 % | 11,2 → 15,8 Felder |
+| Phaser Neu / ++ | +17 % / +44 % | 14,2 → 26,6 Geschosse |
+| alle drei ++ | **+116 %** | 46 Objekte gleichzeitig |
+
+Basis vorher: **0 / 0 / 0** — keine Karte hinterließ irgendetwas. Jeder einzelne
+Rang besteht damit die Aufnahmeregel aus Teil D auf beiden Prüfungen. Der Phaser
+ging von +0 / +4 % (durchgefallen) auf +17 / +44 %.
+
+### Zeichenkosten — der wichtigste Gegencheck
+
+Dauerhafte Akteure sind genau das, was die Füllrate belastet, und die ist laut
+Teil E der bekannte Flaschenhals. Gemessen bei **65 Gegnern in Welle 26**:
+
+| | Draw ⌀ | Draw max | Update ⌀ |
+|---|---|---|---|
+| ohne die neuen Karten | 1,87 ms | 3,6 ms | 0,62 ms |
+| mit allen dreien (16 Felder, 4 Funken) | **1,94 ms** | 4,1 ms | 0,59 ms |
+
+**+0,07 ms.** Die neuen Akteure sind praktisch gratis.
+
+**Messfalle für die Vorschau-Kachel:** Der Browser-Vorschaubereich zeigte dabei
+20,8 fps und „Rest 46,3 ms (Rastern + Vsync-Warten)". Das ist das Compositing der
+Kachel, nicht der Spielcode — `Draw` und `Update` aus `perfDump()` sind die
+belastbaren Zahlen. Eine fps-Messung im Vorschaubereich ist wertlos.
+
+### Regressionsprobe
+
+Standardlauf dreimal Sieg bei Welle 30 (9,9–10,6 min), Krone 1, 15 investiert,
+0 offen, 9 Karten und 3 Weichen. Endlos bis Welle 43 zweimal bestanden.

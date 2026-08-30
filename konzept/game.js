@@ -16,7 +16,9 @@ const CONFIG = {
   abilLevelScale: 0.10,
   bombe: { fuse: 1800, radius: 130, dmg: 70 },
   nova:  { range: 190, dmg: 40, stun: 500 },
-  phaser:{ dmg: 10, range: 260, rate: 700 },
+  phaser:{ dmg: 8, rate: 50, speed: 420, life: 0.9, hits:3 },
+  funkenkranz: { dmg:[40,48], hitCd:220, radius:[22,30], hitRadius:[7,11], count:[2,4], speed:3.8 },
+  brandspur: { dmg:4, interval:120, tick:300, life:[1400,2000], radius:[14,22], cap:18 },
   healPerKill: 3,
   playerBaseSpeed: 175,
   playerRadius: 18,
@@ -585,7 +587,7 @@ const ABILITIES = {
   kettenblitz:   { name:'Kettenblitz',     desc:'Treffer springt zum nächsten Gegner',                      slot:'passive', iconKey:'kette'  },
   konterstoss:   { name:'Konterstoß',      desc:'Wirst du getroffen, schlägst du automatisch zurück',        slot:'passive', iconKey:'konter' },
   splitter:      { name:'Splitter',        desc:'Kreisende Energiesplitter richten Zusatzschaden an',         slot:'passive', iconKey:'splitter', voll:true },
-  phaser:        { name:'Phaser',          desc:'Schießt automatisch auf Gegner in Reichweite',               slot:'passive', iconKey:'phaser' },
+  phaser:        { name:'Phaser',          desc:'Die Klingenspitze schießt durch bis zu drei Gegner in ihrer Bewegungsrichtung', slot:'passive', iconKey:'phaser' },
   lebensregen:   { name:'Lebensregen',     desc:'Regeneriert Leben pro getötetem Gegner',                     slot:'passive', iconKey:'leben' },
   dreifachklinge:{ name:'Dreifachklinge',  desc:'Dritte Klinge — lückenlose Deckung',                         slot:'weapon',  iconKey:'dreifach', voll:true },
   wirbel:        { name:'Wirbel',          desc:'Spirale rund um dich — massiver Schaden',                    slot:'active',  iconKey:'wirbel',  start:true },
@@ -623,7 +625,7 @@ const STUFEN={
   kettenblitz: { pro:'+10 % Sprungschaden, mehr Sprungweite',      sprung:'Der Blitz springt auf zwei Gegner statt auf einen' },
   konterstoss: { pro:'+10 % Konterschaden',                        sprung:'Der Konter schleudert doppelt so weit weg' },
   splitter:    { pro:'+10 % Splitterschaden',                      sprung:'Ein dritter Splitter kreist mit' },
-  phaser:      { pro:'+10 % Schussschaden',                        sprung:'Du feuerst zwei Geschosse gleichzeitig' },
+  phaser:      { pro:'+10 % Schussschaden',                        sprung:'Jeder Volltreffer feuert einen zusätzlichen Klingenschuss' },
   lebensregen: { pro:'+50 % Heilung pro besiegtem Gegner',         sprung:'Du regenerierst zusätzlich dauerhaft Leben' },
   sog:         { pro:'+10 % Reichweite und Zugkraft',              sprung:'Herangezogene Gegner werden kurz betäubt' },
   schneide:    { pro:'+8 % Schaden bei Volltreffern',               sprung:'Volltreffer durchschlagen jede Panzerung' },
@@ -675,7 +677,7 @@ const BOSS_KINDS=[
 ];
 // Reihum, damit jeder Boss-Kampf anders aussieht (Welle 5,10,15,20 -> 0,1,2,3)
 function bossKindFor(w){ return BOSS_KINDS[(Math.floor(w/5)-1+BOSS_KINDS.length*4) % BOSS_KINDS.length]; }
-const PASSIVE_IDS=['kettenblitz','konterstoss','splitter','phaser','lebensregen','schneide','nachhall'];
+const PASSIVE_IDS=['kettenblitz','konterstoss','splitter','phaser','lebensregen','nachhall'];
 
 /* DER ORBITPFAD V2
    Ein einziger, acht Stufen tiefer Laufpfad mit 19 möglichen Investitionen bei
@@ -1168,7 +1170,7 @@ let orbitRoundSweet=false, orbitRoundLight=false, orbitRoundDistance=0, orbitLas
 let waechterLadung=false, sonnenSerie=0, sonnenTempoUntil=0, praezSerie=0;
 let kronenMachtId='', kronenMachtUntil=0, kronenZielklinge=0;
 let wave=1, waveEnemiesToSpawn=0, waveSpawned=0, spawnTimer=0, killCount=0, hpKillCount=0;
-let shake=0, activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}, phaserCd=0;
+let shake=0, activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}, phaserCd=0, phaserSoundCd=0, brandspurCd=0;
 let dmgBoostUntil=0, shieldUntil=0, moveBoostUntil=0;
 let wiederaufBenutzt=false;      // „Entdecker": das eine Wiederaufstehen pro Lauf
 let nachhallZaehler=0, splitterSweetZaehler=0; // sichtbare Partner-Kombos
@@ -1973,7 +1975,7 @@ function tickCombatResume(now){
 const AUSLESE_PREISE=[50,100,200,400];   // Index = bereits bezahlte Würfe in diesem Lauf, gedeckelt bei 400
 let ausleseKarten=[], letzteAusleseWelle=0, ausleseReturnState='playing';
 let ausleseFreiwurfBenutzt=false, ausleseBezahlteWuerfe=0, ausleseOffenSeit=0;
-/* Zweite Auslese-Etappe (18.08.2026): fünf eigene Karteneffekte, bewusst NICHT in
+/* Eigene Karteneffekte, bewusst NICHT in
    ABILITIES — diese Tabelle speist nur die Auslese, nicht Vorbereitung, Sammlung
    oder Orbitpfad. Getragener Stand liegt in runModule (id -> Rang 1..2), getrennt
    von runAbilities. Wie bei den Passiven gibt es je Modul nur zwei Karten: "Neu"
@@ -1991,9 +1993,12 @@ const AUSLESE_MODULE={
   glasklinge: { name:'Glasklinge',  icon:'glasklinge',
                 desc:'Klingenschaden ×1,45, dafür nur 60 % maximales Leben',
                 sprung:'Klingenschaden ×1,80; Barriere baut sich nicht mehr auf' },
-  kurzschluss:{ name:'Kurzschluss', icon:'kurzschluss',
-                desc:'Mächte laden 35 % schneller, Einsatz kostet 4 % Leben',
-                sprung:'60 % schneller; Einsatz bei vollem Fokus kostet nichts' },
+  funkenkranz:{ name:'Funkenkranz', icon:'funkenkranz',
+                desc:'Zwei Funken kreisen außen gegen die Klinge und verletzen bei Berührung',
+                sprung:'Vier größere Funken ziehen einen weiteren Gegenorbit' },
+  brandspur: { name:'Brandspur', icon:'brandspur',
+                desc:'Die Klingenspitze hinterlässt brennende Male für 1,4 Sekunden',
+                sprung:'Größere Brandmale bleiben 2 Sekunden liegen' },
 };
 // Die Passive, die der Orbitbaum für die aktuelle Hauptmacht als Partner ohnehin
 // vergibt (EVOLUTIONS[...].req) — sonst würde sie mit dem Baum kollidieren.
@@ -2260,7 +2265,7 @@ function resetGame(){
   sorgeOrbitauftrag();
   player=newPlayer(); window.playerRef = player; enemies=[]; stars=[]; particles=[]; floats=[]; shots=[]; orbs=[]; killCount=0; hpKillCount=0;
   wave=1; waveEnemiesToSpawn=0; waveSpawned=0; spawnTimer=0;
-  activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}; phaserCd=0; dmgBoostUntil=0; shieldUntil=0; moveBoostUntil=0; stossWaveT=0; wirbelT=0; spinHitTimer=0;
+  activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}; phaserCd=0; phaserSoundCd=0; brandspurCd=0; dmgBoostUntil=0; shieldUntil=0; moveBoostUntil=0; stossWaveT=0; wirbelT=0; spinHitTimer=0;
   bonuses={dmg:0, speed:0, range:0, fireRate:0, maxHp:0, blades:1, regen:0};
   counterCd=0; shards=[]; bossActive=false; bossHitClean=true; flashUntil=0; helferOverdriveUntil=0;
   const vw = laufVorgabe ? { slot1:laufVorgabe.slot1, slot2:laufVorgabe.slot2 } : startMaechte();
@@ -3198,6 +3203,15 @@ const muteBtn=document.getElementById('mute-btn'); if(muteBtn) muteBtn.addEventL
 updateMuteBtn();
 refreshMenuVisibility();   // beim allerersten Start bleiben Meta-Shop, Sammlung und Codex verborgen
 
+// Die Tangente zeigt in Drehrichtung der Klinge, unabhängig von Gegnerpositionen.
+function fireBladePhaser(angle=swordAngle){
+  const tip=player.radius+bladeLength(), dir=angle+Math.PI/2, P=CONFIG.phaser;
+  pShots.push({kind:'phaser',x:player.x+Math.cos(angle)*tip,y:player.y+Math.sin(angle)*tip,
+    vx:Math.cos(dir)*P.speed,vy:Math.sin(dir)*P.speed,
+    dmg:Math.round(P.dmg*abilScale(runAbilities.phaser)*(1+bonuses.dmg)),
+    life:P.life,hitsLeft:P.hits,moduleColor:currentSkin().blade});
+}
+
 /* Adaptive Modulmechaniken. Beide Knoten bleiben im Baum gleich, reagieren aber auf
    Hauptmacht und Klingenform. Alle Hilfen verwenden vorhandene Projektile/Felder und
    harte Obergrenzen, damit sichtbare Macht nicht in Effektlast ausartet. */
@@ -3889,7 +3903,9 @@ const ICON={
   // eine Flamme — die sagte nichts ueber die Wirkung.
   farbe:'<path d="M12 3a9 9 0 0 0 0 18c1.4 0 2-.8 2-1.8 0-.6-.4-1-.4-1.6 0-.9.7-1.5 1.6-1.5H17a4.4 4.4 0 0 0 4-4.4C21 6.6 17 3 12 3z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="7.6" cy="11" r="1.3" fill="currentColor"/><circle cx="11" cy="7.4" r="1.3" fill="currentColor"/><circle cx="15.4" cy="8.6" r="1.3" fill="currentColor"/>',
   nachhall:'<circle cx="6" cy="12" r="2.4" fill="currentColor"/><path d="M10.2 7.6a6.2 6.2 0 0 1 0 8.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.2 5a9.9 9.9 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".62"/><path d="M18.2 2.6a13.6 13.6 0 0 1 0 18.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".34"/>',
-  // Fünf neue Icons für die Auslese-Module (18.08.2026) — jede Karte braucht ein Symbol.
+  // Auslese-Module: Jede Karte trägt ein eigenes Symbol.
+  funkenkranz:'<path d="M5 6a8 8 0 0 1 14 2M19 18a8 8 0 0 1-14-2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m4 4 3 3-3 3-3-3zm16 10 3 3-3 3-3-3z" fill="currentColor"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.5" opacity=".5"/>',
+  brandspur:'<path d="M5 21c-5-5 5-5 2-9M11 21c-4-4 4-5 2-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 2c1 4 5 5 5 9a5 5 0 0 1-10 0c0-2 1-4 3-6v5c3-2 3-5 2-8z" fill="currentColor"/>',
   klingenteilung:'<path d="M12 4a8 8 0 1 1-6.93 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4.2 4.6v4.2h4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 20a8 8 0 0 0 6.93-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/><path d="M19.8 19.4v-4.2h-4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>',
   taktschlag:'<circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="6.4" fill="none" stroke="currentColor" stroke-width="1.8" opacity=".75"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"/>',
   nachfassen:'<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 3" opacity=".5"/><path d="M12 3a9 9 0 0 1 6.36 15.36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>',
@@ -4214,6 +4230,22 @@ function update(dt){
   swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * (sonnenTempoUntil>Date.now()?1.22:1) * dt/1000;
   if(swordAngle>Math.PI*2){ swordAngle-=Math.PI*2; resetMissedOrbit(); }
   player.face = swordAngle;
+  // Ein Mal pro Takt, auch mit mehreren Klingen. Weltposition bleibt nach dem Setzen fest.
+  if(runModule.brandspur && dt>0){
+    const B=CONFIG.brandspur, rang=runModule.brandspur-1;
+    brandspurCd-=dt;
+    if(brandspurCd<=0){
+      brandspurCd+=B.interval;
+      if(powerFields.filter(f=>f.kind==='brandspur').length>=B.cap){
+        const alt=powerFields.findIndex(f=>f.kind==='brandspur');
+        powerFields.splice(alt,1);
+      }
+      const tip=player.radius+bladeLength(), life=B.life[rang];
+      powerFields.push({kind:'brandspur',x:player.x+Math.cos(swordAngle)*tip,y:player.y+Math.sin(swordAngle)*tip,
+        ang:swordAngle,r:B.radius[rang],t:life,max:life,tick:0,
+        dmg:B.dmg*(1+bonuses.dmg),color:'#ff9c42'});
+    }
+  }
   // Effekt-Timer
   if(stossWaveT>0){ stossWaveT -= dt/380; if(stossWaveT<0) stossWaveT=0; }
   if(wirbelT>0){ wirbelT -= dt/420; if(wirbelT<0) wirbelT=0; }
@@ -4223,7 +4255,7 @@ function update(dt){
   if(spinHitTimer<=0){
     spinHitTimer = CONFIG.spinHitInterval;
     const bladeLen = bladeLength();
-    if(barriere>0 && treeFlags.leuchtfeuer && powerFields.length<14 && powerFields.filter(f=>f.kind==='lightTrail').length<6){
+    if(barriere>0 && treeFlags.leuchtfeuer && powerFields.filter(f=>f.kind!=='brandspur').length<14 && powerFields.filter(f=>f.kind==='lightTrail').length<6){
       const ta=swordAngle, tx=player.x+Math.cos(ta)*(player.radius+bladeLen), ty=player.y+Math.sin(ta)*(player.radius+bladeLen);
       powerFields.push({kind:'lightTrail',x:tx,y:ty,r:28,t:260,tick:0,color:'#ffd257',shown:false});
     }
@@ -4287,6 +4319,7 @@ function update(dt){
       if(abgeprallt) dmg = Math.max(1, Math.round(dmg*hilfe().panzerDurchlass*((laufEreignis&&laufEreignis.durchlassMult)||1)));
       en.hp -= dmg;
       if(treffer){
+        if(hatSprung('phaser')) fireBladePhaser(anglesNow[trefferIndex]);
         tutorialSweetSpotTreffer();
         if(en.panzer) orbitFortschritt('panzer_sweet');
         handleBladeModuleSweet(en,toEnemy,dmg);
@@ -4396,22 +4429,48 @@ function update(dt){
     if(nachfassenBereit && tickSweet) nachfassenBereit=false;
   }
   perfMark('klinge');
-  // Splitter (kreisende Energie) aktualisieren
+  // Beide Begleiter teilen die Liste, aber nie ihren Bestand oder ihre Drehrichtung.
   if(runAbilities.splitter){
     const slv=runAbilities.splitter;
     // Sprung ab Stufe 4: ein dritter Splitter kreist mit — spürbar mehr Dauerschaden
     const anzahl=CONFIG.abil.splitterCount + (slv>=SPRUNG_STUFE? 1 : 0);
-    if(shards.length!==anzahl){ shards=[]; for(let i=0;i<anzahl;i++) shards.push({ang:i/anzahl*Math.PI*2, cd:0, x:player.x, y:player.y}); }
+    if(shards.filter(s=>s.kind!=='funkenkranz').length!==anzahl){
+      shards=shards.filter(s=>s.kind==='funkenkranz');
+      for(let i=0;i<anzahl;i++) shards.push({kind:'splitter',ang:i/anzahl*Math.PI*2,cd:0,x:player.x,y:player.y});
+    }
     const SR=CONFIG.abil.splitterRadius*(1+bonuses.range*0.4);
     const sDmg=Math.round(CONFIG.abil.splitterDamage*abilScale(slv));
     for(const s of shards){
+      if(s.kind==='funkenkranz') continue;
       s.ang += CONFIG.abil.splitterSpeed*dt/1000; s.cd-=dt;
       s.x=player.x+Math.cos(s.ang)*SR; s.y=player.y+Math.sin(s.ang)*SR;
       if(s.cd<=0){
         for(const en of enemies){ if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+7){ en.hp-=sDmg; spawnParticles(s.x,s.y,'#9ad0ff',2); s.cd=CONFIG.abil.splitterHitCd; break; } }
       }
     }
-  } else if(shards.length){ shards.length=0; }
+  } else if(shards.some(s=>s.kind!=='funkenkranz')) shards=shards.filter(s=>s.kind==='funkenkranz');
+  if(runModule.funkenkranz){
+    const F=CONFIG.funkenkranz, rang=runModule.funkenkranz-1, anzahl=F.count[rang];
+    const funken=shards.filter(s=>s.kind==='funkenkranz');
+    if(funken.length!==anzahl){
+      const phase=funken.length?funken[0].ang:-swordAngle;
+      shards=shards.filter(s=>s.kind!=='funkenkranz');
+      for(let i=0;i<anzahl;i++) shards.push({kind:'funkenkranz',ang:phase+i/anzahl*Math.PI*2,cd:0,x:player.x,y:player.y});
+    }
+    const radius=player.radius+bladeLength()+F.radius[rang];
+    for(const s of shards){
+      if(s.kind!=='funkenkranz') continue;
+      s.ang=(s.ang-F.speed*dt/1000)%(Math.PI*2); s.cd-=dt; s.r=radius; s.size=F.hitRadius[rang];
+      s.x=player.x+Math.cos(s.ang)*radius; s.y=player.y+Math.sin(s.ang)*radius;
+      if(s.cd<=0){
+        for(const en of enemies){
+          if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+s.size){
+            en.hp-=Math.round(F.dmg[rang]*(1+bonuses.dmg)); s.cd=F.hitCd; break;
+          }
+        }
+      }
+    }
+  } else if(shards.some(s=>s.kind==='funkenkranz')) shards=shards.filter(s=>s.kind!=='funkenkranz');
   perfMark('splitter');
 
   // spawn
@@ -4624,24 +4683,16 @@ function update(dt){
       if(sfx) sfx('hurt');
     }
   }
-  // Phaser (passiv): schießt automatisch auf den nächsten Gegner in Reichweite
+  // Phaser: gleichmäßiger Takt von der Klingenspitze entlang ihrer Tangente.
   if(runAbilities.phaser){
-    const lv=runAbilities.phaser;
-    phaserCd-=dt;
-    const pr=CONFIG.phaser.range*(1+0.04*(lv-1));
-    if(phaserCd<=0){
-      let best=null, bd=pr;
-      for(const en of enemies){ const pd=Math.hypot(en.x-player.x,en.y-player.y); if(pd<bd){ bd=pd; best=en; } }
-      if(best){
-        const dir=Math.atan2(best.y-player.y, best.x-player.x);
-        const pdmg=Math.round(CONFIG.phaser.dmg*abilScale(lv)*(1+bonuses.dmg));
-        const winkel = lv>=2? [dir-0.09, dir+0.09] : [dir];
-        for(const a of winkel){
-          pShots.push({x:player.x+Math.cos(a)*20, y:player.y+Math.sin(a)*20,
-            vx:Math.cos(a)*420, vy:Math.sin(a)*420, dmg:pdmg, life:1.2,hitsLeft:lv>=3?3:1});
-        }
-        phaserCd=CONFIG.phaser.rate;
-        if(sfx) sfx('laserPlayer');
+    phaserCd-=dt; phaserSoundCd-=dt;
+    // 50 ms sind drei 60-Hz-Bilder; Rundungsreste dürfen den nächsten Schuss nicht verzögern.
+    if(phaserCd<=1e-6 && dt>0){
+      fireBladePhaser(); phaserCd+=CONFIG.phaser.rate;
+      // Der schnelle Geschossstrom klingt höchstens alle 200 ms, ohne Gegner bleibt er still.
+      if(phaserSoundCd<=0){
+        if(enemies.length && sfx) sfx('laserPlayer');
+        phaserSoundCd=200;
       }
     }
   }
@@ -4751,7 +4802,12 @@ function update(dt){
       feldDt=Math.max(0,-delayRest); f.delay=0;
     }
     f.tick-=feldDt; f.t-=feldDt;
-    if(f.kind==='stase'){
+    if(f.kind==='brandspur'){
+      if(f.tick<=0){
+        for(const en of enemies) if(Math.hypot(en.x-f.x,en.y-f.y)<f.r+en.radius) en.hp-=f.dmg;
+        f.tick+=CONFIG.brandspur.tick;
+      }
+    } else if(f.kind==='stase'){
       for(const en of enemies) if(Math.hypot(en.x-f.x,en.y-f.y)<f.r+en.radius)
         en.slowT=Math.max(en.slowT||0,260);
     } else if(f.kind==='lightTrail'){
@@ -5877,12 +5933,13 @@ function draw(){
     ctx.fillStyle='#fff'; sb(18);
     ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
   }
-  // eigene Projektile (Phaser) – cyan, kleiner als die gegnerischen
+  // Eigene Projektile; Phaser übernimmt die Klingenfarbe und eine längere Strichform.
   for(const s of pShots){
     if(!sichtbar(s.x,s.y,22)) continue;
     const shotColor=s.moduleColor||(s.spectral?'#c77dff':'#9ad0ff');
     ctx.strokeStyle=shotColor; sbc(shotColor,12); ctx.lineWidth=3; ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(s.x - s.vx*0.03, s.y - s.vy*0.03); ctx.lineTo(s.x, s.y); ctx.stroke();
+    const spur=s.kind==='phaser'?.055:.03;
+    ctx.beginPath(); ctx.moveTo(s.x - s.vx*spur, s.y - s.vy*spur); ctx.lineTo(s.x, s.y); ctx.stroke();
     ctx.fillStyle='#eaf6ff'; sb(14);
     ctx.beginPath(); ctx.arc(s.x,s.y,4,0,Math.PI*2); ctx.fill();
   }
@@ -5891,6 +5948,22 @@ function draw(){
   for(const f of powerFields){
     if(f.hidden || !Number.isFinite(f.r)) continue;
     if(!sichtbar(f.x,f.y,f.r+16)) continue;
+    if(f.kind==='brandspur'){
+      // Verkohltes Mal mit drei Glutzungen statt eines weiteren Trefferrings.
+      const fade=Math.min(1,Math.max(0,f.t/360)), pulse=.8+.2*Math.sin(now/95+f.ang);
+      ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(f.ang); ctx.globalAlpha=fade;
+      ctx.globalCompositeOperation='source-over'; ctx.fillStyle='rgba(65,24,12,.5)'; sb(0);
+      ctx.beginPath(); ctx.ellipse(0,0,f.r,f.r*.72,0,0,Math.PI*2); ctx.fill();
+      ctx.globalCompositeOperation='lighter'; ctx.strokeStyle=f.color; sbc(f.color,8);
+      ctx.lineWidth=2.5; ctx.lineCap='round';
+      for(let k=-1;k<=1;k++){
+        const x=k*f.r*.4, h=f.r*(k===0?.75:.45)*pulse;
+        ctx.beginPath(); ctx.moveTo(x,f.r*.35); ctx.quadraticCurveTo(x-f.r*.25,0,x,-h); ctx.stroke();
+      }
+      ctx.strokeStyle='#ffe1a0'; ctx.lineWidth=1.2;
+      ctx.beginPath(); ctx.moveTo(-f.r*.25,2); ctx.lineTo(0,-f.r*.35); ctx.lineTo(f.r*.2,1); ctx.stroke();
+      ctx.restore(); continue;
+    }
     const rest=Math.max(0,Math.min(1,f.t/1900));
     ctx.save(); ctx.globalAlpha=.18+.22*rest; ctx.fillStyle=f.color; ctx.strokeStyle=f.color;
     ctx.setLineDash(f.kind==='stase'?[5,7]:[12,5]); ctx.lineDashOffset=-now/65;
@@ -6061,6 +6134,15 @@ function draw(){
   if(shards.length){
     ctx.save(); ctx.globalCompositeOperation='lighter';
     for(const s of shards){
+      if(s.kind==='funkenkranz'){
+        const color=['#3bd17a','#35e0e0'].includes(currentSkin().blade)?'#ffb5f5':'#65ffe0';
+        sbc(color,12); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineCap='round';
+        ctx.beginPath(); ctx.arc(player.x,player.y,s.r,s.ang,s.ang+.42); ctx.stroke();
+        ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.ang-Math.PI/2); ctx.scale(s.size/7,s.size/7);
+        ctx.fillStyle=color; ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(-3,6); ctx.lineTo(-7,0); ctx.lineTo(-3,-6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,0,2,0,Math.PI*2); ctx.fill();
+        ctx.restore(); continue;
+      }
       sbc('#9ad0ff',10); ctx.fillStyle='#bfe3ff';
       ctx.beginPath(); ctx.arc(s.x,s.y,4.5,0,Math.PI*2); ctx.fill();
     }
