@@ -72,7 +72,6 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
   backdrop-filter:blur(8px);transition:border-color .15s,box-shadow .15s,opacity .15s
 }
 .sp-wirbel{--c:#ffb340;--cRGB:255,179,64}
-.sp-stoss{--c:#6ec8ff;--cRGB:110,200,255}
 .sig-glyph{display:grid;place-items:center;font-size:clamp(25px,6.8vw,32px);font-weight:850;line-height:1}
 .special-btn:not(.on-cooldown){box-shadow:0 0 20px rgba(var(--cRGB),.28)}
 .special-btn:active{transform:scale(.95)}

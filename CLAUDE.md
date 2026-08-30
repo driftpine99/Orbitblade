@@ -1231,3 +1231,55 @@ lädt.
 über den lokalen Server (`.claude/launch.json`, Port 8123) den betroffenen Klickweg
 ansehen. Das kostet zwei Minuten und hat hier einen Fehler gefunden, der einen
 kompletten Orbitpunkt vernichtet hätte.
+
+## Paket 3a: Ein Knopf (30.08.2026)
+
+Der zweite aktive Machtslot ist entfallen. Das Spiel hat jetzt genau einen Knopf:
+die Hauptmacht.
+
+**Umsetzung:** `hasSlot2()` gibt fest `false` zurück — das ist der Flaschenhals, denn
+`activeSlot2` wird nur an einer Stelle daraus gesetzt. Dazu entfernt: das
+Werkstattprojekt `Zweite Macht`, die zweite Hälfte von `updateActiveButtons()`, die
+DOM-Referenzen `btnStoss`/`cdStoss`, drei Ereignisbindungen samt Tastaturtaste `2`,
+der zweite Knopf in `index.html`, die Regel `.sp-stoss` und die jeweils zweite
+Slot-Kachel in Codex und Vorbereitung.
+
+**Speichermigration v9 → v10 mit Erstattung.** Wer das Projekt für 1.000 Fragmente
+gebaut hatte, bekommt sie zurück; `meta.slot2` und `startMaechte.slot2` werden
+geräumt. Geprüft an einem synthetischen v9-Spielstand: 250 → 1.250 Fragmente, alle
+übrigen Projekte, Bestmarken und Abzeichen unangetastet.
+
+**Die drei Resonanzknoten** koppelten früher beide Mächte. Ihr Ersatzpfad ohne
+zweiten Slot (`treeFlags.resonanzUntil`: Klingenschub statt Abklingzeitkopplung) war
+bereits vorhanden und ist jetzt der Normalfall.
+
+### Gemessen
+
+Standardlauf dreimal: Sieg Welle 30, 10,9–11,2 min, Krone 1, 15 investiert, 0 offen,
+9 Karten und 3 Weichen — unverändert. Endlos bis Welle 43 zweimal bestanden. Keine
+hängende Referenz.
+
+---
+
+# Teil I – Was das Spielen fand, was Messungen nicht fanden
+
+Am 30.08. wurde der erste echte Spieltest gemacht, nachdem den ganzen Tag headless
+gemessen worden war. Er fand in Minuten drei Dinge, die alle Messungen übersehen
+hatten. Alle drei gehören zur selben Klasse: **Die Mechanik war umgebaut, die
+Oberfläche sprach noch die alte Sprache.**
+
+1. **Die Hilfeseite forderte „Tippe oben rechts auf ✦"** — auf einen Knopf, der beim
+   Abriss entfernt worden war. Dazu beschrieb sie pulsierende Knoten und grüne
+   Verbindungslinien einer gelöschten Oberfläche.
+2. **Neun weitere Textstellen** nannten „Orbitbaum" als Ort oder „Orbitpunkt" als
+   Währung — Tages-Twist, Werkstattprojekt, Levelansage, Codex-Kacheln.
+3. **Der zweite Machtknopf war noch da.** Konzeptionell seit Punkt 3 beschlossen,
+   aber nie gebaut. Ein Spieler sieht so etwas sofort, ein Bot nie.
+
+**Die Regel, die daraus folgt:** Eine Mechanikänderung ist erst fertig, wenn die
+Texte mitgezogen sind. `tools/sim.js` liest keine Texte und lädt kein CSS — es kann
+diese Fehlerklasse grundsätzlich nicht finden. Nach jeder Änderung an einem System
+deshalb `grep` auf die alten Begriffe in `index.html` **und** auf sichtbare Strings
+in `game.js`, danach einmal den Klickweg im Browser ansehen.
+
+Der Server dafür steht in `.claude/launch.json` (Port 8123, gitignoriert).

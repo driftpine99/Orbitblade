@@ -808,7 +808,7 @@ function checkMilestones(){
 
 /* TESTFASSUNG des Konzepts vom 11.8.2026 — läuft neben der stabilen Version.
    Eigener Speicherschlüssel, damit ein Testlauf den echten Spielstand nicht anfasst. */
-const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=9;
+const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=10;
 // opts: Bedien-Einstellungen (Seite und Anordnung der Fähigkeiten-Knöpfe)
 // best ist jetzt je Hilfsstufe getrennt — sonst wäre die Bestmarke nicht vergleichbar
 const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin', muted:false, bossKills:0, stars:0, meta:{}, tutorialDone:false, tutorialVersion:0, focusTutorialSeen:false,
@@ -904,6 +904,13 @@ function migrateSave(data){
     data.orbitauftrag=null;
     data.orbitauftragTauschTag='';
     data.orbitauftragLetzterId='';
+  }
+  // v9 → v10: Der zweite aktive Slot ist entfallen. Wer das Projekt gebaut hat,
+  // bekommt die 1.000 Fragmente zurück — nichts darf kommentarlos verloren gehen.
+  if(data.v<10){
+    data.meta=data.meta||{};
+    if(data.meta.slot2){ data.stars=(data.stars||0)+1000; delete data.meta.slot2; }
+    if(data.startMaechte) data.startMaechte.slot2=null;
   }
   data.v = SAVE_VERSION;
   return data;
@@ -1113,8 +1120,8 @@ const overlayStart=document.getElementById('overlay-start'), overlayPause=docume
 const overlayOver=document.getElementById('overlay-gameover');
 const combatResume=document.getElementById('combat-resume');
 const overlayAuslese=document.getElementById('overlay-auslese');
-const btnWirbel=document.getElementById('btn-wirbel'), btnStoss=document.getElementById('btn-stoss');
-let cdWirbel=document.getElementById('cd-wirbel'), cdStoss=document.getElementById('cd-stoss');
+const btnWirbel=document.getElementById('btn-wirbel');
+let cdWirbel=document.getElementById('cd-wirbel');
 const joystickZone=document.getElementById('joystick-zone');   // unsichtbare Ziehfläche über dem Spielfeld
 
 loadSave();
@@ -1351,7 +1358,10 @@ function begleiterStufe(){
   for(let i=1;i<=5;i++) if(save.meta&&save.meta['begleiter'+i]) stufe=i; else break;
   return stufe;
 }
-function hasSlot2(){ return (save.meta&&save.meta.slot2)>0; }
+/* Der zweite aktive Slot ist entfallen: Das Spiel hat genau einen Knopf, die
+   Hauptmacht. Die Funktion bleibt als false-Konstante stehen, weil mehrere
+   Stellen sie abfragen. */
+function hasSlot2(){ return false; }
 /* Die gespeicherte Startbelegung, gegen die Wirklichkeit geprüft: Eine Macht, die
    (noch) nicht freigeschaltet ist oder doppelt in beiden Slots steht, würde sonst
    einen kaputten Lauf erzeugen. Liefert immer eine gültige Belegung. */
@@ -1807,15 +1817,6 @@ function updateActiveButtons(){
   btnWirbel.style.setProperty('--c', c1[0]); btnWirbel.style.setProperty('--cRGB', c1[1]);
   btnWirbel.setAttribute('aria-label',(ABILITIES[activeSlot1]?.name||'Hauptmacht')+' · Taste 1');
   updateCooldownUI(btnWirbel, cdWirbel, activeCd[activeSlot1]||0, activeCdMax(activeSlot1), 'a');
-  // Zweiter Knopf erscheint erst, wenn der Slot freigeschaltet und belegt ist
-  if(!activeSlot2){ btnStoss.style.display='none'; btnStoss.setAttribute('aria-label','Keine zweite Macht ausgerüstet'); return; }
-  btnStoss.style.display='';
-  const c2=ACTIVE_COLORS[activeSlot2]||['#6ec8ff','110,200,255'];
-  btnStoss.innerHTML=activeBtnHTML('b','2');
-  cdStoss=document.getElementById('cd-b');
-  btnStoss.style.setProperty('--c', c2[0]);  btnStoss.style.setProperty('--cRGB', c2[1]);
-  btnStoss.setAttribute('aria-label',(ABILITIES[activeSlot2]?.name||'Zweite Macht')+' · Taste 2');
-  updateCooldownUI(btnStoss, cdStoss, activeCd[activeSlot2]||0, activeCdMax(activeSlot2), 'b');
 }
 
 let treeUndo=null;
@@ -2183,7 +2184,6 @@ resize();
 // Block vor newPlayer() stehen darf (newPlayer liest metaValue bereits beim Start).
 const META_UPGRADES=[
   {gruppe:'Kernsysteme',id:'startimpuls',name:'Startimpuls',desc:'Jeder Lauf beginnt mit 1 zusätzlichen Freischaltung.',icon:'tempo',base:700},
-  {gruppe:'Kernsysteme',id:'slot2',name:'Zweite Macht',desc:'Schaltet den zweiten aktiven Werkzeug-Slot frei.',icon:'doppel',base:1000},
   {gruppe:'Kernsysteme',id:'orbitarchiv',name:'Orbitarchiv',desc:'Speichert zwei Startkonfigurationen in der Vorbereitung.',icon:'reichweite',base:1800},
   {gruppe:'Blaupausen',id:'bombenkern',name:'Bombenkern',desc:'Macht die Bombe als Startmacht verfügbar.',icon:'bombe',base:1800,blueprint:['ability','bombe']},
   {gruppe:'Blaupausen',id:'novakern',name:'Novakern',desc:'Macht die Machtblitz-Nova als Startmacht verfügbar.',icon:'nova',base:2400,blueprint:['ability','nova']},
@@ -2600,7 +2600,6 @@ window.addEventListener('keydown',e=>{
   keys[e.key.toLowerCase()]=true;
   if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) skipCombatResume();
   if(e.key==='1') doActive(1);
-  if(e.key==='2') doActive(2);
   if(e.key==='Escape' && state==='playing') pauseGame();
   if(e.key==='Escape' && state==='paused') resumeGame();
 });
@@ -2722,19 +2721,13 @@ function renderCodex(){
   // Aktive Slots als anklickbare Kacheln
   const slotBox=document.getElementById('codex-slots');
   slotBox.innerHTML='';
-  for(const n of [1,2]){
+  for(const n of [1]){
     const id=n===1?activeSlot1:activeSlot2;
     const kachel=document.createElement('button');
-    if(n===2 && !hasSlot2()){
-      kachel.className='slot-kachel gesperrt';
-      kachel.innerHTML=`<span class="slot-nr">Slot 2</span>${svg(ICON.doppel)}
-        <span class="slot-name">Gesperrt</span><span class="slot-sub">In der Werkstatt freischalten</span>`;
-      slotBox.appendChild(kachel); continue;
-    }
     const a=ABILITIES[id]; if(!a) continue;
     const lv=runAbilities[id]||1, evo=evolvedOf(id);
     kachel.className='slot-kachel'+(evo?' is-evo':'');
-    kachel.innerHTML=`<span class="slot-nr">Slot ${n}</span>${svg(abilIcon(id))}
+    kachel.innerHTML=`<span class="slot-nr">Hauptmacht</span>${svg(abilIcon(id))}
       <span class="slot-name">${evo? EVOLUTIONS[evo].name : a.name}</span>
       <span class="slot-sub">${evo? 'Entwickelt' : 'Stufe '+lv+' von '+MAX_ABIL_LEVEL}</span>
       ${pipsHTML(lv)}
@@ -2879,21 +2872,17 @@ function renderStartMaechte(){
   if(!box) return;
   const vw=startMaechte();
   box.innerHTML='';
-  for(const n of [1,2]){
+  for(const n of [1]){
     const id = n===1? vw.slot1 : vw.slot2;
     const kachel=document.createElement('div');
-    if(n===2 && !hasSlot2()){
-      kachel.className='slot-kachel gesperrt';
-      kachel.innerHTML=`<span class="slot-nr">Slot 2</span><span class="slot-name">Gesperrt</span>
-        <span class="slot-sub">In der Werkstatt freischaltbar</span>`;
-    } else if(!id){
+    if(!id){
       kachel.className='slot-kachel leer';
-      kachel.innerHTML=`<span class="slot-nr">Slot ${n}</span><span class="slot-name">Frei</span>
-        <span class="slot-sub">Noch keine zweite Macht verfügbar</span>`;
+      kachel.innerHTML=`<span class="slot-nr">Hauptmacht</span><span class="slot-name">Frei</span>
+        <span class="slot-sub">Noch keine Macht verfügbar</span>`;
     } else {
       const a=ABILITIES[id];
       kachel.className='slot-kachel';
-      kachel.innerHTML=`<span class="slot-nr">Slot ${n}</span>${svg(abilIcon(id))}
+      kachel.innerHTML=`<span class="slot-nr">Hauptmacht</span>${svg(abilIcon(id))}
         <span class="slot-name">${a.name}</span>
         <span class="slot-sub">${a.desc}</span>`;
       kachel.onclick=()=>openPick('vorwahl', n);
@@ -3741,9 +3730,7 @@ function doCounter(){
 // Kettenblitz zwischen zwei Punkten (nur Optik)
 function addBolt(x1,y1,x2,y2){ particles.push({bolt:true, x:x1,y:y1, x2, y2, life:0.16, max:0.16}); }
 btnWirbel.addEventListener('touchstart',e=>{e.preventDefault();doActive(1)});
-btnStoss.addEventListener('touchstart',e=>{e.preventDefault();doActive(2)});
 btnWirbel.addEventListener('click',()=>doActive(1));
-btnStoss.addEventListener('click',()=>doActive(2));
 
 // Fragmente, Partikel, Textzahlen
 // Fragmente fallen direkt — eine Währung, nichts verfällt
@@ -4141,7 +4128,6 @@ function update(dt){
   // cooldowns (aktive Fähigkeiten) + Cooldown-Anzeige auf den Buttons
   for(const id of ACTIVE_IDS) if(activeCd[id]>0) activeCd[id]=Math.max(0, activeCd[id]-dt);
   updateCooldownUI(btnWirbel, cdWirbel, activeCd[activeSlot1]||0, activeCdMax(activeSlot1), 'a');
-  updateCooldownUI(btnStoss,  cdStoss,  activeCd[activeSlot2]||0, activeCdMax(activeSlot2), 'b');
   perfMark('cooldowns');
 
   // Bewegung – Spieler läuft frei durch die Welt, Kamera hält ihn zentriert
