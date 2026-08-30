@@ -1283,3 +1283,64 @@ deshalb `grep` auf die alten Begriffe in `index.html` **und** auf sichtbare Stri
 in `game.js`, danach einmal den Klickweg im Browser ansehen.
 
 Der Server dafür steht in `.claude/launch.json` (Port 8123, gitignoriert).
+
+## Paket 3b: Eine Figur (30.08.2026)
+
+Umgesetzt in zwei Schritten.
+
+### 3b-1: Die vier Haltungen von der Figur gelöst
+
+Bisher hingen sie an der gewählten Figur — der Lichthüter bekam Wächter und
+Sonnenjäger, die Leerenklinge Verschlinger und Abgrund. Zwei Knoten, deren Inhalt
+sich je nach Figur änderte; jeder Spieler sah nur zwei der vier.
+
+Jetzt vier eigenständige Knoten in derselben `exclusiveGroup`. Die Weiche zieht
+**zwei davon über den Laufseed**, damit die Karte ihre Form behält: zwei große
+Karten statt vier kleiner. Über 40 Seeds erschienen alle sechs möglichen
+Kombinationen. `blade_synergy` koppelt an die gewählte Haltung statt an die Figur;
+die vier Endformen (Leuchtfeuer, Sonnenorbit, Satter Abgrund, Ereignishorizont)
+bleiben vollständig erhalten.
+
+**Der Buildraum wuchs von zwei auf sechs Haltungspaare, ohne einen einzigen neuen
+Inhalt.**
+
+### 3b-2: Ein Körper, Identität über die Haltung
+
+Zur Wahl standen zwei Wege. Entschieden wurde **B**:
+
+- **A (Konzeptfassung):** Lichtbund und Leerenhunger werden Auslese-Karten.
+  Maximale Vielfalt, aber der Laufbeginn hätte gar keine Identitätsmechanik mehr —
+  und genau die ersten Minuten sieht ein Kind am häufigsten.
+- **B (umgesetzt):** Der **Lichtbund ist die Grundmechanik des einen Körpers** und
+  gilt immer. Der **Leerenhunger hängt an den Haltungen Verschlinger und Abgrund**.
+  Wer eine davon wählt, spielt die Leeren-Identität — zusätzlich zum Lichtbund.
+
+Daraus entsteht eine Spannung, die vorher nicht möglich war: Die Basis gibt
+Barriere bei vollem Fokus, die Leeren-Haltung belohnt fehlendes Leben.
+
+**Umsetzung, überraschend klein:** `figur()` liefert konstant den Lichthüter. Damit
+werden alle `figur().id==='held'`-Abfragen von selbst wahr — der Lichtbund wird zur
+Basis, ohne dass eine Zeile daran geändert werden musste. Nur die fünf
+`'konstrukt'`-Abfragen wurden auf `hatLeerenhunger()` umgestellt:
+
+```js
+function hatLeerenhunger(){ return !!(treeFlags.leerenHeilung || treeFlags.leerenRisikoBonus); }
+```
+
+**Die Leerenklinge bleibt sichtbar erhalten.** Die Silhouette hängt an
+`currentFigur()`, das weiterhin `save.figur` liest — sie war technisch längst ein
+Skin. Die Sammlung hat dafür bereits einen Tab; er heißt jetzt „Körper" statt
+„Charaktere" und trägt den Hinweis, dass alle sich gleich spielen. Das
+Werkstattprojekt `Leerenprotokoll` schaltet sie weiter frei, nur als Aussehen statt
+als Charakter. Deshalb **keine Erstattung nötig** — das Projekt liefert weiterhin
+etwas.
+
+**Entfernt:** der Charakter-Tab aus der Vorbereitung. Sie hat jetzt zwei Tabs statt
+drei: Hauptmacht und Stufe.
+
+### Gemessen
+
+Standardlauf dreimal Sieg bei Welle 30 (10,7 / 12,1 / 13,0 min), Krone erreicht,
+15 Punkte investiert, 9 Karten und 3 Weichen. Endlos bis Welle 43 bestanden.
+`hatLeerenhunger()` schaltet korrekt: false ohne Haltung und mit Wächter, true mit
+Verschlinger und mit Abgrund. Keine Konsolenfehler im Browser.

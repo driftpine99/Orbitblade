@@ -232,8 +232,8 @@ const ORBIT_AUFTRAEGE={
   fokus_einsatz:{id:'fokus_einsatz',titel:'Fokus im Orbit',text:'Setze 5 fokussierte Hauptmächte ein.',kurz:'Fokusmächte',ziel:5,lohn:160},
   boss_makellos:{id:'boss_makellos',titel:'Makelloser Orbit',text:'Besiege 1 Boss ohne Lebensschaden.',kurz:'Boss makellos',ziel:1,lohn:200},
   panzer_sweet:{id:'panzer_sweet',titel:'Präzisionsbrecher',text:'Lande 20 Volltreffer auf Panzergegner.',kurz:'Panzer-Volltreffer',ziel:20,lohn:170},
-  held_lichtbund:{id:'held_lichtbund',titel:'Lichtbund',text:'Erzeuge als Lichthüter 3 Fokusbarrieren.',kurz:'Lichtbarrieren',ziel:3,lohn:170,figur:'held'},
-  leere_hunger:{id:'leere_hunger',titel:'Leerenhunger',text:'Lade als Leerenklinge 3-mal unter 45 % Leben Fokus voll.',kurz:'Risiko-Fokus',ziel:3,lohn:190,figur:'konstrukt'},
+  held_lichtbund:{id:'held_lichtbund',titel:'Lichtbund',text:'Erzeuge 3 Fokusbarrieren.',kurz:'Lichtbarrieren',ziel:3,lohn:170},
+  leere_hunger:{id:'leere_hunger',titel:'Leerenhunger',text:'Lade 3-mal unter 45 % Leben den Fokus voll.',kurz:'Risiko-Fokus',ziel:3,lohn:190},
 };
 const ORBIT_UNIVERSELL=['fokus_einsatz','boss_makellos','panzer_sweet'];
 function orbitDef(auftrag=save&&save.orbitauftrag){
@@ -247,7 +247,7 @@ function istGueltigerOrbitauftrag(auftrag){
      (auftrag.status==='erledigt' && auftrag.wert===def.ziel)));
 }
 function neuerOrbitauftrag(ausschluss=''){
-  const pool=[...ORBIT_UNIVERSELL,...(figur().id==='held'?['held_lichtbund']:['leere_hunger'])];
+  const pool=[...ORBIT_UNIVERSELL,'held_lichtbund','leere_hunger'];
   const ohne=pool.filter(id=>id!==ausschluss && id!==save.orbitauftragLetzterId);
   const wahl=ohne.length?ohne:pool.filter(id=>id!==ausschluss);
   const id=wahl[Math.floor(Math.random()*wahl.length)]||pool[0];
@@ -378,10 +378,18 @@ const FIGUREN = {
                staerke:'Leerenhunger · fehlendes Leben verstärkt Volltreffer und Orbit',
                fuer:'Hohes Risiko, aggressives Kreisen und starke Klingen-Kombos' },
 };
-function figur(){
-  const wahl = laufVorgabe ? laufVorgabe.figur : save.figur;
-  return isAvailable('figur', wahl)? FIGUREN[wahl] : FIGUREN.held;
-}
+/* EIN KÖRPER.
+   Die Figurwahl fiel vor dem ersten Bild, also mit null Information — die
+   schlechteste Art von Entscheidung — und verdoppelte die Balancearbeit. Es gibt
+   jetzt genau einen Körper mit den Werten des Lichthüters; der Lichtbund ist seine
+   Grundmechanik und gilt immer.
+   Die Leerenklingen-Identität ist nicht verloren: Sie hängt an den Haltungen
+   Verschlinger und Abgrund (siehe hatLeerenhunger). Dadurch lassen sich beide
+   Identitäten erstmals mischen, statt sich vor dem Lauf auszuschliessen. */
+function figur(){ return FIGUREN.held; }
+/* Wer Verschlinger oder Abgrund gewählt hat, spielt die Leeren-Identität: fehlendes
+   Leben beschleunigt den Orbit und verstärkt Volltreffer. */
+function hatLeerenhunger(){ return !!(treeFlags.leerenHeilung || treeFlags.leerenRisikoBonus); }
 
 /* ---- Tageslauf, Lauf-RNG, Wellenereignisse und Treffermomente ----
    Antwort auf „zu eintönig, der Spaß vergeht zu schnell": drei unabhängige
@@ -957,7 +965,7 @@ function persist(){
 const UNLOCK_ARTEN = {
   skin:    { tabelle:()=>SKINS,     label:'Klingenfarbe' },
   form:    { tabelle:()=>FORMEN,    label:'Klingenform'  },
-  figur:   { tabelle:()=>FIGUREN,   label:'Figur'        },
+  figur:   { tabelle:()=>FIGUREN,   label:'Aussehen'     },
   ability: { tabelle:()=>ABILITIES, label:'Fähigkeit'    },
 };
 const BLUEPRINT_PROJECTS={
@@ -1563,7 +1571,7 @@ function fokusVoll(quelle){
     if(treeFlags.waechter){ enemies.forEach(en=>{if(Math.hypot(en.x-player.x,en.y-player.y)<150) en.slowT=Math.max(en.slowT||0,1200);}); if(ladungHatGewirkt) waechterLadung=false; }
   }
   if(figur().id==='held' && barriere>barriereVorFokus+.01) orbitFortschritt('held_lichtbund');
-  if(figur().id==='konstrukt' && player.hp/player.maxHp<.45) orbitFortschritt('leere_hunger');
+  if(player.hp/player.maxHp<.45) orbitFortschritt('leere_hunger');
   if(begleiterStufe()>=4){
     barriere=Math.min(barriereMax(),barriere+player.maxHp*.05);
     particles.push({ring:true,x:player.x,y:player.y,color:'#4de0a0',life:.32,max:.32});
@@ -2223,7 +2231,7 @@ const META_UPGRADES=[
   {gruppe:'Blaupausen',id:'bombenkern',name:'Bombenkern',desc:'Macht die Bombe als Startmacht verfügbar.',icon:'bombe',base:1800,blueprint:['ability','bombe']},
   {gruppe:'Blaupausen',id:'novakern',name:'Novakern',desc:'Macht die Machtblitz-Nova als Startmacht verfügbar.',icon:'nova',base:2400,blueprint:['ability','nova']},
   {gruppe:'Blaupausen',id:'gravitationskern',name:'Gravitationskern',desc:'Macht den Sog als Startmacht verfügbar.',icon:'reichweite',base:3000,blueprint:['ability','sog']},
-  {gruppe:'Blaupausen',id:'leerenprotokoll',name:'Leerenprotokoll',desc:'Schaltet die Leerenklinge als Charakter frei.',icon:'boost',base:3000,blueprint:['figur','konstrukt']},
+  {gruppe:'Blaupausen',id:'leerenprotokoll',name:'Leerenprotokoll',desc:'Schaltet die Leerenklinge als Aussehen frei.',icon:'boost',base:3000,blueprint:['figur','konstrukt']},
   {gruppe:'Begleiter',id:'begleiter1',name:'Sammlerkern',desc:'Begleiter sammelt Fragmente und XP-Kugeln ein.',icon:'splitter',base:1400},
   {gruppe:'Begleiter',id:'begleiter2',name:'Impulsauge',desc:'Begleiter feuert langsam auf nahe Gegner.',icon:'phaser',base:2300,req:'begleiter1'},
   {gruppe:'Begleiter',id:'begleiter3',name:'Jägerlogik',desc:'Priorisiert gepanzerte Gegner und erhält mehr Reichweite.',icon:'schaden',base:3600,req:'begleiter2'},
@@ -4019,7 +4027,7 @@ function updateHUD(force=false){
   const pct=Math.max(0, player.hp/player.maxHp*100);
   synchronisiereFokus();
   healthBar.style.width=pct+'%';
-  if(healthWrap) healthWrap.classList.toggle('leerenklinge',figur().id==='konstrukt');
+  if(healthWrap) healthWrap.classList.toggle('leerenklinge',hatLeerenhunger());
   // Barriere liegt als eigenes Segment rechts auf der Leiste — sichtbar getrennt
   // von den Trefferpunkten, weil sie sich anders verhält.
   if(barrierBar){
@@ -4201,7 +4209,7 @@ function update(dt){
      und bei 20 % Leben +11 % — gemessen gegen den Lichthüter. Ein Fünftel der
      Lebensleiste für sechs Prozent ist kein Risiko-Charakter, sondern ein schlechter
      Handel. Beide Hälften des Passivs sind deshalb angezogen. */
-  const leerenTempo=figur().id==='konstrukt' ? 1+fehlendesLeben*0.45 : 1;
+  const leerenTempo=hatLeerenhunger() ? 1+fehlendesLeben*0.45 : 1;
   const vorSwordAngle=swordAngle;
   swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * (sonnenTempoUntil>Date.now()?1.22:1) * dt/1000;
   if(swordAngle>Math.PI*2){ swordAngle-=Math.PI*2; resetMissedOrbit(); }
@@ -4222,7 +4230,7 @@ function update(dt){
     const boost = dmgBoostUntil>Date.now()?2:1;
     const resonanz=treeFlags.resonanzUntil>Date.now()?1.25:1;
     const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz * tagesFaktor('klinge'));
-    const leerenBonus=figur().id==='konstrukt' ? fehlendesLeben*(0.78+(treeFlags.leerenRisikoBonus||0)) : 0;
+    const leerenBonus=hatLeerenhunger() ? fehlendesLeben*(0.78+(treeFlags.leerenRisikoBonus||0)) : 0;
     const anglesNow=bladeAngles();
     const sweetTargets=enemies.filter(en=>{
       const dx=en.x-player.x,dy=en.y-player.y,d=Math.hypot(dx,dy);
@@ -5992,7 +6000,7 @@ function draw(){
     ctx.strokeStyle='rgba(110,200,255,.34)'; ctx.lineWidth=1.2;
     ctx.beginPath(); ctx.ellipse(0,0,player.radius+17,player.radius+8,now/1800,0,Math.PI*2); ctx.stroke(); ctx.restore();
   }
-  if(figur().id==='konstrukt' && (treeFlags.leerenHeilung || treeFlags.leerenRisikoBonus) && player.hp/player.maxHp<.5){
+  if(hatLeerenhunger() && player.hp/player.maxHp<.5){
     const puls=0.58+Math.sin(now/90)*0.10;
     ctx.strokeStyle='rgba(199,125,255,'+puls.toFixed(2)+')'; ctx.lineWidth=2.5;
     ctx.shadowColor='#c77dff'; sb(18);

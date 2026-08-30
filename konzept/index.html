@@ -108,14 +108,12 @@
   <div id="overlay-startmaechte" class="overlay compact-overlay hidden">
     <header class="compact-head"><button id="startmaechte-back" class="icon-back" aria-label="Zurück">‹</button><h2>Vorbereitung</h2><span></span></header>
     <nav id="prepare-tabs" class="compact-tabs">
-      <button class="compact-tab active" data-prepare="charakter">Charakter</button>
+      <button class="compact-tab active" data-prepare="maechte">Hauptmacht</button>
       <button class="compact-tab" data-prepare="hilfe">Stufe</button>
-      <button class="compact-tab" data-prepare="maechte">Mächte</button>
     </nav>
     <div id="startmaechte-scroll">
-      <section class="prepare-panel active" data-prepare-panel="charakter"><div id="charakter-wahl"></div><div id="charakter-detail"></div></section>
       <section class="prepare-panel" data-prepare-panel="hilfe"><p class="sec-hinweis">Hilfen sperren nichts. Bestmarken werden getrennt geführt. Prüfstufen schaltest du durch Siege frei; sie geben ausschließlich Kosmetik, nie Kampfkraft.</p><div id="hilfe-wahl"></div></section>
-      <section class="prepare-panel" data-prepare-panel="maechte"><p class="sec-hinweis">Diese aktiven Mächte bleiben für den gesamten Lauf fest.</p><div id="startmaechte-slots" class="slot-reihe"></div><div id="orbit-presets"></div></section>
+      <section class="prepare-panel active" data-prepare-panel="maechte"><p class="sec-hinweis">Deine Hauptmacht bleibt für den gesamten Lauf fest. Alles andere findest du im Lauf.</p><div id="startmaechte-slots" class="slot-reihe"></div><div id="orbit-presets"></div></section>
     </div>
   </div>
 
@@ -258,13 +256,13 @@
       <button id="collection-workshop-tab" class="compact-tab">Werkstatt</button>
       <button class="compact-tab active" data-collection="rekorde">Rekorde</button>
       <button class="compact-tab" data-collection="klinge">Klinge</button>
-      <button class="compact-tab" data-collection="charaktere">Charaktere</button>
+      <button class="compact-tab" data-collection="charaktere">Körper</button>
       <button class="compact-tab" data-collection="abzeichen">Abzeichen</button>
     </nav>
     <div id="progress-scroll">
       <section class="collection-panel active" data-collection-panel="rekorde"><div id="best-grid"></div></section>
       <section class="collection-panel" data-collection-panel="klinge"><p class="sec-hinweis">Form und Farbe sind rein optisch und frei kombinierbar.</p><div id="skin-grid"></div><div id="form-grid"></div></section>
-      <section class="collection-panel" data-collection-panel="charaktere"><div id="figur-grid"></div></section>
+      <section class="collection-panel" data-collection-panel="charaktere"><p class="sec-hinweis">Rein optisch — alle Körper spielen sich gleich.</p><div id="figur-grid"></div></section>
       <section class="collection-panel" data-collection-panel="abzeichen"><div id="badge-grid"></div></section>
     </div>
   </div>
