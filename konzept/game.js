@@ -671,6 +671,30 @@ const EVOLUTIONS={
                    desc:'Festgehaltene Gegner kreisen in Klingenreichweite und enden in einer Druckwelle' },
 };
 
+// Karten verschmelzen unabhängig von den Hauptmächten. Jede Zutat gehört genau
+// einem Rezept; der Hauptmacht-Partner bleibt über ausleseAusschluss() gesperrt.
+const KARTEN_EVOLUTIONEN={
+  klingenchor:{zutaten:['klingenteilung','taktschlag'],name:'Klingenchor',icon:'taktschlag',color:'#ffd257',
+    desc:'Jede Klinge sendet in jedem zweiten Umlauf eine eigene starke Welle aus.'},
+  drucksalve:{zutaten:['phaser','nachhall'],name:'Drucksalve',icon:'nachhall',color:'#a7e7ff',
+    desc:'Klingenschüsse zerplatzen beim Aufschlag als Druckwelle. Nachhall bleibt erhalten.'},
+  gewitterherz:{zutaten:['kettenblitz','konterstoss'],name:'Gewitterherz',icon:'kette',color:'#b6a2ff',
+    desc:'Erlittener Schaden entlädt eine Blitzkette durch alle nahen Gegner.'},
+  blutkristall:{zutaten:['glasklinge','lebensregen'],name:'Blutkristall',icon:'glasklinge',color:'#ff809c',
+    desc:'Geopfertes und fehlendes Leben verstärkt die Klinge. Kills heilen kräftiger.'},
+  splitterfaecher:{zutaten:['nachfassen','splitter'],name:'Splitterfächer',icon:'splitter',color:'#8ceaff',
+    desc:'Der breite Volltreffer schleudert einen durchschlagenden Splitterfächer hinaus.'},
+  flammenorbit:{zutaten:['funkenkranz','brandspur'],name:'Flammenorbit',icon:'brandspur',color:'#ffb05b',
+    desc:'Vier Flammenfunken entzünden die Brandspur zu einer brennenden Umlaufbahn.'},
+};
+const KARTEN_REZEPT_VON=Object.fromEntries(Object.entries(KARTEN_EVOLUTIONEN)
+  .flatMap(([id,e])=>e.zutaten.map(z=>[z,id])));
+function kartenVerschmolzen(id){ return !!runKartenEvos[KARTEN_REZEPT_VON[id]]; }
+// Die neue Form übernimmt beide Rang-2-Grundwirkungen. Im getragenen Bestand
+// stehen danach nur noch die Evolution und ihre Akteure, keine doppelten Zutaten.
+function modulRang(id){ return kartenVerschmolzen(id)?2:(runModule[id]||0); }
+function passivStufe(id){ return kartenVerschmolzen(id)?SPRUNG_STUFE:(runAbilities[id]||0); }
+
 /* BOSS-VARIANTEN — vier Typen, die reihum kommen. Jeder hat eine Leitfähigkeit,
    eine eigene Farbe und eine eigene Silhouette. Vorher sahen alle Bosse gleich aus,
    sodass nach dem ersten Kampf optisch nichts Neues mehr kam. */
@@ -1190,7 +1214,7 @@ let taktschlagZaehler=0, nachfassenBereit=false; // Auslese-Module Taktschlag/Na
    Barriere eine Menge, die sich abnutzt. */
 let barriere=0;
 // Glasklinge Rang 2 sperrt die Barriere ganz — das ist der zweite Teil ihres Preises
-function barriereMax(){ return runModule.glasklinge>=2 ? 0 : player.maxHp*CONFIG.barriere.max*(treeFlags.barriereMult||1); }
+function barriereMax(){ return modulRang('glasklinge')>=2 ? 0 : player.maxHp*CONFIG.barriere.max*(treeFlags.barriereMult||1); }
 let bonuses={ dmg:0, speed:0, range:0, fireRate:0, maxHp:0, blades:1, chain:false, counter:false, splitter:0 };
 let camX=0, camY=0, stossWaveT=0, wirbelT=0, wirbelShownR=0;
 let renderDpr=1, sichtbareGegner=0, naechstesHudUpdate=0;
@@ -1238,7 +1262,7 @@ let perfIdx=0, perfLen=0, perfSeit=0, perfFrames=0, perfPhaseUhr=0, perfStatNext
 let perfKampfMs=0;                          // reine Kampfzeit — Basis der echten Bildrate
 const perfPhasen={};                        // Phasenname -> aufsummierte ms im Fenster
 const perfMengenNamen=['gegner','sichtbar','schuesse','eigeneSchuesse','bomben','felder',
-  'echos','splitter','partikel','zahlen','fragmente','kugeln'];
+  'echos','splitter','kartenAkteure','kartenWellen','partikel','zahlen','fragmente','kugeln'];
 const perfMax={}, perfSum={};               // Mengen über das Fenster statt Momentaufnahme
 /* Ein Schnitt kann seltene Ruckler nicht zeigen. Deshalb zusätzlich eine Verteilung
    der Bildzeiten und ein Mitschnitt der schlechtesten Bilder mit ihrem Kontext —
@@ -1282,7 +1306,8 @@ function perfReset(){
 function perfMengenJetzt(){
   return { gegner:enemies.length, sichtbar:sichtbareGegner, schuesse:shots.length,
     eigeneSchuesse:pShots.length, bomben:bombs.length, felder:powerFields.length,
-    echos:powerEchoes.length, splitter:shards.length, partikel:particles.length,
+    echos:powerEchoes.length, splitter:shards.length, kartenAkteure:Object.keys(runKartenEvos).length,
+    kartenWellen:kartenEvoWellen.length, partikel:particles.length,
     zahlen:floats.length, fragmente:stars.length, kugeln:orbs.length };
 }
 function perfProbe(){
@@ -1424,6 +1449,7 @@ function startMaechte(){
 function evolvedOf(id){ return runEvolutions[id]||null; }
 let runAbilities={};                            // getragene Fähigkeiten: id -> Stufe (1..10)
 let runModule={};                     // Auslese-Module (zweite, unabhängige Kartenquelle): id -> Rang (1..2)
+let runKartenEvos={}, kartenEvoWellen=[], glasOpfer=0; // dauerhafte Akteure, begrenzte Wellen, einmaliger Lebenspreis
 let bombs=[], pShots=[], powerFields=[], powerEchoes=[], novaFx=0; // Bomben, Projektile und sichtbare Machtfelder
 /* Boss-Gefahrenzonen: gemeinsame Infrastruktur für Raumhebel, die den Spieler aus dem
    56–72-px-Sicherheitsband zwischen Kontaktschaden und Klingenreichweite vertreiben.
@@ -1476,7 +1502,7 @@ function tutorialSweetSpotTreffer(){
 function bladeLength(){ return CONFIG.bladeBaseLen * (1 + bonuses.range) * figur().reichweite * (treeFlags.singularorbit?1.20:1); }
 function effektiveKlingen(){
   const basis=treeFlags.ereignishorizont && player.hp/player.maxHp<.35 ? Math.max(3,bonuses.blades) : bonuses.blades;
-  return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0)+(treeFlags.resonanzKlingeUntil>Date.now()?1:0)+(runModule.klingenteilung||0);
+  return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0)+(treeFlags.resonanzKlingeUntil>Date.now()?1:0)+modulRang('klingenteilung');
 }
 // Winkel aller aktiven Klingen (Doppelklinge = zweite Klinge gegenüber)
 function bladeAngles(){
@@ -1512,7 +1538,7 @@ function sweetKlingenFaktor(){
      der Builds wäre sie eine tote Karte gewesen. Die Zone schrumpft weiterhin, damit
      Positionieren zählt; nur der Treffer wiegt schwerer. */
   let f=treeFlags.singularorbit?1.45:1;
-  if(runModule.klingenteilung>=2) f*=1.42; else if(runModule.klingenteilung) f*=1.22;
+  if(modulRang('klingenteilung')>=2) f*=1.42; else if(modulRang('klingenteilung')) f*=1.22;
   if(treeFlags.doppelorbit) f*=.84;   // war .72 — machte den Kauf schwaecher als gar keinen Kauf
   if(sonnenTempoUntil>Date.now() && treeFlags.sonnenorbit) f*=1.30;
   return f;
@@ -1538,18 +1564,24 @@ function orbitSweetPulse(){
     }
   }
   // Auslese-Modul Taktschlag: zählt volle (getroffene) Umläufe, stößt alle 3./2. eine Welle aus.
-  if(runModule.taktschlag){
+  if(modulRang('taktschlag')){
     taktschlagZaehler++;
-    if(taktschlagZaehler>=(runModule.taktschlag>=2?2:3)){
+    if(taktschlagZaehler>=(modulRang('taktschlag')>=2?2:3)){
       taktschlagZaehler=0;
       const twDmg=Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus)*(1+bonuses.dmg)*0.6);
-      for(const en of enemies){
-        if(Math.hypot(en.x-player.x,en.y-player.y)<110+en.radius){
-          en.hp-=twDmg; pushFloat(en.x,en.y-16,'-'+twDmg,'#ffd257');
-          if(runModule.taktschlag>=2) en.slowT=Math.max(en.slowT||0,900);
+      if(runKartenEvos.klingenchor){
+        const tip=player.radius+bladeLength();
+        for(const a of bladeAngles()) kartenEvoWelle('klingenchor',player.x+Math.cos(a)*tip,
+          player.y+Math.sin(a)*tip,bladeLength()+72,twDmg*3,900);
+      } else {
+        for(const en of enemies){
+          if(Math.hypot(en.x-player.x,en.y-player.y)<110+en.radius){
+            en.hp-=twDmg; pushFloat(en.x,en.y-16,'-'+twDmg,'#ffd257');
+            if(modulRang('taktschlag')>=2) en.slowT=Math.max(en.slowT||0,900);
+          }
         }
+        particles.push({ring:true,x:player.x,y:player.y,color:'#ffd257',life:.34,max:.34});
       }
-      particles.push({ring:true,x:player.x,y:player.y,color:'#ffd257',life:.34,max:.34});
       if(sfx) sfx('counter');
     }
   }
@@ -1781,7 +1813,7 @@ function zeichneKlinge(g, x0, laenge, form, farbe, kern, blur){
   // Glasklinge (Auslese-Modul): der Lebens-Handel bleibt sonst unsichtbar. Heller,
   // schmalerer Kern statt der Skin-Kernfarbe plus ein wandernder kalter Lichtpunkt —
   // kein neues Bild, nur andere Werte im vorhandenen Zeichenpfad.
-  const glas = !!runModule.glasklinge;
+  const glas = modulRang('glasklinge')>0;
   const kernSkal = glas ? 0.55 : 1;
   const kernFarbe = glas ? '#eafdff' : kern;
   for(const off of strahlen){
@@ -1831,11 +1863,11 @@ function zeichneKlinge(g, x0, laenge, form, farbe, kern, blur){
 function abilIcon(id){ return ICON[ABILITIES[id].iconKey]||''; }
 function isCarried(id){
   if(ABILITIES[id].slot==='active') return activeSlot1===id || activeSlot2===id;
-  return !!runAbilities[id];
+  return passivStufe(id)>0;
 }
 function abilityLevel(id){
   if(!isCarried(id)) return 0;
-  return runAbilities[id] || 1;
+  return passivStufe(id) || 1;
 }
 function abilScale(level){ return 1 + CONFIG.abilLevelScale*(level-1); }
 function machtFaktor(id){ return treeFlags['powerDmg_'+id]||1; }
@@ -2011,6 +2043,50 @@ const AUSLESE_MODULE={
                 desc:'Die Klingenspitze hinterlässt brennende Male für 1,4 Sekunden',
                 sprung:'Größere Brandmale bleiben 2 Sekunden liegen' },
 };
+function kartenRang(id){
+  if(AUSLESE_MODULE[id]) return runModule[id]||0;
+  const stufe=runAbilities[id]||0;
+  return stufe>=SPRUNG_STUFE?2:stufe>0?1:0;
+}
+function kartenEvoBereit(id){
+  const e=KARTEN_EVOLUTIONEN[id];
+  if(!e || runKartenEvos[id] || e.zutaten.includes(ausleseAusschluss())) return false;
+  const [a,b]=e.zutaten.map(kartenRang);
+  return a>0 && b>0 && (a>=2 || b>=2);
+}
+function kartenName(id){ return (AUSLESE_MODULE[id]||ABILITIES[id]).name; }
+function kartenRezeptText(id, rang=kartenRang(id)){
+  const e=KARTEN_EVOLUTIONEN[KARTEN_REZEPT_VON[id]];
+  if(!e) return '';
+  if(e.zutaten.includes(ausleseAusschluss())) return 'Rezept mit '+ABILITIES[activeSlot1].name+' nicht verfügbar.';
+  const partner=e.zutaten.find(z=>z!==id), partnerRang=kartenRang(partner);
+  if(rang>=2) return partnerRang>0
+    ? e.name+(ausleseKarten.some(k=>k.evolution && k.id===KARTEN_REZEPT_VON[id])?' · jetzt als Goldkarte wählbar':' bereit · nächste Auslese')
+    : 'Für '+e.name+' fehlt: '+kartenName(partner)+' I';
+  return kartenName(partner)+(partnerRang>=2?' II':'')+' + '+kartenName(id)+' → '+e.name+' · eine Zutat auf II';
+}
+let ausleseRezeptAnzeige=null;
+function renderAusleseRezepte(istWeiche){
+  if(!ausleseRezeptAnzeige){
+    ausleseRezeptAnzeige=document.createElement('div');
+    ausleseRezeptAnzeige.id='auslese-rezepte';
+    ausleseRezeptAnzeige.setAttribute('aria-label','Getragene Karten und ihre Rezepte');
+    overlayAuslese.insertBefore(ausleseRezeptAnzeige,document.getElementById('auslese-reroll'));
+  }
+  const zeilen=[];
+  if(!istWeiche) for(const [id,e] of Object.entries(KARTEN_EVOLUTIONEN)){
+    if(runKartenEvos[id]){
+      zeilen.push('<div class="ak-rezeptkachel fertig"><strong>✦ '+e.name+'</strong><span>Verschmolzen · beide Zutaten ersetzt</span></div>');
+      continue;
+    }
+    const reife=e.zutaten.filter(z=>kartenRang(z)>=2);
+    if(!reife.length) continue;
+    zeilen.push('<div class="ak-rezeptkachel"><strong>'+reife.map(z=>kartenName(z)+' II').join(' + ')
+      +'</strong><span>'+kartenRezeptText(reife[0])+'</span></div>');
+  }
+  ausleseRezeptAnzeige.innerHTML=zeilen.join('');
+  ausleseRezeptAnzeige.hidden=!zeilen.length;
+}
 // Die Passive, die der Orbitbaum für die aktuelle Hauptmacht als Partner ohnehin
 // vergibt (EVOLUTIONS[...].req) — sonst würde sie mit dem Baum kollidieren.
 function ausleseAusschluss(){
@@ -2051,6 +2127,10 @@ function offeneWeiche(){
 function ausleseKartenInfo(karte){
   // Weichen tragen ein Textzeichen als Symbol, keine SVG-Pfade — daher glyph:true.
   if(karte.weiche) return { name:karte.name, icon:karte.icon, text:karte.desc, glyph:true };
+  if(karte.evolution){
+    const e=KARTEN_EVOLUTIONEN[karte.id];
+    return {name:e.name,icon:ICON[e.icon]||'',text:e.desc};
+  }
   const mod=AUSLESE_MODULE[karte.id];
   if(mod) return { name:mod.name, icon:ICON[mod.icon]||'', text: karte.kind==='verstaerkt'? mod.sprung : mod.desc };
   return { name:ABILITIES[karte.id].name, icon:abilIcon(karte.id), text: karte.kind==='verstaerkt'? STUFEN[karte.id].sprung : ABILITIES[karte.id].desc };
@@ -2060,18 +2140,19 @@ function ausleseKartenInfo(karte){
 function ausleseTopf(){
   const ausschluss=ausleseAusschluss(), out=[];
   for(const id of PASSIVE_IDS){
-    if(id===ausschluss) continue;
+    if(id===ausschluss || kartenVerschmolzen(id)) continue;
     if(!isCarried(id)) out.push({id,kind:'neu'});
     else if(abilityLevel(id)===1) out.push({id,kind:'verstaerkt'});
   }
   for(const id in AUSLESE_MODULE){
+    if(kartenVerschmolzen(id)) continue;
     const rang=runModule[id]||0;
     if(rang===0) out.push({id,kind:'neu'});
     else if(rang===1) out.push({id,kind:'verstaerkt'});
   }
   return out;
 }
-// Bis zu drei verschiedene Karten, ohne Gewichtung; ein kleinerer Topf zeigt entsprechend
+// Bis zu drei verschiedene Karten; ein kleinerer Topf zeigt entsprechend
 // weniger. Prüfstufe „Knappe Wahl" senkt das Ziel auf zwei (hilfe().ausleseKarten).
 /* Gewichtetes Ziehen (Auslese v3): Fundamente zuerst — eine noch nicht getragene
    Fähigkeit wiegt schwerer als ihre Vertiefung. So wird die Wahl eher eine
@@ -2093,6 +2174,15 @@ function ausleseZiehen(){
      Tag identisch — später weicht der Zustand (getragene Karten) ohnehin auseinander,
      und genau dafür ist die Gewichtung da. */
   const zufall=laufStrom('karte', ++ausleseZiehungen);
+  // Nur FERTIGE Rezepte reservieren Angebotsplätze. Fehlende Zutaten beeinflussen
+  // weder den Topf noch dessen Gewichte. Ein eigener Strom lässt die normale
+  // Ziehfolge unberührt; auch Neuwürfeln kann eine reife Evolution nicht verlieren.
+  const reif=Object.keys(KARTEN_EVOLUTIONEN).filter(kartenEvoBereit);
+  const evoZufall=laufStrom('kartenevo',ausleseZiehungen);
+  while(reif.length && gezogen.length<ziel){
+    const id=reif.splice(Math.floor(evoZufall()*reif.length),1)[0];
+    gezogen.push({id,evolution:true});
+  }
   while(pool.length && gezogen.length<ziel){
     let summe=0;
     for(const k of pool) summe+=ausleseGewicht(k);
@@ -2112,19 +2202,24 @@ function renderAuslese(){
     : 'Welle '+wave+' · wähle eine Karte';
   const wrap=document.getElementById('auslese-karten'); wrap.innerHTML='';
   for(const karte of ausleseKarten){
-    const stufe=istWeiche?'':(karte.kind==='verstaerkt'?'Verstärkt':'Neu');
+    const stufe=istWeiche?'':karte.evolution?'Evolution':(karte.kind==='verstaerkt'?'Verstärkt':'Neu');
     const info=ausleseKartenInfo(karte);
+    const rezept=istWeiche?'':karte.evolution
+      ? KARTEN_EVOLUTIONEN[karte.id].zutaten.map(kartenName).join(' + ')+' · ersetzt beide'
+      : kartenRezeptText(karte.id,karte.kind==='verstaerkt'?2:1);
     const b=document.createElement('button');
-    b.className='auslese-karte'+(karte.kind==='verstaerkt'?' stark':'');
+    b.className='auslese-karte'+(karte.kind==='verstaerkt'||karte.evolution?' stark':'')+(karte.evolution?' evolution':'');
     // Das Symbol kommt aus derselben Quelle wie Vorbereitung und Sammlung, damit
     // eine Faehigkeit ueberall gleich aussieht und man sie wiedererkennt.
     b.innerHTML='<span class="ak-icon">'+(info.glyph?info.icon:svg(info.icon))+'</span>'
       +'<span class="ak-body"><span class="ak-titel">'+info.name+'</span>'
-      +'<span class="ak-text">'+info.text+'</span></span>'
+      +'<span class="ak-text">'+info.text+'</span>'
+      +(rezept?'<span class="ak-rezept">'+rezept+'</span>':'')+'</span>'
       +'<span class="ak-stufe">'+stufe+'</span>';
     b.onclick=()=>waehleAuslese(karte);
     wrap.appendChild(b);
   }
+  renderAusleseRezepte(istWeiche);
   const reroll=document.getElementById('auslese-reroll'), preis=auslesePreis();
   // Eine exklusive Wahl darf nicht neu gewuerfelt werden.
   reroll.classList.toggle('hidden', istWeiche);
@@ -2167,6 +2262,19 @@ function waehleAuslese(karte){
     schliesseAuslese(karte.name);
     return;
   }
+  if(karte.evolution){
+    if(!kartenEvoBereit(karte.id)) return;
+    const e=KARTEN_EVOLUTIONEN[karte.id];
+    for(const id of e.zutaten){ delete runModule[id]; delete runAbilities[id]; }
+    runKartenEvos[karte.id]={id:karte.id,x:player.x,y:player.y,phase:swordAngle,puls:1,treffer:0};
+    updateKartenEvos(0); // richtige Position schon im Wiedereinstiegs-Countdown
+    barriere=Math.min(barriere,barriereMax());
+    pushToast('✦ '+e.name+' · Evolution');
+    announce(e.name,e.zutaten.map(kartenName).join(' + '),'#ffd257');
+    updateHUD(true); schliesseAuslese(e.name);
+    return;
+  }
+  if(kartenVerschmolzen(karte.id)) return;
   const info=ausleseKartenInfo(karte);
   if(AUSLESE_MODULE[karte.id]){
     const vorher=runModule[karte.id]||0;
@@ -2176,6 +2284,7 @@ function waehleAuslese(karte){
        schrumpfte die Leiste ein zweites Mal und der Spieler stünde plötzlich vor dem Tod. */
     if(karte.id==='glasklinge' && vorher===0){
       const neuMax=Math.max(1,Math.round(player.maxHp*0.6));
+      glasOpfer=player.maxHp-neuMax;
       player.hp=Math.max(1,Math.min(player.hp,neuMax));
       player.maxHp=neuMax; barriere=Math.min(barriere,barriereMax());
     }
@@ -2297,6 +2406,7 @@ function resetGame(){
   const vw = laufVorgabe ? { slot1:laufVorgabe.slot1, slot2:laufVorgabe.slot2 } : startMaechte();
   activeSlot1=vw.slot1; activeSlot2 = hasSlot2()? (vw.slot2||null) : null;
   runAbilities={}; runEvolutions={}; runTree={}; skillPoints=0; treeFlags={}; treeUndo=null; runModule={};
+  runKartenEvos={}; kartenEvoWellen=[]; glasOpfer=0;
   regularPointsEarned=0; regularTreeFrozen=false; echoPoints=0; echoMilestones=0; treeReturnState='playing';
   bombs=[]; pShots=[]; powerFields=[]; powerEchoes=[]; novaFx=0; novaEcho=0; barriere=0; bossHazards=[];
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
@@ -3234,8 +3344,139 @@ function fireBladePhaser(angle=swordAngle){
   const tip=player.radius+bladeLength(), dir=angle+Math.PI/2, P=CONFIG.phaser;
   pShots.push({kind:'phaser',x:player.x+Math.cos(angle)*tip,y:player.y+Math.sin(angle)*tip,
     vx:Math.cos(dir)*P.speed,vy:Math.sin(dir)*P.speed,
-    dmg:Math.round(P.dmg*abilScale(runAbilities.phaser)*(1+bonuses.dmg)),
-    life:P.life,hitsLeft:P.hits,moduleColor:currentSkin().blade});
+    dmg:Math.round(P.dmg*abilScale(abilityLevel('phaser'))*(1+bonuses.dmg)),
+    life:P.life,hitsLeft:runKartenEvos.drucksalve?1:P.hits,
+    drucksalve:!!runKartenEvos.drucksalve,moduleColor:runKartenEvos.drucksalve?'#a7e7ff':currentSkin().blade});
+}
+
+// Wellen und dauerhafte Akteure haben ein eigenes Budget. Sie verdrängen weder
+// Machtfelder noch Splitter und bleiben auch bei abgeschalteten Partikeln sichtbar.
+function kartenEvoWelle(id,x,y,r,dmg,slow=0){
+  const e=runKartenEvos[id]; if(!e) return;
+  e.puls=1; e.treffer++;
+  for(const en of enemies){
+    if(en.hp<=0 || Math.hypot(en.x-x,en.y-y)>=r+en.radius) continue;
+    en.hp-=Math.round(dmg);
+    if(slow) en.slowT=Math.max(en.slowT||0,slow);
+  }
+  // Dichte Salven teilen sich ein sichtbares Wellenzentrum, nie ihren Schaden.
+  const alt=kartenEvoWellen.find(f=>f.id===id && f.t>780 && Math.hypot(f.x-x,f.y-y)<18);
+  if(alt) return; // Ihre Uhr läuft weiter, sonst friert eine dichte Salve den Ring ein.
+  if(kartenEvoWellen.filter(f=>f.id===id).length>=24){
+    kartenEvoWellen.splice(kartenEvoWellen.findIndex(f=>f.id===id),1);
+  }
+  kartenEvoWellen.push({id,x,y,r,t:900,max:900});
+}
+function updateKartenEvos(dt){
+  for(const e of Object.values(runKartenEvos)){
+    e.phase+=dt/1000; e.puls=Math.max(0,e.puls-dt/950);
+    e.x=player.x; e.y=player.y;
+    if(e.id==='drucksalve'){
+      const tip=player.radius+bladeLength();
+      e.x+=Math.cos(swordAngle)*tip; e.y+=Math.sin(swordAngle)*tip;
+    } else if(e.id==='blutkristall' || e.id==='splitterfaecher'){
+      const a=e.phase*(e.id==='blutkristall'?1.2:-1.4),r=player.radius+(e.id==='blutkristall'?23:35);
+      e.x+=Math.cos(a)*r; e.y+=Math.sin(a)*r;
+    } else if(e.id==='gewitterherz') e.y-=player.radius+18;
+    if(e.kette && e.puls===0) e.kette=null;
+  }
+  for(let i=kartenEvoWellen.length-1;i>=0;i--){
+    kartenEvoWellen[i].t-=dt;
+    if(kartenEvoWellen[i].t<=0) kartenEvoWellen.splice(i,1);
+  }
+}
+function entladeGewitterherz(){
+  const e=runKartenEvos.gewitterherz; if(!e) return;
+  const radius=player.radius+bladeLength()+120;
+  const dmg=Math.round((CONFIG.abil.counterDamage+CONFIG.abil.chainDamage)*abilScale(SPRUNG_STUFE)*1.6*(1+bonuses.dmg));
+  const nahe=enemies.filter(en=>en.hp>0 && Math.hypot(en.x-player.x,en.y-player.y)<radius+en.radius)
+    .sort((a,b)=>Math.atan2(a.y-player.y,a.x-player.x)-Math.atan2(b.y-player.y,b.x-player.x));
+  e.kette=[{x:e.x,y:e.y}]; e.puls=1; e.treffer++;
+  for(const en of nahe){
+    en.hp-=dmg; en.flashT=1;
+    e.kette.push({x:en.x,y:en.y});
+  }
+}
+function feuereSplitterfaecher(winkel,dmg){
+  const e=runKartenEvos.splitterfaecher; if(!e) return;
+  e.puls=1; e.treffer++;
+  for(let i=-3;i<=3;i++){
+    const a=winkel+i*.18;
+    moduleShot(player.x+Math.cos(a)*28,player.y+Math.sin(a)*28,a,dmg*1.8,3,
+      {kind:'evo_splitter',life:1.35,moduleColor:'#8ceaff',storm:true});
+  }
+}
+function blutkristallFaktor(){
+  if(!runKartenEvos.blutkristall) return 1;
+  // Auch das beim Glasklingen-Kauf geopferte Maximum ist verlorenes Leben.
+  // Heilen nimmt diesen Grundgewinn nicht zurück; weitere Wunden erhöhen ihn.
+  const verloren=glasOpfer+Math.max(0,player.maxHp-player.hp);
+  return 1+2*Math.min(1,verloren/Math.max(1,player.maxHp+glasOpfer));
+}
+function zeichneKartenEvos(){
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for(const f of kartenEvoWellen){
+    if(!sichtbar(f.x,f.y,f.r+10)) continue;
+    const alter=1-f.t/f.max,chor=f.id==='klingenchor';
+    ctx.globalAlpha=(chor?.55:.28)*Math.min(1,f.t/380);
+    ctx.strokeStyle=KARTEN_EVOLUTIONEN[f.id].color; sb(0); ctx.lineWidth=chor?2.5:1.5;
+    ctx.beginPath(); ctx.arc(f.x,f.y,f.r*(.2+.8*alter),0,Math.PI*2); ctx.stroke();
+  }
+  for(const e of Object.values(runKartenEvos)){
+    const color=KARTEN_EVOLUTIONEN[e.id].color;
+    ctx.globalAlpha=.85; ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=2;
+    sbc(color,9+e.puls*7);
+    if(e.id==='klingenchor'){
+      const tip=player.radius+bladeLength();
+      for(const a of bladeAngles()){
+        ctx.save(); ctx.translate(player.x+Math.cos(a)*tip,player.y+Math.sin(a)*tip); ctx.rotate(a);
+        ctx.beginPath(); ctx.moveTo(-6,-8); ctx.lineTo(3,-5); ctx.lineTo(7,0); ctx.lineTo(3,5); ctx.lineTo(-6,8); ctx.stroke();
+        ctx.fillStyle='#fff5c5'; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(0,0,12+e.puls*3,-.7,.7); ctx.stroke(); ctx.restore();
+      }
+    } else if(e.id==='drucksalve'){
+      ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(swordAngle+Math.PI/2);
+      ctx.beginPath(); ctx.moveTo(-10,-7); ctx.lineTo(5,-7); ctx.lineTo(10,0); ctx.lineTo(5,7); ctx.lineTo(-10,7); ctx.stroke();
+      ctx.fillStyle='#f0fbff'; ctx.beginPath(); ctx.arc(0,0,3.5,0,Math.PI*2); ctx.fill(); ctx.restore();
+    } else if(e.id==='gewitterherz'){
+      if(e.kette && e.kette.length>1){
+        ctx.save(); ctx.globalAlpha=.2+.65*e.puls; ctx.lineWidth=1.5+e.puls;
+        ctx.beginPath(); ctx.moveTo(e.kette[0].x,e.kette[0].y);
+        for(let i=1;i<e.kette.length;i++){
+          const a=e.kette[i-1],b=e.kette[i];
+          ctx.lineTo((a.x+b.x)/2+(i%2?5:-5),(a.y+b.y)/2-4); ctx.lineTo(b.x,b.y);
+        }
+        ctx.stroke(); ctx.restore();
+      }
+      ctx.beginPath(); ctx.arc(e.x,e.y,12,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(e.x+2,e.y-9); ctx.lineTo(e.x-5,e.y+1); ctx.lineTo(e.x,e.y+1);
+      ctx.lineTo(e.x-2,e.y+9); ctx.lineTo(e.x+6,e.y-2); ctx.lineTo(e.x+1,e.y-2); ctx.closePath(); ctx.fill();
+    } else if(e.id==='blutkristall'){
+      ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(Math.sin(e.phase)*.2);
+      ctx.beginPath(); ctx.moveTo(0,-14); ctx.lineTo(9,-2); ctx.lineTo(0,13); ctx.lineTo(-9,-2); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='#fff1f5'; ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(-2,0); ctx.lineTo(0,9); ctx.moveTo(-6,-2); ctx.lineTo(5,-2); ctx.stroke(); ctx.restore();
+    } else if(e.id==='splitterfaecher'){
+      ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(-e.phase*1.4);
+      for(let i=-2;i<=2;i++){
+        const a=i*.32,l=12+(i===0?4:0);
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*l,Math.sin(a)*l); ctx.stroke();
+      }
+      ctx.fillStyle='#edffff'; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill(); ctx.restore();
+    } else if(e.id==='flammenorbit'){
+      const r=player.radius+bladeLength()+CONFIG.funkenkranz.radius[1];
+      ctx.save(); ctx.globalAlpha=.4; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(e.x,e.y,r,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=.75;
+      for(let i=0;i<12;i++){
+        const a=i*Math.PI/6-e.phase*1.4;
+        ctx.save(); ctx.translate(e.x+Math.cos(a)*r,e.y+Math.sin(a)*r); ctx.rotate(a);
+        ctx.beginPath(); ctx.moveTo(-3,-4); ctx.quadraticCurveTo(10,-6,4,5); ctx.stroke(); ctx.restore();
+      }
+      ctx.restore();
+    }
+  }
+  ctx.restore(); sb(0);
 }
 
 /* Adaptive Modulmechaniken. Beide Knoten bleiben im Baum gleich, reagieren aber auf
@@ -3762,7 +4003,7 @@ function hurtPlayer(dmg){
   /* Auslese-Modul Nachfassen: Der nächste Volltreffer wird breiter, nachdem man etwas
      eingesteckt hat. Vorher hing es an einem Umlauf ohne Treffer — im Gedränge verfehlt
      man nie, die Karte feuerte gemessen in 0,0 % der Fälle. */
-  if(runModule.nachfassen) nachfassenBereit=true;
+  if(modulRang('nachfassen')) nachfassenBereit=true;
   if(Date.now()<=shieldUntil) return false;      // Schild absorbiert
   dmg *= hilfe().schaden;                        // Rückenwind der gewählten Hilfsstufe
   // Barriere zuerst: hält sie den Schlag komplett auf, bleibt die Lebensleiste unberührt
@@ -3777,7 +4018,7 @@ function hurtPlayer(dmg){
   spawnParticles(player.x,player.y,'#ff4d4d',6);
   if(bossActive) bossHitClean=false;             // "Makellos" verwirkt
   if(sfx) sfx('hurt');
-  if(runAbilities.konterstoss && counterCd<=0) doCounter();
+  if(isCarried('konterstoss') && counterCd<=0) doCounter();
   if(player.hp<=0){
     // Wiederaufstehen (nur „Entdecker", einmal pro Lauf): der Lauf endet nicht am
     // ersten Fehler. Für ein Kind ist das der Unterschied zwischen Weiterspielen
@@ -3800,7 +4041,8 @@ function hurtPlayer(dmg){
 // Konterstoß: automatische Mini-Schockwelle, wenn man getroffen wird
 function doCounter(){
   counterCd=CONFIG.abil.counterCd; counterFx=1;
-  const lv=runAbilities.konterstoss||1;
+  const lv=abilityLevel('konterstoss')||1;
+  entladeGewitterherz();
   if(lv>=3) counterCd*=.62;
   const R=CONFIG.abil.counterRadius*(lv>=3?1.32:1), dmg=Math.round(CONFIG.abil.counterDamage*abilScale(lv)*(lv>=3?1.35:1));
   // Sprung ab Stufe 4: der Konter schleudert doppelt so weit — er schafft echten Freiraum
@@ -3861,8 +4103,9 @@ function killEnemy(en,i){
     pushFloat(player.x,player.y-24,'+'+Math.round(heilung)+' HP','#c77dff');
   }
   // Lebensregen (passiv): heilt pro Kill, höhere Stufe = mehr
-  if(runAbilities.lebensregen){
-    const heal=CONFIG.healPerKill*(1+0.5*(runAbilities.lebensregen-1));
+  if(isCarried('lebensregen')){
+    const heal=CONFIG.healPerKill*(1+0.5*(abilityLevel('lebensregen')-1))*(runKartenEvos.blutkristall?2:1);
+    if(runKartenEvos.blutkristall) runKartenEvos.blutkristall.puls=1;
     if(player.hp<player.maxHp){ player.hp=Math.min(player.maxHp, player.hp+heal); pushFloat(player.x,player.y-26,'+'+Math.round(heal)+' HP','#4de0a0'); }
   }
   killCount++;
@@ -4263,9 +4506,10 @@ function update(dt){
   swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * (sonnenTempoUntil>Date.now()?1.22:1) * dt/1000;
   if(swordAngle>Math.PI*2){ swordAngle-=Math.PI*2; resetMissedOrbit(); }
   player.face = swordAngle;
+  updateKartenEvos(dt);
   // Ein Mal pro Takt, auch mit mehreren Klingen. Weltposition bleibt nach dem Setzen fest.
-  if(runModule.brandspur && dt>0){
-    const B=CONFIG.brandspur, rang=runModule.brandspur-1;
+  if(modulRang('brandspur') && dt>0){
+    const B=CONFIG.brandspur, rang=modulRang('brandspur')-1;
     brandspurCd-=dt;
     if(brandspurCd<=0){
       brandspurCd+=B.interval;
@@ -4312,6 +4556,7 @@ function update(dt){
     if(tickSweet && !orbitRoundSweet) orbitSweetPulse();
     const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+leerenBonus) * sweetKlingenFaktor() * (lightTick?1.35:1) * tagesFaktor('klinge'));
     if(lightTick){ orbitRoundDistance=0; orbitRoundLight=false; if(PERF_DEBUG)treeFlags.debugLichtbund=(treeFlags.debugLichtbund||0)+1; pushFloat(player.x,player.y-38,'LICHTBUND ×1.35','#ffd257',1.05); }
+    let faecherBereit=!!runKartenEvos.splitterfaecher && nachfassenBereit;
     for(const en of enemies){
       const dx=en.x-player.x, dy=en.y-player.y;
       const d = Math.hypot(dx,dy);
@@ -4332,7 +4577,7 @@ function update(dt){
          Die Klinge rotiert permanent und überstreicht ohnehin jeden Winkel — Präzision
          ist hier keine Achse, auf der man handeln kann. Der Preis sitzt jetzt beim
          Leben, wo er sichtbar und tatsächlich eine Entscheidung ist. */
-      if(runModule.glasklinge) dmg = Math.round(dmg * (runModule.glasklinge>=2 ? 1.8 : 1.45));
+      if(modulRang('glasklinge')) dmg = Math.round(dmg * (modulRang('glasklinge')>=2 ? 1.8 : 1.45) * blutkristallFaktor());
       /* Panzergegner holen die Formentscheidung spät im Lauf zurück: Präzisions-Sweet
          und Schneide Rang 4 durchschlagen, Doppelorbit bezahlt seine sichere Abdeckung
          mit gedämpftem Schaden. Bewusst NICHT unverwundbar — auf „Entdecker" kommen
@@ -4347,11 +4592,12 @@ function update(dt){
       // aktiver Panzerung weiterhin gedämpft. Glasklinge Rang 2 und ein verbreiterter
       // Nachfassen-Treffer (Rang 2) durchschlagen ebenfalls.
       const durchschlag = runAbilities.schneide>=SPRUNG_STUFE || !!(treeFlags.singularorbit && treffer)
-        || !!(runModule.nachfassen>=2 && nachfassenBereit && treffer);
+        || !!(modulRang('nachfassen')>=2 && nachfassenBereit && treffer);
       const abgeprallt = en.panzer && !(en.panzerAusUntil>Date.now()) && !durchschlag;
       if(abgeprallt) dmg = Math.max(1, Math.round(dmg*hilfe().panzerDurchlass*((laufEreignis&&laufEreignis.durchlassMult)||1)));
       en.hp -= dmg;
       if(treffer){
+        if(faecherBereit){ feuereSplitterfaecher(toEnemy,dmg); faecherBereit=false; }
         if(hatSprung('phaser')) fireBladePhaser(anglesNow[trefferIndex]);
         tutorialSweetSpotTreffer();
         if(en.panzer) orbitFortschritt('panzer_sweet');
@@ -4378,9 +4624,9 @@ function update(dt){
         // Splitter Rang 2 verbindet den Begleiter sichtbar mit der Kernmechanik:
         // jeder dritte Sweet Hit schleudert Energie entlang der Klinge. Rang 3
         // fächert den Rückflug auf und trifft dadurch eine ganze Linie.
-        if(runAbilities.splitter>=2 && ++splitterSweetZaehler>=3){
+        if(abilityLevel('splitter')>=2 && ++splitterSweetZaehler>=3){
           splitterSweetZaehler=0;
-          const slv=runAbilities.splitter, fan=slv>=3?[-.22,0,.22]:[0];
+          const slv=abilityLevel('splitter'), fan=slv>=3?[-.22,0,.22]:[0];
           for(const off of fan){
             const a=toEnemy+off;
             pShots.push({x:player.x+Math.cos(a)*28,y:player.y+Math.sin(a)*28,vx:Math.cos(a)*470,vy:Math.sin(a)*470,
@@ -4389,8 +4635,8 @@ function update(dt){
           pushFloat(en.x,en.y-34,'SPLITTER!','#9ad0ff',1.1); if(sfx)sfx('laserPlayer');
         }
         // Nachhall: jeder n-te Zonentreffer löst eine kleine Druckwelle aus
-        if(runAbilities.nachhall){
-          const nlv=runAbilities.nachhall;
+        if(isCarried('nachhall')){
+          const nlv=abilityLevel('nachhall');
           const alle = nlv>=SPRUNG_STUFE? 3 : CONFIG.nachhall.alle;
           if(++nachhallZaehler>=alle){
             nachhallZaehler=0;
@@ -4434,8 +4680,8 @@ function update(dt){
         if(sfx)sfx('bladeHit');
       }
       // Kettenblitz: der volle Klingentreffer springt auf den nächsten Gegner über
-      if(treffer && runAbilities.kettenblitz){
-        const clv=runAbilities.kettenblitz;
+      if(treffer && isCarried('kettenblitz')){
+        const clv=abilityLevel('kettenblitz');
         const cDmg=Math.round(CONFIG.abil.chainDamage*abilScale(clv));
         const cR=CONFIG.abil.chainRange*(1+0.05*(clv-1));
         // Sprung ab Stufe 4: der Blitz sucht sich zwei Ziele statt eines
@@ -4463,8 +4709,8 @@ function update(dt){
   }
   perfMark('klinge');
   // Beide Begleiter teilen die Liste, aber nie ihren Bestand oder ihre Drehrichtung.
-  if(runAbilities.splitter){
-    const slv=runAbilities.splitter;
+  if(isCarried('splitter')){
+    const slv=abilityLevel('splitter');
     // Sprung ab Stufe 4: ein dritter Splitter kreist mit — spürbar mehr Dauerschaden
     const anzahl=CONFIG.abil.splitterCount + (slv>=SPRUNG_STUFE? 1 : 0);
     if(shards.filter(s=>s.kind!=='funkenkranz').length!==anzahl){
@@ -4482,8 +4728,9 @@ function update(dt){
       }
     }
   } else if(shards.some(s=>s.kind!=='funkenkranz')) shards=shards.filter(s=>s.kind==='funkenkranz');
-  if(runModule.funkenkranz){
-    const F=CONFIG.funkenkranz, rang=runModule.funkenkranz-1, anzahl=F.count[rang];
+  if(modulRang('funkenkranz')){
+    const F=CONFIG.funkenkranz, rang=modulRang('funkenkranz')-1, anzahl=F.count[rang];
+    const flamme=runKartenEvos.flammenorbit;
     const funken=shards.filter(s=>s.kind==='funkenkranz');
     if(funken.length!==anzahl){
       const phase=funken.length?funken[0].ang:-swordAngle;
@@ -4493,12 +4740,17 @@ function update(dt){
     const radius=player.radius+bladeLength()+F.radius[rang];
     for(const s of shards){
       if(s.kind!=='funkenkranz') continue;
-      s.ang=(s.ang-F.speed*dt/1000)%(Math.PI*2); s.cd-=dt; s.r=radius; s.size=F.hitRadius[rang];
+      s.ang=(s.ang-F.speed*dt/1000)%(Math.PI*2); s.cd-=dt; s.r=radius; s.size=F.hitRadius[rang]+(flamme?5:0);
       s.x=player.x+Math.cos(s.ang)*radius; s.y=player.y+Math.sin(s.ang)*radius;
+      if(flamme) for(const f of powerFields){
+        if(f.kind!=='brandspur' || f.entzuendet || Math.hypot(f.x-s.x,f.y-s.y)>f.r+s.size+6) continue;
+        f.entzuendet=true; f.r*=1.7; f.dmg*=4; f.t=Math.max(f.t,2800); f.max=f.t;
+        f.color='#ffcd70'; flamme.puls=1; flamme.treffer++;
+      }
       if(s.cd<=0){
         for(const en of enemies){
           if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+s.size){
-            en.hp-=Math.round(F.dmg[rang]*(1+bonuses.dmg)); s.cd=F.hitCd; break;
+            en.hp-=Math.round(F.dmg[rang]*(1+bonuses.dmg)*(flamme?1.5:1)); s.cd=F.hitCd; break;
           }
         }
       }
@@ -4717,7 +4969,7 @@ function update(dt){
     }
   }
   // Phaser: gleichmäßiger Takt von der Klingenspitze entlang ihrer Tangente.
-  if(runAbilities.phaser){
+  if(isCarried('phaser')){
     phaserCd-=dt; phaserSoundCd-=dt;
     // 50 ms sind drei 60-Hz-Bilder; Rundungsreste dürfen den nächsten Schuss nicht verzögern.
     if(phaserCd<=1e-6 && dt>0){
@@ -4768,6 +5020,8 @@ function update(dt){
       if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+5){
         const shotColor=s.moduleColor||(s.spectral?'#c77dff':'#9ad0ff');
         en.hp-=s.dmg; spawnParticles(s.x,s.y,shotColor,5); pushFloat(s.x,s.y-12,'-'+s.dmg,shotColor);
+        if(s.drucksalve) kartenEvoWelle('drucksalve',s.x,s.y,CONFIG.nachhall.radius,
+          (CONFIG.phaser.dmg+CONFIG.nachhall.dmg)*abilScale(SPRUNG_STUFE)*(1+bonuses.dmg));
         if(s.stormSlow) en.slowT=Math.max(en.slowT||0,600);
         if(s.moduleNova>=2) modulePulse(en.x,en.y,55,Math.round(s.dmg*.52),'#c77dff',210);
         if(!s.hitIds)s.hitIds=[]; s.hitIds.push(en);
@@ -6170,7 +6424,7 @@ function draw(){
     ctx.save(); ctx.globalCompositeOperation='lighter';
     for(const s of shards){
       if(s.kind==='funkenkranz'){
-        const color=['#3bd17a','#35e0e0'].includes(currentSkin().blade)?'#ffb5f5':'#65ffe0';
+        const color=runKartenEvos.flammenorbit?'#ffb05b':(['#3bd17a','#35e0e0'].includes(currentSkin().blade)?'#ffb5f5':'#65ffe0');
         sbc(color,12); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineCap='round';
         ctx.beginPath(); ctx.arc(player.x,player.y,s.r,s.ang,s.ang+.42); ctx.stroke();
         ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.ang-Math.PI/2); ctx.scale(s.size/7,s.size/7);
@@ -6179,10 +6433,17 @@ function draw(){
         ctx.restore(); continue;
       }
       sbc('#9ad0ff',10); ctx.fillStyle='#bfe3ff';
-      ctx.beginPath(); ctx.arc(s.x,s.y,4.5,0,Math.PI*2); ctx.fill();
+      ctx.beginPath();
+      if(runKartenEvos.splitterfaecher){
+        ctx.moveTo(s.x+Math.cos(s.ang)*9,s.y+Math.sin(s.ang)*9);
+        ctx.lineTo(s.x+Math.cos(s.ang+2.4)*7,s.y+Math.sin(s.ang+2.4)*7);
+        ctx.lineTo(s.x+Math.cos(s.ang-2.4)*7,s.y+Math.sin(s.ang-2.4)*7); ctx.closePath();
+      } else ctx.arc(s.x,s.y,4.5,0,Math.PI*2);
+      ctx.fill();
     }
     ctx.restore();
   }
+  zeichneKartenEvos();
   perfMark('zSpieler');
   // particles (additiv = leuchtend)
   ctx.globalCompositeOperation='lighter';

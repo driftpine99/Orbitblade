@@ -402,7 +402,7 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 
 /* Auslese: alle drei Wellen drei Karten zur Wahl — reine Hülle, das Spiel
    rendert die .auslese-karte-Knöpfe zur Laufzeit hinein. Mobile-first: die
-   Karten stehen auf dem Handy untereinander und passen ohne Scrollen; ab
+   Karten stehen auf dem Handy untereinander; lange Rezepte bleiben scrollbar. Ab
    601px (siehe Mobile-first-Block oben) dürfen sie nebeneinander stehen. */
 #auslese-karten{display:flex;flex-direction:column;gap:10px;width:100%;max-width:520px;margin:2px 0 8px}
 /* Raster statt Spalte, seit das Symbol dazugekommen ist: Es steht links ueber die
@@ -423,6 +423,21 @@ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-se
 .ak-titel{font-size:var(--fs-lg);font-weight:700;letter-spacing:.02em;color:#fff}
 /* kein Ellipsis: die Wirkungszeile darf umbrechen, statt abgeschnitten zu werden */
 .ak-text{font-size:var(--fs-sm);color:var(--muted);line-height:1.45;flex:1}
+.ak-rezept{font-size:11px;line-height:1.45;color:#becfe2;border-top:1px solid var(--line);padding-top:6px}
+.evolution .ak-rezept{color:var(--gold);border-color:rgba(255,210,87,.25)}
+.auslese-karte.evolution{border-width:2px}
+#auslese-rezepte{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px;
+  width:100%;max-width:760px;margin:0 0 10px;text-align:left}
+#auslese-rezepte[hidden]{display:none}
+.ak-rezeptkachel{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:1px solid var(--line);
+  border-radius:6px;background:rgba(10,18,32,.65);font-size:11px;line-height:1.4;color:var(--muted)}
+.ak-rezeptkachel strong{color:#dceafb;font-size:12px}
+.ak-rezeptkachel.fertig strong{color:var(--gold)}
+/* Rezepthinweise dürfen die oberste Karte auch auf kleinen Querformaten nicht
+   aus dem scrollbaren Bereich schieben. Freier Platz bleibt oben und unten. */
+#overlay-auslese{justify-content:flex-start}
+#overlay-auslese::before,#overlay-auslese::after{content:'';flex:1 0 0}
+#overlay-auslese>*{flex-shrink:0}
 .ak-stufe{grid-area:stufe;justify-self:end;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
   color:var(--accent);border:1px solid rgba(110,200,255,.45);border-radius:999px;padding:3px 10px;
   background:rgba(110,200,255,.08);white-space:nowrap}
