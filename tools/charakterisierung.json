@@ -1,0 +1,2095 @@
+{
+  "schema": 2,
+  "bedingungen": {
+    "seed": 20260831,
+    "rafStart": 1000000,
+    "dateEpoch": 1800000000000,
+    "frameMs": 16.666666666666668,
+    "bilder": 1200,
+    "sekunden": 20,
+    "welle": 20,
+    "gegner": 16,
+    "gegnerHp": 1000000000,
+    "god": false,
+    "aktiveMacht": false,
+    "vergleichstoleranz": 0
+  },
+  "geometrie": {
+    "frisch": {
+      "art": "real_gekauft_oder_frisch",
+      "spielzustand": {
+        "orbit": {},
+        "bonusesRange": 0,
+        "klingen": 1,
+        "maxHp": 205
+      },
+      "rechenparameter": {
+        "rangeBonus": 0,
+        "klingenlaenge": 38.76
+      },
+      "werte": {
+        "klingenchor_ausloesespitze": 56.76,
+        "klingenchor_wellenradius": 110.75999999999999,
+        "taktschlag_grundradius": 110,
+        "gewitterherz_radius": 176.76,
+        "klingenchor_zeichenspitze": 56.76,
+        "wirbel_folgefeld_radius": 51.3336,
+        "machtecho_zug_zielradius": 48.2328,
+        "sogecho_orbit_zielradius": 48.2328,
+        "wirbel_mutation_zielradius": 49.783199999999994,
+        "sonnenorbit_radius": 56.76,
+        "sog_halteradius": 53.6592,
+        "sog_sonnenorbit_ring": 45.907199999999996,
+        "gravitationsbruch_radius": 128.76,
+        "trefferblock_klingenlaenge": 38.76,
+        "nachhall_zielradius": 48.2328,
+        "funkenkranz_orbit_rang1": 78.75999999999999,
+        "funkenkranz_orbit_rang2": 86.75999999999999,
+        "gegnerki_sog_orbit": 53.6592,
+        "gegenstrom_zielradius": 49.783199999999994,
+        "rueckleiter_zielradius": 49.783199999999994,
+        "darstellung_klingenlaenge": 38.76,
+        "leuchtfeuer_spitzenabstand": 56.76,
+        "sweet_schwelle_soldat": 74.75999999999999,
+        "trefferschwelle_soldat": 74.75999999999999,
+        "zeichen_reichweitenring": 56.76,
+        "tutorial_reichweitenring": 56.76,
+        "tutorial_upgrade_markierung": 45.907199999999996,
+        "klingenschweif_laenge": 38.76,
+        "kronenrahmen_laenge": 42.76,
+        "kronenmarkierung_spitzenabstand": 60.76,
+        "gezeichnete_klinge_laenge": 38.76,
+        "sichtbare_klingenspitze": 56.76,
+        "kontaktschaden_soldat": 40
+      },
+      "festeAbstaende": {
+        "jaegerHaltNah": 115,
+        "jaegerRadius": 16,
+        "machtblitzReichweite": 360,
+        "plasmabombeReichweite": 340,
+        "plasmabombeKern": 15,
+        "novaRadius": 190,
+        "funkenTrefferradius1": 7,
+        "funkenTrefferradius2": 11,
+        "rangeMultDeklaration": 1.8
+      }
+    },
+    "doppel": {
+      "art": "real_gekauft_oder_frisch",
+      "spielzustand": {
+        "orbit": {
+          "blade_multi": 1
+        },
+        "bonusesRange": 0,
+        "klingen": 2,
+        "maxHp": 205
+      },
+      "rechenparameter": {
+        "rangeBonus": 0,
+        "klingenlaenge": 38.76
+      },
+      "werte": {
+        "klingenchor_ausloesespitze": 56.76,
+        "klingenchor_wellenradius": 110.75999999999999,
+        "taktschlag_grundradius": 110,
+        "gewitterherz_radius": 176.76,
+        "klingenchor_zeichenspitze": 56.76,
+        "wirbel_folgefeld_radius": 51.3336,
+        "machtecho_zug_zielradius": 48.2328,
+        "sogecho_orbit_zielradius": 48.2328,
+        "wirbel_mutation_zielradius": 49.783199999999994,
+        "sonnenorbit_radius": 56.76,
+        "sog_halteradius": 53.6592,
+        "sog_sonnenorbit_ring": 45.907199999999996,
+        "gravitationsbruch_radius": 128.76,
+        "trefferblock_klingenlaenge": 38.76,
+        "nachhall_zielradius": 48.2328,
+        "funkenkranz_orbit_rang1": 78.75999999999999,
+        "funkenkranz_orbit_rang2": 86.75999999999999,
+        "gegnerki_sog_orbit": 53.6592,
+        "gegenstrom_zielradius": 49.783199999999994,
+        "rueckleiter_zielradius": 49.783199999999994,
+        "darstellung_klingenlaenge": 38.76,
+        "leuchtfeuer_spitzenabstand": 56.76,
+        "sweet_schwelle_soldat": 74.75999999999999,
+        "trefferschwelle_soldat": 74.75999999999999,
+        "zeichen_reichweitenring": 56.76,
+        "tutorial_reichweitenring": 56.76,
+        "tutorial_upgrade_markierung": 45.907199999999996,
+        "klingenschweif_laenge": 38.76,
+        "kronenrahmen_laenge": 42.76,
+        "kronenmarkierung_spitzenabstand": 60.76,
+        "gezeichnete_klinge_laenge": 38.76,
+        "sichtbare_klingenspitze": 56.76,
+        "kontaktschaden_soldat": 40
+      },
+      "festeAbstaende": {
+        "jaegerHaltNah": 115,
+        "jaegerRadius": 16,
+        "machtblitzReichweite": 360,
+        "plasmabombeReichweite": 340,
+        "plasmabombeKern": 15,
+        "novaRadius": 190,
+        "funkenTrefferradius1": 7,
+        "funkenTrefferradius2": 11,
+        "rangeMultDeklaration": 1.8
+      }
+    },
+    "praezision": {
+      "art": "real_gekauft_oder_frisch",
+      "spielzustand": {
+        "orbit": {
+          "blade_single": 1
+        },
+        "bonusesRange": 0,
+        "klingen": 1,
+        "maxHp": 205
+      },
+      "rechenparameter": {
+        "rangeBonus": 0,
+        "klingenlaenge": 46.51199999999999
+      },
+      "werte": {
+        "klingenchor_ausloesespitze": 64.512,
+        "klingenchor_wellenradius": 118.512,
+        "taktschlag_grundradius": 110,
+        "gewitterherz_radius": 184.512,
+        "klingenchor_zeichenspitze": 64.512,
+        "wirbel_folgefeld_radius": 58.000319999999995,
+        "machtecho_zug_zielradius": 54.27936,
+        "sogecho_orbit_zielradius": 54.27936,
+        "wirbel_mutation_zielradius": 56.13983999999999,
+        "sonnenorbit_radius": 64.512,
+        "sog_halteradius": 60.791039999999995,
+        "sog_sonnenorbit_ring": 51.48864,
+        "gravitationsbruch_radius": 136.512,
+        "trefferblock_klingenlaenge": 46.51199999999999,
+        "nachhall_zielradius": 54.27936,
+        "funkenkranz_orbit_rang1": 86.512,
+        "funkenkranz_orbit_rang2": 94.512,
+        "gegnerki_sog_orbit": 60.791039999999995,
+        "gegenstrom_zielradius": 56.13983999999999,
+        "rueckleiter_zielradius": 56.13983999999999,
+        "darstellung_klingenlaenge": 46.51199999999999,
+        "leuchtfeuer_spitzenabstand": 64.512,
+        "sweet_schwelle_soldat": 82.512,
+        "trefferschwelle_soldat": 82.512,
+        "zeichen_reichweitenring": 64.512,
+        "tutorial_reichweitenring": 64.512,
+        "tutorial_upgrade_markierung": 51.48864,
+        "klingenschweif_laenge": 46.51199999999999,
+        "kronenrahmen_laenge": 50.51199999999999,
+        "kronenmarkierung_spitzenabstand": 68.512,
+        "gezeichnete_klinge_laenge": 46.51199999999999,
+        "sichtbare_klingenspitze": 64.512,
+        "kontaktschaden_soldat": 40
+      },
+      "festeAbstaende": {
+        "jaegerHaltNah": 115,
+        "jaegerRadius": 16,
+        "machtblitzReichweite": 360,
+        "plasmabombeReichweite": 340,
+        "plasmabombeKern": 15,
+        "novaRadius": 190,
+        "funkenTrefferradius1": 7,
+        "funkenTrefferradius2": 11,
+        "rangeMultDeklaration": 1.8
+      }
+    },
+    "praezision_deckel": {
+      "art": "analytische_Grenzrechnung_ohne_Kaufweg",
+      "spielzustand": {
+        "orbit": {
+          "blade_single": 1
+        },
+        "bonusesRange": 0,
+        "klingen": 1,
+        "maxHp": 205
+      },
+      "rechenparameter": {
+        "rangeBonus": 0.8,
+        "klingenlaenge": 83.7216
+      },
+      "werte": {
+        "klingenchor_ausloesespitze": 101.7216,
+        "klingenchor_wellenradius": 155.7216,
+        "taktschlag_grundradius": 110,
+        "gewitterherz_radius": 221.7216,
+        "klingenchor_zeichenspitze": 101.7216,
+        "wirbel_folgefeld_radius": 90.000576,
+        "machtecho_zug_zielradius": 83.302848,
+        "sogecho_orbit_zielradius": 83.302848,
+        "wirbel_mutation_zielradius": 86.65171199999999,
+        "sonnenorbit_radius": 101.7216,
+        "sog_halteradius": 95.023872,
+        "sog_sonnenorbit_ring": 78.279552,
+        "gravitationsbruch_radius": 173.7216,
+        "trefferblock_klingenlaenge": 83.7216,
+        "nachhall_zielradius": 83.302848,
+        "funkenkranz_orbit_rang1": 123.7216,
+        "funkenkranz_orbit_rang2": 131.7216,
+        "gegnerki_sog_orbit": 95.023872,
+        "gegenstrom_zielradius": 86.65171199999999,
+        "rueckleiter_zielradius": 86.65171199999999,
+        "darstellung_klingenlaenge": 83.7216,
+        "leuchtfeuer_spitzenabstand": 101.7216,
+        "sweet_schwelle_soldat": 119.7216,
+        "trefferschwelle_soldat": 119.7216,
+        "zeichen_reichweitenring": 101.7216,
+        "tutorial_reichweitenring": 101.7216,
+        "tutorial_upgrade_markierung": 78.279552,
+        "klingenschweif_laenge": 83.7216,
+        "kronenrahmen_laenge": 87.7216,
+        "kronenmarkierung_spitzenabstand": 105.7216,
+        "gezeichnete_klinge_laenge": 83.7216,
+        "sichtbare_klingenspitze": 101.7216,
+        "kontaktschaden_soldat": 40
+      },
+      "festeAbstaende": {
+        "jaegerHaltNah": 115,
+        "jaegerRadius": 16,
+        "machtblitzReichweite": 360,
+        "plasmabombeReichweite": 340,
+        "plasmabombeKern": 15,
+        "novaRadius": 190,
+        "funkenTrefferradius1": 7,
+        "funkenTrefferradius2": 11,
+        "rangeMultDeklaration": 1.8
+      }
+    }
+  },
+  "verhalten": {
+    "frisch": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {},
+          "orbit": {}
+        },
+        "gesamtschaden": 38550,
+        "schadenProSekunde": 1927.5,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {},
+        "ausloesungenProSekunde": {},
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {},
+          "orbit": {}
+        },
+        "gesamtschaden": 9825,
+        "schadenProSekunde": 491.25,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {},
+        "ausloesungenProSekunde": {},
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "doppel": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 2,
+          "sweetArcHalf": 0.375,
+          "karten": {},
+          "orbit": {
+            "blade_multi": 1
+          }
+        },
+        "gesamtschaden": 40260,
+        "schadenProSekunde": 2013,
+        "klingentreffer": 2400,
+        "volltreffer": 573,
+        "volltrefferProSekunde": 28.65,
+        "volltrefferquote": 0.23875,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {},
+        "ausloesungenProSekunde": {},
+        "erlittenerHpVerlust": 4332,
+        "kontaktversuche": 114,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 2,
+          "sweetArcHalf": 0.375,
+          "karten": {},
+          "orbit": {
+            "blade_multi": 1
+          }
+        },
+        "gesamtschaden": 10065,
+        "schadenProSekunde": 503.25,
+        "klingentreffer": 2400,
+        "volltreffer": 573,
+        "volltrefferProSekunde": 28.65,
+        "volltrefferquote": 0.23875,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {},
+        "ausloesungenProSekunde": {},
+        "erlittenerHpVerlust": 4332,
+        "kontaktversuche": 114,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "praezision": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 64.512,
+          "klingen": 1,
+          "sweetArcHalf": 0.34,
+          "karten": {},
+          "orbit": {
+            "blade_single": 1
+          }
+        },
+        "gesamtschaden": 40023,
+        "schadenProSekunde": 2001.15,
+        "klingentreffer": 2400,
+        "volltreffer": 261,
+        "volltrefferProSekunde": 13.05,
+        "volltrefferquote": 0.10875,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {},
+        "ausloesungenProSekunde": {},
+        "erlittenerHpVerlust": 4370,
+        "kontaktversuche": 115,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 64.512,
+          "klingen": 1,
+          "sweetArcHalf": 0.34,
+          "karten": {},
+          "orbit": {
+            "blade_single": 1
+          }
+        },
+        "gesamtschaden": 20772,
+        "schadenProSekunde": 1038.6,
+        "klingentreffer": 2400,
+        "volltreffer": 261,
+        "volltrefferProSekunde": 13.05,
+        "volltrefferquote": 0.10875,
+        "abgeprallteKlingentreffer": 2139,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {},
+        "ausloesungenProSekunde": {},
+        "erlittenerHpVerlust": 4370,
+        "kontaktversuche": 115,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "schneide_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "schneide": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 39675,
+        "schadenProSekunde": 1983.75,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteVolltreffer": 375
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteVolltreffer": 18.75
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "schneide": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 9825,
+        "schadenProSekunde": 491.25,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteVolltreffer": 375
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteVolltreffer": 18.75
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "schneide_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "schneide": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 43050,
+        "schadenProSekunde": 2152.5,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteVolltreffer": 375
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteVolltreffer": 18.75
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "schneide": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 43050,
+        "schadenProSekunde": 2152.5,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteVolltreffer": 375
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteVolltreffer": 18.75
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "nachfassen_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "nachfassen": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 45726,
+        "schadenProSekunde": 2286.3,
+        "klingentreffer": 2400,
+        "volltreffer": 651,
+        "volltrefferProSekunde": 32.55,
+        "volltrefferquote": 0.27125,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "geladen": 107,
+          "verbraucht": 106,
+          "verbreiterteVolltreffer": 537
+        },
+        "ausloesungenProSekunde": {
+          "geladen": 5.35,
+          "verbraucht": 5.3,
+          "verbreiterteVolltreffer": 26.85
+        },
+        "erlittenerHpVerlust": 7106,
+        "kontaktversuche": 187,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "nachfassen": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 11757,
+        "schadenProSekunde": 587.85,
+        "klingentreffer": 2400,
+        "volltreffer": 651,
+        "volltrefferProSekunde": 32.55,
+        "volltrefferquote": 0.27125,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "geladen": 107,
+          "verbraucht": 106,
+          "verbreiterteVolltreffer": 537
+        },
+        "ausloesungenProSekunde": {
+          "geladen": 5.35,
+          "verbraucht": 5.3,
+          "verbreiterteVolltreffer": 26.85
+        },
+        "erlittenerHpVerlust": 7106,
+        "kontaktversuche": 187,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "nachfassen_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "nachfassen": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 45726,
+        "schadenProSekunde": 2286.3,
+        "klingentreffer": 2400,
+        "volltreffer": 651,
+        "volltrefferProSekunde": 32.55,
+        "volltrefferquote": 0.27125,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "geladen": 107,
+          "verbraucht": 106,
+          "verbreiterteVolltreffer": 537
+        },
+        "ausloesungenProSekunde": {
+          "geladen": 5.35,
+          "verbraucht": 5.3,
+          "verbreiterteVolltreffer": 26.85
+        },
+        "erlittenerHpVerlust": 7106,
+        "kontaktversuche": 187,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "nachfassen": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 26793,
+        "schadenProSekunde": 1339.65,
+        "klingentreffer": 2400,
+        "volltreffer": 651,
+        "volltrefferProSekunde": 32.55,
+        "volltrefferquote": 0.27125,
+        "abgeprallteKlingentreffer": 1863,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "geladen": 107,
+          "verbraucht": 106,
+          "verbreiterteVolltreffer": 537
+        },
+        "ausloesungenProSekunde": {
+          "geladen": 5.35,
+          "verbraucht": 5.3,
+          "verbreiterteVolltreffer": 26.85
+        },
+        "erlittenerHpVerlust": 7106,
+        "kontaktversuche": 187,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "glasklinge_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 123,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "glasklinge": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 55050,
+        "schadenProSekunde": 2752.5,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteKlingentreffer": 2400
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteKlingentreffer": 120
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 123,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "glasklinge": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 13350,
+        "schadenProSekunde": 667.5,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteKlingentreffer": 2400
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteKlingentreffer": 120
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "glasklinge_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 123,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "glasklinge": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 70050,
+        "schadenProSekunde": 3502.5,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteKlingentreffer": 2400
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteKlingentreffer": 120
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 123,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "glasklinge": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 18525,
+        "schadenProSekunde": 926.25,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteKlingentreffer": 2400
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteKlingentreffer": 120
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "klingenteilung_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 2,
+          "sweetArcHalf": 0.375,
+          "karten": {
+            "klingenteilung": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 49506,
+        "schadenProSekunde": 2475.3,
+        "klingentreffer": 2400,
+        "volltreffer": 609,
+        "volltrefferProSekunde": 30.45,
+        "volltrefferquote": 0.25375,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteVolltreffer": 609
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteVolltreffer": 30.45
+        },
+        "erlittenerHpVerlust": 7410,
+        "kontaktversuche": 195,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 2,
+          "sweetArcHalf": 0.375,
+          "karten": {
+            "klingenteilung": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 12681,
+        "schadenProSekunde": 634.05,
+        "klingentreffer": 2400,
+        "volltreffer": 609,
+        "volltrefferProSekunde": 30.45,
+        "volltrefferquote": 0.25375,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteVolltreffer": 609
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteVolltreffer": 30.45
+        },
+        "erlittenerHpVerlust": 7410,
+        "kontaktversuche": 195,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "klingenteilung_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 3,
+          "sweetArcHalf": 0.28125,
+          "karten": {
+            "klingenteilung": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 56016,
+        "schadenProSekunde": 2800.8,
+        "klingentreffer": 2400,
+        "volltreffer": 648,
+        "volltrefferProSekunde": 32.4,
+        "volltrefferquote": 0.27,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteVolltreffer": 648
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteVolltreffer": 32.4
+        },
+        "erlittenerHpVerlust": 6954,
+        "kontaktversuche": 183,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 3,
+          "sweetArcHalf": 0.28125,
+          "karten": {
+            "klingenteilung": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 14328,
+        "schadenProSekunde": 716.4,
+        "klingentreffer": 2400,
+        "volltreffer": 648,
+        "volltrefferProSekunde": 32.4,
+        "volltrefferquote": 0.27,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "verstaerkteVolltreffer": 648
+        },
+        "ausloesungenProSekunde": {
+          "verstaerkteVolltreffer": 32.4
+        },
+        "erlittenerHpVerlust": 6954,
+        "kontaktversuche": 183,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "funkenkranz_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "funkenkranz": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 45310,
+        "schadenProSekunde": 2265.5,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "funkenTreffer": 169
+        },
+        "ausloesungenProSekunde": {
+          "funkenTreffer": 8.45
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "funkenkranz": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 16585,
+        "schadenProSekunde": 829.25,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "funkenTreffer": 169
+        },
+        "ausloesungenProSekunde": {
+          "funkenTreffer": 8.45
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "funkenkranz_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "funkenkranz": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 53382,
+        "schadenProSekunde": 2669.1,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "funkenTreffer": 309
+        },
+        "ausloesungenProSekunde": {
+          "funkenTreffer": 15.45
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "funkenkranz": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 24657,
+        "schadenProSekunde": 1232.85,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "funkenTreffer": 309
+        },
+        "ausloesungenProSekunde": {
+          "funkenTreffer": 15.45
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "taktschlag_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "taktschlag": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 40758,
+        "schadenProSekunde": 2037.9,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "druckwellen": 6
+        },
+        "ausloesungenProSekunde": {
+          "druckwellen": 0.3
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "taktschlag": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 12033,
+        "schadenProSekunde": 601.65,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "druckwellen": 6
+        },
+        "ausloesungenProSekunde": {
+          "druckwellen": 0.3
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "taktschlag_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "taktschlag": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 41862,
+        "schadenProSekunde": 2093.1,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "druckwellen": 9
+        },
+        "ausloesungenProSekunde": {
+          "druckwellen": 0.45
+        },
+        "erlittenerHpVerlust": 7220,
+        "kontaktversuche": 190,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "taktschlag": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 13137,
+        "schadenProSekunde": 656.85,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "druckwellen": 9
+        },
+        "ausloesungenProSekunde": {
+          "druckwellen": 0.45
+        },
+        "erlittenerHpVerlust": 7220,
+        "kontaktversuche": 190,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "nachhall_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "nachhall": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 51750,
+        "schadenProSekunde": 2587.5,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "druckwellen": 93
+        },
+        "ausloesungenProSekunde": {
+          "druckwellen": 4.65
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "nachhall": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 23025,
+        "schadenProSekunde": 1151.25,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "druckwellen": 93
+        },
+        "ausloesungenProSekunde": {
+          "druckwellen": 4.65
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "nachhall_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "nachhall": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 75180,
+        "schadenProSekunde": 3759,
+        "klingentreffer": 2382,
+        "volltreffer": 379,
+        "volltrefferProSekunde": 18.95,
+        "volltrefferquote": 0.15910999160369438,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "druckwellen": 126
+        },
+        "ausloesungenProSekunde": {
+          "druckwellen": 6.3
+        },
+        "erlittenerHpVerlust": 9082,
+        "kontaktversuche": 239,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "nachhall": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 46541,
+        "schadenProSekunde": 2327.05,
+        "klingentreffer": 2382,
+        "volltreffer": 379,
+        "volltrefferProSekunde": 18.95,
+        "volltrefferquote": 0.15910999160369438,
+        "abgeprallteKlingentreffer": 2382,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "druckwellen": 126
+        },
+        "ausloesungenProSekunde": {
+          "druckwellen": 6.3
+        },
+        "erlittenerHpVerlust": 9082,
+        "kontaktversuche": 239,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "kettenblitz_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "kettenblitz": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 43800,
+        "schadenProSekunde": 2190,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "kettenspruenge": 375
+        },
+        "ausloesungenProSekunde": {
+          "kettenspruenge": 18.75
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "kettenblitz": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 15075,
+        "schadenProSekunde": 753.75,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "kettenspruenge": 375
+        },
+        "ausloesungenProSekunde": {
+          "kettenspruenge": 18.75
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "kettenblitz_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "kettenblitz": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 58800,
+        "schadenProSekunde": 2940,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "kettenspruenge": 1125
+        },
+        "ausloesungenProSekunde": {
+          "kettenspruenge": 56.25
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "kettenblitz": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 30075,
+        "schadenProSekunde": 1503.75,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "kettenspruenge": 1125
+        },
+        "ausloesungenProSekunde": {
+          "kettenspruenge": 56.25
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "splitter_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "splitter": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 39855,
+        "schadenProSekunde": 1992.75,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "orbitTreffer": 145,
+          "splitterSalven": 0
+        },
+        "ausloesungenProSekunde": {
+          "orbitTreffer": 7.25,
+          "splitterSalven": 0
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "splitter": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 11130,
+        "schadenProSekunde": 556.5,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "orbitTreffer": 145,
+          "splitterSalven": 0
+        },
+        "ausloesungenProSekunde": {
+          "orbitTreffer": 7.25,
+          "splitterSalven": 0
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "splitter_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "splitter": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 55426,
+        "schadenProSekunde": 2771.3,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "orbitTreffer": 218,
+          "splitterSalven": 125
+        },
+        "ausloesungenProSekunde": {
+          "orbitTreffer": 10.9,
+          "splitterSalven": 6.25
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "splitter": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 26701,
+        "schadenProSekunde": 1335.05,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "orbitTreffer": 218,
+          "splitterSalven": 125
+        },
+        "ausloesungenProSekunde": {
+          "orbitTreffer": 10.9,
+          "splitterSalven": 6.25
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "konterstoss_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "konterstoss": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 47062,
+        "schadenProSekunde": 2353.1,
+        "klingentreffer": 2314,
+        "volltreffer": 363,
+        "volltrefferProSekunde": 18.15,
+        "volltrefferquote": 0.15687121866897147,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "konterstoesse": 28
+        },
+        "ausloesungenProSekunde": {
+          "konterstoesse": 1.4
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "konterstoss": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 19339,
+        "schadenProSekunde": 966.95,
+        "klingentreffer": 2314,
+        "volltreffer": 363,
+        "volltrefferProSekunde": 18.15,
+        "volltrefferquote": 0.15687121866897147,
+        "abgeprallteKlingentreffer": 2314,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "konterstoesse": 28
+        },
+        "ausloesungenProSekunde": {
+          "konterstoesse": 1.4
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "konterstoss_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "konterstoss": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 59006,
+        "schadenProSekunde": 2950.3,
+        "klingentreffer": 1990,
+        "volltreffer": 319,
+        "volltrefferProSekunde": 15.95,
+        "volltrefferquote": 0.16030150753768843,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "konterstoesse": 43
+        },
+        "ausloesungenProSekunde": {
+          "konterstoesse": 2.15
+        },
+        "erlittenerHpVerlust": 5776,
+        "kontaktversuche": 152,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "konterstoss": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 35035,
+        "schadenProSekunde": 1751.75,
+        "klingentreffer": 1990,
+        "volltreffer": 319,
+        "volltrefferProSekunde": 15.95,
+        "volltrefferquote": 0.16030150753768843,
+        "abgeprallteKlingentreffer": 1990,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "konterstoesse": 43
+        },
+        "ausloesungenProSekunde": {
+          "konterstoesse": 2.15
+        },
+        "erlittenerHpVerlust": 5776,
+        "kontaktversuche": 152,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "phaser_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "phaser": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 45056,
+        "schadenProSekunde": 2252.8,
+        "klingentreffer": 2400,
+        "volltreffer": 376,
+        "volltrefferProSekunde": 18.8,
+        "volltrefferquote": 0.15666666666666668,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "blitzeinschlaege": 24
+        },
+        "ausloesungenProSekunde": {
+          "blitzeinschlaege": 1.2
+        },
+        "erlittenerHpVerlust": 7144,
+        "kontaktversuche": 188,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "phaser": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 16312,
+        "schadenProSekunde": 815.6,
+        "klingentreffer": 2400,
+        "volltreffer": 376,
+        "volltrefferProSekunde": 18.8,
+        "volltrefferquote": 0.15666666666666668,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "blitzeinschlaege": 24
+        },
+        "ausloesungenProSekunde": {
+          "blitzeinschlaege": 1.2
+        },
+        "erlittenerHpVerlust": 7144,
+        "kontaktversuche": 188,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "phaser_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "phaser": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 53258,
+        "schadenProSekunde": 2662.9,
+        "klingentreffer": 2399,
+        "volltreffer": 370,
+        "volltrefferProSekunde": 18.5,
+        "volltrefferquote": 0.15423092955398082,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "blitzeinschlaege": 55
+        },
+        "ausloesungenProSekunde": {
+          "blitzeinschlaege": 2.75
+        },
+        "erlittenerHpVerlust": 6080,
+        "kontaktversuche": 160,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "phaser": 4
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 24637,
+        "schadenProSekunde": 1231.85,
+        "klingentreffer": 2399,
+        "volltreffer": 370,
+        "volltrefferProSekunde": 18.5,
+        "volltrefferquote": 0.15423092955398082,
+        "abgeprallteKlingentreffer": 2399,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "blitzeinschlaege": 55
+        },
+        "ausloesungenProSekunde": {
+          "blitzeinschlaege": 2.75
+        },
+        "erlittenerHpVerlust": 6080,
+        "kontaktversuche": 160,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "brandspur_1": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "brandspur": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 45830,
+        "schadenProSekunde": 2291.5,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "bombeneinschlaege": 7
+        },
+        "ausloesungenProSekunde": {
+          "bombeneinschlaege": 0.35
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "brandspur": 1
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 17105,
+        "schadenProSekunde": 855.25,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "bombeneinschlaege": 7
+        },
+        "ausloesungenProSekunde": {
+          "bombeneinschlaege": 0.35
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    },
+    "brandspur_2": {
+      "normal": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "brandspur": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 56117,
+        "schadenProSekunde": 2805.85,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 0,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "bombeneinschlaege": 18
+        },
+        "ausloesungenProSekunde": {
+          "bombeneinschlaege": 0.9
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      },
+      "gepanzert": {
+        "aufbau": {
+          "maxHp": 205,
+          "gegnerSchaden": 38,
+          "ringradius": 56.76,
+          "klingen": 1,
+          "sweetArcHalf": 0.5,
+          "karten": {
+            "brandspur": 2
+          },
+          "orbit": {}
+        },
+        "gesamtschaden": 27392,
+        "schadenProSekunde": 1369.6,
+        "klingentreffer": 2400,
+        "volltreffer": 375,
+        "volltrefferProSekunde": 18.75,
+        "volltrefferquote": 0.15625,
+        "abgeprallteKlingentreffer": 2400,
+        "fokusGeladen": 38,
+        "fokusLaderate": 1.9,
+        "orbitimpulse": 19,
+        "ausloesungen": {
+          "bombeneinschlaege": 18
+        },
+        "ausloesungenProSekunde": {
+          "bombeneinschlaege": 0.9
+        },
+        "erlittenerHpVerlust": 7334,
+        "kontaktversuche": 193,
+        "zustandsabbrueche": 0,
+        "bewegteGegnerbilder": 19200
+      }
+    }
+  }
+}
