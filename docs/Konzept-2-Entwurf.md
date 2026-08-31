@@ -139,6 +139,56 @@ skaliert. Genau die Gewichtung, die das Spätspiel braucht.
 Kontakttreffer gegen den Bot — sie sind langsamer als der Spieler. Ihre Zahlen
 sagen über den Innenrand nichts aus und dürfen nicht als Beleg gelesen werden.
 
+### B2a — Was der gebaute Innenrand dann wirklich getan hat
+
+**Der Abstoßer oben ist gebaut (`?band=1`) und im Spiel widerlegt worden.** Die
+Messreihe in `mess_band.js` lief gegen eine *gedachte* Geometrie, während die
+echte Klinge noch kurz war. Im gebauten Band zeigte sich der Denkfehler sofort:
+
+> **Jeder stetige Schub hat ein Gleichgewicht — und jedes Gleichgewicht liegt
+> entweder im Loch oder außerhalb der Kontaktgrenze.**
+
+Bei `Tempo × Tiefe/20` setzten sich alle Gegner exakt 20 px unter dem Innenrand
+fest, also auf dem Spieler: **89,7 % der nahen Gegner standen im Loch** statt im
+Band, die Kills fielen von 14 auf 2 je 40 s.
+
+Die Form ohne Gleichgewicht ist gebaut und wirkt: Der Widerstand wächst mit dem
+**Weg**, den der Gegner im Loch zurückgelegt hat. Weil der Weg mit dem Tempo
+wächst, ist die Eindringtiefe für jedes Tempo gleich (`wegK/2`), und weil er
+immer weiter wächst, gibt es keinen Ruhepunkt. Damit fiel „im Loch" von 89,7 auf
+43,3 %, und die Gegner standen erstmals mehrheitlich im Band.
+
+**Trotzdem trägt der Innenrand nicht.** Der Prüfstand ohne Bot (Welle 20, 16
+Soldaten auf dem Klingenring, 20 s) zeigt, warum:
+
+| | Grundschaden | geg. ohne Band | Zeit innerhalb des Innenrands |
+|---|---:|---:|---:|
+| ohne Band | 38.498 | — | **39,0 %** (also am Spieler klebend) |
+| Loch (Faktor 0) | 22.802 | **−40,8 %** | 40,9 % |
+| Abschlag 0,35 | 26.110 | −32,2 % | 46,3 % |
+| Abschlag 0,5 | 30.074 | −21,9 % | 42,9 % |
+| Abschlag 0,7 | 33.089 | −14,1 % | 43,0 % |
+
+Die letzte Spalte ist der Befund: **Schon ohne Band stehen die Gegner 39 % der
+Zeit direkt am Spieler.** Der Innenrand liegt genau dort, wo sie ohnehin sind —
+weil die Gegner-KI geradlinig auf den Spieler zuläuft und keinen Grund hat, auf
+Bandabstand stehenzubleiben. Ein Loch um den Spieler ist damit kein
+Positionierungsraum, sondern eine Steuer auf das Umzingeltwerden, dem der Spieler
+nicht ausweichen kann.
+
+**Konsequenz — die Änderung zerfällt in zwei unabhängige Hälften:**
+
+1. **Die größere Reichweite (38,76 → 65) trägt und ist unabhängig.** Sie gibt dem
+   Spieler Raum, macht das Feld lesbar und passt zum Herauszoomen. Volle Läufe
+   damit: Sieg W30, Krone 1, 15 investiert, 9 Karten, 3 Weichen, 9,8–10,4 min.
+2. **Der Innenrand braucht Gegner, die auf Bandabstand stehen wollen.** Das ist
+   eine Änderung an der Gegner-KI (anhalten, ausholen, zustoßen), nicht an der
+   Geometrie. Vorher ist er nur eine Schadenssteuer zwischen −14 und −41 %.
+
+Der Schalter bleibt bestehen, damit beides auf dem Gerät gegeneinander spielbar
+ist. Ohne `?band=1` ist jeder Zahlenwert unverändert — belegt durch 0 Abweichungen
+über 4 Geometriezustände und 54 Verhaltensfälle in `tools/charakterisierung.js`.
+
 ## B3 — Vom Abtasten zum Fegen
 
 Der 120-ms-Tick macht Tempo wirkungslos. Neu ist die Trefferfläche der Bogen, den
@@ -355,9 +405,12 @@ Die Fragmentwährung entfällt als Zahlungsmittel, die Objekte bleiben.
 2. **Charakterisierungsmessung** des Trefferblocks (178 Zeilen, 23 Systeme).
 3. ~~Abstoßrate entscheiden und messen~~ — **erledigt am 31.08.**, siehe B2:
    Schub = Eigentempo × Eindringtiefe / 20. `tools/mess_band.js`.
-4. **Band bauen** (B1/B2): Reichweite auf ~100 px, Innenrand ~55 px, Abstoßer.
-   Dabei alle 21 Reichweiten-Leser und die auf 57 px kalibrierten Konstanten
-   mitziehen, insbesondere `jaeger.haltNah`.
+4. **Band gebaut** hinter `?band=1` — Reichweite 65, Innenrand 20, wegbasierter
+   Abstoßer, `jaeger.haltNah` 115→140, Klinge und Innenring gezeichnet. Ergebnis
+   in B2a: Die Reichweite trägt, der Innenrand nicht. **Nächster Schritt ist
+   deshalb nicht Feineinstellung, sondern die Entscheidung:** Gegner-KI so
+   ändern, dass Gegner auf Bandabstand stehen wollen — oder den Innenrand fallen
+   lassen und nur die Reichweite behalten.
 5. **Sweep** (B3) mit Ausgleich der −28 % und einer Entscheidung zur Trefferdecke.
 6. **Trägheit**, dann Form.
 7. **Akte** als Struktur über die vorhandenen Wellen.

@@ -143,8 +143,8 @@ function expressions(api) {
   add('klingenschweif_laenge', 'draw', /roundRect\(player\.radius, -2\.5, ([^,]+), 5, 2\.5\)/);
   add('kronenrahmen_laenge', 'draw', /roundRect\(player\.radius-2,-5,([^,]+),10,5\)/);
   add('kronenmarkierung_spitzenabstand', 'draw', /ctx\.arc\((player\.radius\+bladeLen[^,]*),0,3\.5,0,Math\.PI\*2\)/);
-  add('gezeichnete_klinge_laenge', 'draw', /zeichneKlinge\(ctx, player\.radius, ([^,]+), currentForm/);
-  // Die Abfrage erfasst auch den bisher fehlenden Innenrand: derzeit keiner.
+  add('gezeichnete_klinge_laenge', 'draw', /zeichneKlinge\(ctx, player\.radius\+bandInnen\(\), ([^,]+), currentForm/);
+  // Der Innenrand ist seit `?band=1` vorhanden; ohne den Schalter ist er 0.
   expr.sichtbare_klingenspitze = expr.zeichen_reichweitenring;
   expr.kontaktschaden_soldat = take('update', /d < ([^)]+)\)\{\s*if\(en\.hitCd<=0\)/, 'Kontaktschaden');
   return expr;

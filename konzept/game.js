@@ -30,6 +30,16 @@ const CONFIG = {
   // ("Sweet Spot") gibt deutlich mehr. Dadurch zählen Rotation und Doppelklinge wirklich.
   swordSpinSpeed: 6.0,     // Rotationstempo (rad/s)
   bladeBaseLen: 38,        // Klingenlänge bei 0% Reichweiten-Bonus
+  /* DAS BAND (`?band=1`). Aus dem Rundumradius wird ein Ring mit Innen- und
+     Aussenrand: innen trifft die Klinge nicht, wer zu nah kommt macht Schaden
+     und bekommt keinen. Alle Raender sind huellenbezogen — sie tragen den
+     Gegnerradius, genau wie Trefferpruefung und Kontaktschaden es schon tun.
+     Dadurch ist das Band fuer Drohne und Panzer gleich breit.
+       innen 20   liegt 16 px oberhalb der Kontaktgrenze (die bei +4 sitzt)
+       aussen 65  ergibt fuer einen Soldaten 18+65+18 = 101 px, Band 45 px breit
+       wegK 40    Weg im Loch, ab dem der Widerstand das Tempo uebersteigt;
+                  bestimmt die Eindringtiefe, siehe abstossenImBand() */
+  band: { innen: 20, aussen: 65, wegK: 40, jaegerHaltNah: 140, innenFaktor: 0.5 },
   spinDamage: 12,          // Rundum-Grundschaden pro Treffer-Tick
   spinArcBonus: 26,        // Zusatzschaden, wenn die Klinge den Gegner wirklich trifft
   spinArcHalf: 0.5,        // halbe Trefferbreite der Klinge (rad) → ca. 57° gesamt
@@ -1509,7 +1519,50 @@ function tutorialSweetSpotTreffer(){
 }
 
 // Klingenlänge: multiplikativ, damit "+15% Reichweite" auch wirklich +15% bedeutet
-function bladeLength(){ return CONFIG.bladeBaseLen * (1 + bonuses.range) * figur().reichweite * (treeFlags.singularorbit?1.20:1); }
+/* `?band=1` schaltet den Ring mit Innenrand ein. Bewusst NICHT an ?perf=1
+   gekoppelt: Der Umbau muss auf dem Telefon gegen den heutigen Stand spielbar
+   sein, sonst laesst er sich nicht beurteilen. Ohne den Schalter ist jeder
+   Zahlenwert unveraendert — die Charakterisierungs-Basislinie bleibt gruen. */
+const BAND_AN = /(?:\?|&)band=1(?:&|$)/.test((typeof location!=='undefined' && location.search)||'');
+/* Zuschlag des Innenrands auf `player.radius + en.radius`. Ohne Band 0, dann
+   verhaelt sich jede Pruefung unten wie vorher. */
+function bandInnen(){ return BAND_AN ? CONFIG.band.innen : 0; }
+function bladeLength(){ return (BAND_AN?CONFIG.band.aussen:CONFIG.bladeBaseLen) * (1 + bonuses.range) * figur().reichweite * (treeFlags.singularorbit?1.20:1); }
+/* Der Innenrand ist kein Loch, sondern ein Abstosser — sonst waere er eine
+   Todesfalle: Drohnen laufen 180 px/s, der Spieler 175, es gibt keinen Sprint.
+
+   WARUM KEIN STETIGER DRUCK.
+   Jeder Schub, der nur von Tiefe oder Tempo abhaengt, hat ein Gleichgewicht:
+   die Tiefe, in der Schub und Anmarsch sich aufheben. Dort bleibt der Gegner
+   dann stehen — und dieses Gleichgewicht liegt zwangslaeufig entweder INNERHALB
+   des Lochs (dann kampieren alle Gegner dort, wo die Klinge sie nie trifft)
+   oder ausserhalb der Kontaktgrenze (dann kann niemand mehr zuschlagen).
+   Gemessen: mit Schub = Tempo * Tiefe/20 standen 89,7 % der nahen Gegner im
+   Loch statt im Band, und die Kills fielen von 14 auf 2 je 40 s.
+
+   DESHALB EIN WIDERSTAND, DER KEIN GLEICHGEWICHT HAT.
+   Er waechst mit dem WEG, den der Gegner seit dem Eintritt im Loch
+   zurueckgelegt hat. Weil der Weg mit dem Tempo waechst, ist die erreichte
+   Eindringtiefe fuer jedes Tempo gleich — rund `wegK/2`. Und weil der
+   Widerstand immer weiter waechst, gibt es keinen Ruhepunkt: der Gegner wird
+   sicher wieder hinausgedrueckt, sammelt sich im Band und faengt von vorn an.
+   `wegK` ist damit ein direkt lesbarer Regler fuer die Eindringtiefe:
+   unter 32 erreicht niemand mehr die Kontaktgrenze (die 16 px tief liegt),
+   darueber erreicht sie jeder — unabhaengig davon, wie schnell er ist.
+   Siehe docs/Konzept-2-Entwurf.md B2 und tools/mess_band.js. */
+function abstossenImBand(en, dt){
+  const dx = en.x - player.x, dy = en.y - player.y;
+  const d = Math.hypot(dx, dy);
+  const innen = player.radius + CONFIG.band.innen + en.radius;
+  if(!(d < innen) || d < 0.001){ en.bandWeg = 0; return; }
+  en.bandWeg = (en.bandWeg || 0) + en.speed * dt / 1000;
+  const schub = en.speed * (en.bandWeg / CONFIG.band.wegK) * dt / 1000;
+  // Nie ueber den Innenrand hinaus: der Abstosser stellt zurueck ins Band,
+  // er schleudert nicht aus der Reichweite.
+  const ziel = Math.min(d + schub, innen);
+  en.x = player.x + dx / d * ziel;
+  en.y = player.y + dy / d * ziel;
+}
 function effektiveKlingen(){
   const basis=treeFlags.ereignishorizont && player.hp/player.maxHp<.35 ? Math.max(3,bonuses.blades) : bonuses.blades;
   return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0)+(treeFlags.resonanzKlingeUntil>Date.now()?1:0)+modulRang('klingenteilung');
@@ -4692,8 +4745,10 @@ function update(dt){
     const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz * tagesFaktor('klinge'));
     const leerenBonus=hatLeerenhunger() ? fehlendesLeben*(0.78+(treeFlags.leerenRisikoBonus||0)) : 0;
     const anglesNow=bladeAngles();
+    const bandLoch=bandInnen();   // 0 ohne Band, dann faellt die Pruefung weg
     const sweetTargets=enemies.filter(en=>{
       const dx=en.x-player.x,dy=en.y-player.y,d=Math.hypot(dx,dy);
+      if(BAND_AN && !CONFIG.band.innenFaktor && d<player.radius+bandLoch+en.radius) return false;
       return d<player.radius+bladeLen+en.radius && anglesNow.some(a=>angleDiff(a,Math.atan2(dy,dx))<sweetArcHalf());
     });
     const tickSweet=sweetTargets.length>0;
@@ -4715,6 +4770,17 @@ function update(dt){
       // Der Spieler-Radius muss deshalb mitgerechnet werden — sonst blieben die äußeren
       // 18 px der sichtbaren Klinge wirkungslos.
       if(d >= player.radius + bladeLen + en.radius) continue;
+      /* Innenrand: Wer naeher steht als der Bandbeginn, wird schwaecher
+         getroffen. innenFaktor 0 macht daraus ein echtes Loch — dann kampieren
+         Gegner dort, wo die Klinge sie nie erreicht (gemessen: -42,7 % Schaden,
+         weil eine geradeaus laufende KI genau dort ihre Zeit verbringt).
+         Ein Faktor darueber haelt die Absicht "nah ist schwach" aufrecht, ohne
+         einen sicheren Hafen zu schaffen. Ohne `?band=1` ist bandLoch 0. */
+      let bandFaktor = 1;
+      if(BAND_AN && d < player.radius + bandLoch + en.radius){
+        bandFaktor = CONFIG.band.innenFaktor;
+        if(!bandFaktor) continue;
+      }
       // Trifft eine der Klingen den Gegner gerade wirklich?
       const toEnemy = Math.atan2(dy,dx);
       let trefferIndex=-1;
@@ -4738,6 +4804,8 @@ function update(dt){
       if(treffer && runAbilities.schneide){
         dmg = Math.round(dmg * (1 + CONFIG.schneide.proStufe*runAbilities.schneide));
       }
+      // Abschlag fuer alles, was innerhalb des Bandes steht.
+      if(bandFaktor !== 1) dmg = Math.max(1, Math.round(dmg * bandFaktor));
       // Präzisions-Sweet und Schneide Rang 4 durchschlagen Panzer vollständig.
       // Doppelorbit bezahlt seine Verlässlichkeit: Seine Sweet Hits werden von
       // aktiver Panzerung weiterhin gedämpft. Glasklinge Rang 2 und ein verbreiterter
@@ -4948,7 +5016,12 @@ function update(dt){
     // während des Ladens hineingeht, tötet ihn, riskiert dafür die Position.
     let jaegerRueckwaerts=false;
     if(en.type==='jaeger'){
-      if(en.jagdPhase==='an' && d<=CONFIG.jaeger.haltNah) en.jagdPhase='laden';
+      /* Mit Band waechst die Aussenreichweite auf 18+65+16 = 99 px fuer einen
+         Jaeger. Bliebe haltNah bei 115, stuende der ladende Jaeger kuenftig im
+         Band statt knapp dahinter, und seine ganze Rolle — Position gegen Kill
+         abwaegen — kippte. 140 haelt denselben Abstand zum Rand wie heute. */
+      const haltNah = BAND_AN ? CONFIG.band.jaegerHaltNah : CONFIG.jaeger.haltNah;
+      if(en.jagdPhase==='an' && d<=haltNah) en.jagdPhase='laden';
       // shootCd (bereits Vorframe-Wert) beendet den Rückzug notfalls auch fern von haltFern —
       // sonst bliebe ein verfolgter Jäger dauerhaft rückwärts in der Kartenmitte kleben.
       else if(en.jagdPhase==='zurueck' && (d>=CONFIG.jaeger.haltFern || en.shootCd<=0)) en.jagdPhase='an';
@@ -4962,6 +5035,9 @@ function update(dt){
       const richtung = jaegerRueckwaerts ? -1 : 1;
       en.x+=richtung*dx/d*en.speed*langsam*erholung*dt/1000;en.y+=richtung*dy/d*en.speed*langsam*erholung*dt/1000;
     }
+    // Innenrand drueckt zurueck ins Band — direkt nach der Bewegung, damit der
+    // Gegner nicht ein ganzes Bild lang im toten Loch steht.
+    if(BAND_AN) abstossenImBand(en, dt);
     // attack if close
     if(!en.exploding && !(en.stunT>0) && !(en.type==='boss'&&en.ramT>0) && d < en.radius + player.radius + 4){
       if(en.hitCd<=0){
@@ -5921,6 +5997,13 @@ function draw(){
   // dezenter Reichweiten-Ring
   ctx.strokeStyle='rgba(120,180,255,0.05)'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.arc(player.x,player.y, bladeLen+player.radius, 0, Math.PI*2); ctx.stroke();
+  /* Der Innenrand braucht eine sichtbare Kante, sonst ist die tote Zone eine
+     unsichtbare Strafe. Deutlicher als der Aussenring: dort passiert nichts,
+     hier verliert der Spieler seinen Schaden. */
+  if(BAND_AN){
+    ctx.strokeStyle='rgba(255,120,120,0.16)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(player.x,player.y, player.radius+bandInnen(), 0, Math.PI*2); ctx.stroke();
+  }
   // Wirbelangriff: gefüllte, rotierende Spirale — Fläche = exakt der Trefferradius
   if(wirbelT>0){
     const t=1-wirbelT;                    // 0 -> 1 im Verlauf
@@ -6491,7 +6574,10 @@ function draw(){
       ctx.beginPath();ctx.roundRect(player.radius-2,-5,bladeLen+4,10,5);ctx.stroke();
       ctx.fillStyle='#fff1ae';ctx.beginPath();ctx.arc(player.radius+bladeLen+4,0,3.5,0,Math.PI*2);ctx.fill();sb(0);
     }
-    zeichneKlinge(ctx, player.radius, bladeLen, currentForm(), KLINGE, KLINGE_KERN, sb);
+    // Mit Band beginnt die Klinge erst am Innenrand — die gezeichnete Laenge
+    // muss der Trefferzone entsprechen, sonst verspricht sie Reichweite, die
+    // sie nicht hat.
+    zeichneKlinge(ctx, player.radius+bandInnen(), bladeLen-bandInnen(), currentForm(), KLINGE, KLINGE_KERN, sb);
     ctx.restore();
   }
   ctx.restore();
