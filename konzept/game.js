@@ -16,9 +16,10 @@ const CONFIG = {
   abilLevelScale: 0.10,
   bombe: { fuse: 1800, radius: 130, dmg: 70 },
   nova:  { range: 190, dmg: 40, stun: 500 },
-  phaser:{ dmg: 8, rate: 50, speed: 420, life: 0.9, hits:3 },
+  // Seltene Einschläge statt Dauerfeuer; IDs bleiben für Karten und Rezepte stabil.
+  phaser:{ dmg:[270,270], cooldown:[2600,1900], targets:[3,5], range:360, warn:250, bolt:350, scorch:400, stun:250 },
   funkenkranz: { dmg:[40,48], hitCd:220, radius:[22,30], hitRadius:[7,11], count:[2,4], speed:3.8 },
-  brandspur: { dmg:4, interval:120, tick:300, life:[1400,2000], radius:[14,22], cap:18 },
+  brandspur:{ dmg:[180,180], cooldown:[3200,2400], radius:[95,125], range:340, core:15, flight:450, gap:250, glow:500 },
   healPerKill: 3,
   playerBaseSpeed: 175,
   playerRadius: 18,
@@ -596,7 +597,7 @@ const ABILITIES = {
   kettenblitz:   { name:'Kettenblitz',     desc:'Treffer springt zum nächsten Gegner',                      slot:'passive', iconKey:'kette'  },
   konterstoss:   { name:'Konterstoß',      desc:'Wirst du getroffen, schlägst du automatisch zurück',        slot:'passive', iconKey:'konter' },
   splitter:      { name:'Splitter',        desc:'Kreisende Energiesplitter richten Zusatzschaden an',         slot:'passive', iconKey:'splitter', voll:true },
-  phaser:        { name:'Phaser',          desc:'Die Klingenspitze schießt durch bis zu drei Gegner in ihrer Bewegungsrichtung', slot:'passive', iconKey:'phaser' },
+  phaser:        { name:'Machtblitz',      desc:'Alle 2,6 Sekunden schlagen angekündigte Blitze in die 3 nächsten Gegner ein', slot:'passive', iconKey:'phaser' },
   lebensregen:   { name:'Lebensregen',     desc:'Regeneriert Leben pro getötetem Gegner',                     slot:'passive', iconKey:'leben' },
   dreifachklinge:{ name:'Dreifachklinge',  desc:'Dritte Klinge — lückenlose Deckung',                         slot:'weapon',  iconKey:'dreifach', voll:true },
   wirbel:        { name:'Wirbel',          desc:'Spirale rund um dich — massiver Schaden',                    slot:'active',  iconKey:'wirbel',  start:true },
@@ -634,7 +635,7 @@ const STUFEN={
   kettenblitz: { pro:'+10 % Sprungschaden, mehr Sprungweite',      sprung:'Der Blitz springt auf zwei Gegner statt auf einen' },
   konterstoss: { pro:'+10 % Konterschaden',                        sprung:'Der Konter schleudert doppelt so weit weg' },
   splitter:    { pro:'+10 % Splitterschaden',                      sprung:'Ein dritter Splitter kreist mit' },
-  phaser:      { pro:'+10 % Schussschaden',                        sprung:'Jeder Volltreffer feuert einen zusätzlichen Klingenschuss' },
+  phaser:      { pro:'Mehr Ziele für den Machtblitz',              sprung:'5 Blitzeinschläge alle 1,9 Sekunden; Treffer betäuben kurz' },
   lebensregen: { pro:'+50 % Heilung pro besiegtem Gegner',         sprung:'Du regenerierst zusätzlich dauerhaft Leben' },
   sog:         { pro:'+10 % Reichweite und Zugkraft',              sprung:'Herangezogene Gegner werden kurz betäubt' },
   schneide:    { pro:'+8 % Schaden bei Volltreffern',               sprung:'Volltreffer durchschlagen jede Panzerung' },
@@ -666,7 +667,7 @@ const EVOLUTIONS={
   streubombe:    { base:'bombe',  req:'konterstoss', name:'Streubombe',
                    desc:'Die Bombe zerspringt in drei kleinere Sprengsätze' },
   novakaskade:   { base:'nova',   req:'phaser',      name:'Nova-Kaskade',
-                   desc:'Die Nova feuert zusätzlich Phaser-Salven in alle Richtungen' },
+                   desc:'Die Nova feuert zusätzlich Energiesalven in alle Richtungen' },
   gravitationsbruch:{ base:'sog', req:'nachhall',    name:'Gravitationsbruch',
                    desc:'Festgehaltene Gegner kreisen in Klingenreichweite und enden in einer Druckwelle' },
 };
@@ -677,15 +678,15 @@ const KARTEN_EVOLUTIONEN={
   klingenchor:{zutaten:['klingenteilung','taktschlag'],name:'Klingenchor',icon:'taktschlag',color:'#ffd257',
     desc:'Jede Klinge sendet in jedem zweiten Umlauf eine eigene starke Welle aus.'},
   drucksalve:{zutaten:['phaser','nachhall'],name:'Drucksalve',icon:'nachhall',color:'#a7e7ff',
-    desc:'Klingenschüsse zerplatzen beim Aufschlag als Druckwelle. Nachhall bleibt erhalten.'},
+    desc:'Jeder Machtblitz entfesselt beim Einschlag zusätzlich eine Druckwelle. Nachhall bleibt erhalten.'},
   gewitterherz:{zutaten:['kettenblitz','konterstoss'],name:'Gewitterherz',icon:'kette',color:'#b6a2ff',
     desc:'Erlittener Schaden entlädt eine Blitzkette durch alle nahen Gegner.'},
   blutkristall:{zutaten:['glasklinge','lebensregen'],name:'Blutkristall',icon:'glasklinge',color:'#ff809c',
     desc:'Geopfertes und fehlendes Leben verstärkt die Klinge. Kills heilen kräftiger.'},
   splitterfaecher:{zutaten:['nachfassen','splitter'],name:'Splitterfächer',icon:'splitter',color:'#8ceaff',
     desc:'Der breite Volltreffer schleudert einen durchschlagenden Splitterfächer hinaus.'},
-  flammenorbit:{zutaten:['funkenkranz','brandspur'],name:'Flammenorbit',icon:'brandspur',color:'#ffb05b',
-    desc:'Vier Flammenfunken entzünden die Brandspur zu einer brennenden Umlaufbahn.'},
+  flammenorbit:{zutaten:['funkenkranz','brandspur'],name:'Plasmasturm',icon:'brandspur',color:'#70ffe3',
+    desc:'Jede Plasmabombe schleudert beim Einschlag einen Kranz aus Plasmasplittern nach außen. Die Funken kreisen weiter.'},
 };
 const KARTEN_REZEPT_VON=Object.fromEntries(Object.entries(KARTEN_EVOLUTIONEN)
   .flatMap(([id,e])=>e.zutaten.map(z=>[z,id])));
@@ -740,7 +741,7 @@ const MODULE_TEXT={
     power:[['Sprengkette','FOLGELADUNG','Die Kernexplosion legt genau eine kleine Folgeladung.'],['Kernsplitter','4 SPLITTER','Ein Kernvolltreffer schleudert vier Splitter heraus.']]},
   nova:{
     blade:[['Phasenkante','2 SALVEN','Nova lädt zwei formabhängige Klingensalven.'],['Sternenring','LETZTE NOVA','Die letzte Salve erzeugt am Treffer eine kleine Nova.']],
-    power:[['Sternenfänger','FÄNGT SCHUSS','Nova wandelt feindliche Geschosse in eigene Phaser um.'],['Sternenbruch','MINI-NOVA','Gefangene Phaser zünden beim Treffer eine kleine Nova.']]},
+    power:[['Sternenfänger','FÄNGT SCHUSS','Nova wandelt feindliche Geschosse in eigene Energiegeschosse um.'],['Sternenbruch','MINI-NOVA','Gefangene Geschosse zünden beim Treffer eine kleine Nova.']]},
   sog:{
     blade:[['Kernkerbe','KERN LENKBAR','Volltreffer auf gezogene Gegner reißen die Nachbarn mit.'],['Gravschnitt','3. NACHHALL','Der dritte Kerntreffer löst einmalig eine Nachhallwelle aus.']],
     power:[['Gravbindung','ZIELE KREISEN','Gezogene Ziele kreisen kurz auf Klingenreichweite.'],['Kernbruch','UMLAUF ENDET','Der Umlauf endet in einer Gruppenwelle mit zusätzlichem Schaden.']]}
@@ -1155,6 +1156,9 @@ const SFX={
   gameover:()=>{tone(300,0.3,'sawtooth',0.15,0,120);tone(150,0.5,'sine',0.13,0.15,80);},
   shoot:   ()=>tone(1280,0.065,'triangle',0.055,0,420),
   laserPlayer:()=>{tone(1680,.09,'sawtooth',.045,0,310);tone(840,.12,'sine',.025,.025,210);},
+  machtblitz:()=>{noiseBurst(.11,.055,0,2400);tone(190,.26,'triangle',.13,0,48);tone(1120,.10,'sine',.055,0,220);},
+  plasmawurf:()=>tone(180,.16,'sine',.055,0,520),
+  plasmabombe:()=>{tone(95,.32,'sine',.17,0,32);noiseBurst(.18,.055,0,620);tone(420,.16,'triangle',.065,0,90);},
   laserEnemy:()=>{tone(430,.13,'square',.04,0,105);noiseBurst(.055,.014,0,720);},
   bladeHit:()=>{tone(270,.045,'triangle',.025,0,170);noiseBurst(.035,.012,0,1850);},
   sweet:()=>{tone(960,.075,'sine',.055,0,1480);tone(1920,.055,'triangle',.025,.02,1040);noiseBurst(.045,.018,0,3100);},
@@ -1203,7 +1207,8 @@ let orbitRoundSweet=false, orbitRoundLight=false, orbitRoundDistance=0, orbitLas
 let waechterLadung=false, sonnenSerie=0, sonnenTempoUntil=0, praezSerie=0;
 let kronenMachtId='', kronenMachtUntil=0, kronenZielklinge=0;
 let wave=1, waveEnemiesToSpawn=0, waveSpawned=0, spawnTimer=0, killCount=0, hpKillCount=0;
-let shake=0, activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}, phaserCd=0, phaserSoundCd=0, brandspurCd=0;
+let shake=0, activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}, phaserCd=0, brandspurCd=0;
+let machtblitze=[], plasmabomben=[], plasmaNachwurf=null;
 let dmgBoostUntil=0, shieldUntil=0, moveBoostUntil=0;
 let wiederaufBenutzt=false;      // „Entdecker": das eine Wiederaufstehen pro Lauf
 let nachhallZaehler=0, splitterSweetZaehler=0; // sichtbare Partner-Kombos
@@ -1262,7 +1267,7 @@ let perfIdx=0, perfLen=0, perfSeit=0, perfFrames=0, perfPhaseUhr=0, perfStatNext
 let perfKampfMs=0;                          // reine Kampfzeit — Basis der echten Bildrate
 const perfPhasen={};                        // Phasenname -> aufsummierte ms im Fenster
 const perfMengenNamen=['gegner','sichtbar','schuesse','eigeneSchuesse','bomben','felder',
-  'echos','splitter','kartenAkteure','kartenWellen','partikel','zahlen','fragmente','kugeln'];
+  'echos','splitter','kartenAkteure','kartenWellen','machtblitze','plasmabomben','partikel','zahlen','fragmente','kugeln'];
 const perfMax={}, perfSum={};               // Mengen über das Fenster statt Momentaufnahme
 /* Ein Schnitt kann seltene Ruckler nicht zeigen. Deshalb zusätzlich eine Verteilung
    der Bildzeiten und ein Mitschnitt der schlechtesten Bilder mit ihrem Kontext —
@@ -1308,6 +1313,7 @@ function perfMengenJetzt(){
     eigeneSchuesse:pShots.length, bomben:bombs.length, felder:powerFields.length,
     echos:powerEchoes.length, splitter:shards.length, kartenAkteure:Object.keys(runKartenEvos).length,
     kartenWellen:kartenEvoWellen.length, partikel:particles.length,
+    machtblitze:machtblitze.length, plasmabomben:plasmabomben.length,
     zahlen:floats.length, fragmente:stars.length, kugeln:orbs.length };
 }
 function perfProbe(){
@@ -2039,9 +2045,9 @@ const AUSLESE_MODULE={
   funkenkranz:{ name:'Funkenkranz', icon:'funkenkranz',
                 desc:'Zwei Funken kreisen außen gegen die Klinge und verletzen bei Berührung',
                 sprung:'Vier größere Funken ziehen einen weiteren Gegenorbit' },
-  brandspur: { name:'Brandspur', icon:'brandspur',
-                desc:'Die Klingenspitze hinterlässt brennende Male für 1,4 Sekunden',
-                sprung:'Größere Brandmale bleiben 2 Sekunden liegen' },
+  brandspur: { name:'Plasmabombe', icon:'brandspur',
+                desc:'Alle 3,2 Sekunden fliegt eine Bombe zur dichtesten Gruppe. Starker Kern, schwächerer Explosionsrand.',
+                sprung:'Alle 2,4 Sekunden zwei Bomben kurz nacheinander auf verschiedene Ziele; größerer Explosionsradius.' },
 };
 function kartenRang(id){
   if(AUSLESE_MODULE[id]) return runModule[id]||0;
@@ -2400,7 +2406,8 @@ function resetGame(){
   sorgeOrbitauftrag();
   player=newPlayer(); window.playerRef = player; enemies=[]; stars=[]; particles=[]; floats=[]; shots=[]; orbs=[]; killCount=0; hpKillCount=0;
   wave=1; waveEnemiesToSpawn=0; waveSpawned=0; spawnTimer=0;
-  activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}; phaserCd=0; phaserSoundCd=0; brandspurCd=0; dmgBoostUntil=0; shieldUntil=0; moveBoostUntil=0; stossWaveT=0; wirbelT=0; spinHitTimer=0;
+  activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}; phaserCd=0; brandspurCd=0; dmgBoostUntil=0; shieldUntil=0; moveBoostUntil=0; stossWaveT=0; wirbelT=0; spinHitTimer=0;
+  machtblitze=[]; plasmabomben=[]; plasmaNachwurf=null;
   bonuses={dmg:0, speed:0, range:0, fireRate:0, maxHp:0, blades:1, regen:0};
   counterCd=0; shards=[]; bossActive=false; bossHitClean=true; flashUntil=0; helferOverdriveUntil=0;
   const vw = laufVorgabe ? { slot1:laufVorgabe.slot1, slot2:laufVorgabe.slot2 } : startMaechte();
@@ -3339,14 +3346,174 @@ const muteBtn=document.getElementById('mute-btn'); if(muteBtn) muteBtn.addEventL
 updateMuteBtn();
 refreshMenuVisibility();   // beim allerersten Start bleiben Meta-Shop, Sammlung und Codex verborgen
 
-// Die Tangente zeigt in Drehrichtung der Klinge, unabhängig von Gegnerpositionen.
-function fireBladePhaser(angle=swordAngle){
-  const tip=player.radius+bladeLength(), dir=angle+Math.PI/2, P=CONFIG.phaser;
-  pShots.push({kind:'phaser',x:player.x+Math.cos(angle)*tip,y:player.y+Math.sin(angle)*tip,
-    vx:Math.cos(dir)*P.speed,vy:Math.sin(dir)*P.speed,
-    dmg:Math.round(P.dmg*abilScale(abilityLevel('phaser'))*(1+bonuses.dmg)),
-    life:P.life,hitsLeft:runKartenEvos.drucksalve?1:P.hits,
-    drucksalve:!!runKartenEvos.drucksalve,moduleColor:runKartenEvos.drucksalve?'#a7e7ff':currentSkin().blade});
+function starteMachtblitz(){
+  const P=CONFIG.phaser, rang=hatSprung('phaser')?1:0;
+  const ziele=enemies.filter(en=>en.hp>0 && Math.hypot(en.x-player.x,en.y-player.y)<=P.range)
+    .sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)).slice(0,P.targets[rang]);
+  for(const target of ziele) machtblitze.push({target,x:target.x,y:target.y,age:0,hit:false,
+    dmg:Math.round(P.dmg[rang]*(1+bonuses.dmg))});
+  return ziele.length>0;
+}
+function machtblitzEinschlag(b){
+  b.hit=true; b.target.hp-=b.dmg; b.target.flashT=1;
+  b.target.stunT=Math.max(b.target.stunT||0,CONFIG.phaser.stun);
+  shake=Math.max(shake,7);
+  kartenEvoWelle('drucksalve',b.x,b.y,CONFIG.nachhall.radius,b.dmg*.4);
+}
+// Voller Schaden im kleinen Kern, außerhalb fällt die Plasmaenergie steil ab.
+// Die Gegnergröße zählt mit: nahe beieinander stehende Körper teilen den Kern.
+function plasmaFaktor(x,y,en,r){
+  const d=Math.hypot(en.x-x,en.y-y)-en.radius;
+  return d>r?0:Math.pow(CONFIG.brandspur.core/Math.max(CONFIG.brandspur.core,d),4);
+}
+function plasmaZiel(r,vorher=null){
+  const B=CONFIG.brandspur;
+  const nahe=enemies.filter(en=>en.hp>0 && Math.hypot(en.x-player.x,en.y-player.y)<=B.range);
+  let best=null, wert=-1;
+  const pruefe=(x,y,target)=>{
+    if(vorher && (target===vorher.target || Math.hypot(x-vorher.tx,y-vorher.ty)<B.core*2)) return;
+    let sum=0;
+    for(const en of nahe){
+      // Der Nachwurf bevorzugt Gegner außerhalb des bereits anvisierten Kerns.
+      const frei=vorher?1-plasmaFaktor(vorher.tx,vorher.ty,en,vorher.r):1;
+      sum+=plasmaFaktor(x,y,en,r)*frei;
+    }
+    // Bei gleicher Dichte die näher liegende Gruppe bevorzugen.
+    sum-=Math.hypot(x-player.x,y-player.y)*.00001;
+    if(sum>wert){wert=sum;best={x,y,target};}
+  };
+  for(const en of nahe){
+    pruefe(en.x,en.y,en);
+    let partner=null,dist=Infinity;
+    for(const other of nahe){
+      if(other===en) continue;
+      const d=Math.hypot(other.x-en.x,other.y-en.y);
+      if(d<dist){dist=d;partner=other;}
+    }
+    if(partner) pruefe((en.x+partner.x)/2,(en.y+partner.y)/2,en);
+  }
+  // Auch in einer einzigen engen Gruppe bleibt der Nachwurf ein anderes Ziel.
+  if(!best && vorher){
+    const target=nahe.filter(en=>en!==vorher.target && Math.hypot(en.x-vorher.tx,en.y-vorher.ty)>1)
+      .sort((a,b)=>Math.hypot(b.x-vorher.tx,b.y-vorher.ty)-Math.hypot(a.x-vorher.tx,a.y-vorher.ty))[0];
+    if(target) best={x:target.x,y:target.y,target};
+  }
+  return best;
+}
+function wirfPlasmabombe(rang,vorher=null){
+  const B=CONFIG.brandspur, ziel=plasmaZiel(B.radius[rang],vorher); if(!ziel) return null;
+  const b={sx:player.x,sy:player.y,tx:ziel.x,ty:ziel.y,target:ziel.target,age:0,hit:false,
+    r:B.radius[rang],dmg:Math.round(B.dmg[rang]*(1+bonuses.dmg))};
+  plasmabomben.push(b); sfx('plasmawurf'); return b;
+}
+function plasmaEinschlag(b){
+  b.hit=true;
+  for(const en of enemies){
+    if(en.hp<=0) continue;
+    const faktor=plasmaFaktor(b.tx,b.ty,en,b.r); if(!faktor) continue;
+    en.hp-=Math.round(b.dmg*faktor); en.flashT=1;
+  }
+  shake=Math.max(shake,10); sfx('plasmabombe');
+  const evo=runKartenEvos.flammenorbit;
+  if(evo){
+    evo.puls=1; evo.treffer++;
+    // Kopien der Funken fliegen heraus; der gegenläufige Grundorbit bleibt intakt.
+    for(let i=0;i<8;i++) moduleShot(b.tx,b.ty,evo.phase+i*Math.PI/4,
+      CONFIG.funkenkranz.dmg[1]*3*(1+bonuses.dmg),2,
+      {kind:'plasma',moduleColor:'#70ffe3',life:.65});
+  }
+}
+function updateBangers(dt){
+  if(dt<=0) return;
+  const P=CONFIG.phaser,B=CONFIG.brandspur;
+  let blitzTon=false;
+  for(let i=machtblitze.length-1;i>=0;i--){
+    const b=machtblitze[i]; b.age+=dt;
+    if(!b.hit){
+      // Kein heimlicher Zielwechsel nach der Warnung, falls eine Klinge schneller war.
+      if(b.target.hp<=0 || !enemies.includes(b.target)){machtblitze.splice(i,1);continue;}
+      b.x=b.target.x; b.y=b.target.y;
+      if(b.age+1e-6>=P.warn){machtblitzEinschlag(b);blitzTon=true;}
+    }
+    if(b.age+1e-6>=P.warn+P.bolt+P.scorch) machtblitze.splice(i,1);
+  }
+  if(blitzTon) sfx('machtblitz');
+  for(let i=plasmabomben.length-1;i>=0;i--){
+    const b=plasmabomben[i]; b.age+=dt;
+    if(!b.hit && b.age+1e-6>=B.flight) plasmaEinschlag(b);
+    if(b.age+1e-6>=B.flight+B.glow) plasmabomben.splice(i,1);
+  }
+  if(plasmaNachwurf){
+    plasmaNachwurf.t-=dt;
+    if(plasmaNachwurf.t<=1e-6){wirfPlasmabombe(1,plasmaNachwurf.erste);plasmaNachwurf=null;}
+  }
+  if(isCarried('phaser')){
+    phaserCd-=dt;
+    if(phaserCd<=1e-6 && starteMachtblitz()) phaserCd=CONFIG.phaser.cooldown[hatSprung('phaser')?1:0];
+  }
+  if(modulRang('brandspur')){
+    brandspurCd-=dt;
+    if(brandspurCd<=1e-6){
+      const rang=modulRang('brandspur')-1,erste=wirfPlasmabombe(rang);
+      if(erste){brandspurCd=B.cooldown[rang];if(rang) plasmaNachwurf={t:B.gap,erste};}
+    }
+  }
+}
+function zeichneBangers(){
+  const P=CONFIG.phaser,B=CONFIG.brandspur;
+  ctx.save(); ctx.lineCap='round';
+  for(const b of machtblitze){
+    if(!sichtbar(b.x,b.y-75,170)) continue;
+    const h=150,alter=b.age-P.warn;
+    ctx.save(); ctx.translate(b.x,b.y); ctx.globalCompositeOperation='lighter';
+    if(!b.hit){
+      const p=b.age/P.warn;
+      ctx.fillStyle='#f5fbff'; sbc('#8dcfff',18); ctx.beginPath(); ctx.arc(0,-h,3+4*p,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='#a9dcff'; ctx.globalAlpha=.35+.5*p; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.ellipse(0,5,13,6,0,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-10-6*(1-p),-h); ctx.lineTo(10+6*(1-p),-h); ctx.stroke();
+    } else if(alter<P.bolt){
+      ctx.globalAlpha=Math.pow(1-alter/P.bolt,.55); ctx.strokeStyle='#65bfff'; sbc('#5faaff',22);
+      const pfad=()=>{ctx.beginPath();ctx.moveTo(0,-h);ctx.lineTo(-7,-112);ctx.lineTo(6,-88);ctx.lineTo(-5,-48);ctx.lineTo(5,-30);ctx.lineTo(0,2);};
+      ctx.lineWidth=8;pfad();ctx.stroke();ctx.strokeStyle='#fff';ctx.lineWidth=3;pfad();ctx.stroke();
+      ctx.fillStyle='#e8f8ff';ctx.beginPath();ctx.ellipse(0,5,19,8,0,0,Math.PI*2);ctx.fill();
+    } else {
+      ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1-(alter-P.bolt)/P.scorch;sb(0);
+      ctx.fillStyle='rgba(14,20,35,.7)';ctx.beginPath();ctx.ellipse(0,5,17,7,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#6590b7';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-10,5);ctx.lineTo(-2,2);ctx.lineTo(3,7);ctx.lineTo(10,4);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  for(const b of plasmabomben){
+    const u=Math.min(1,b.age/B.flight),x=b.sx+(b.tx-b.sx)*u,y=b.sy+(b.ty-b.sy)*u,z=Math.sin(Math.PI*u)*82;
+    if(!sichtbar(x,y-z,b.r+90)) continue;
+    ctx.save();
+    if(!b.hit){
+      sb(0);ctx.globalCompositeOperation='source-over';ctx.fillStyle=`rgba(0,8,20,${.35+.35*u})`;
+      ctx.beginPath();ctx.ellipse(x,y,11+z*.08,5+z*.035,0,0,Math.PI*2);ctx.fill();
+      ctx.globalCompositeOperation='lighter';ctx.strokeStyle='#72ffe6';ctx.globalAlpha=.35;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.ellipse(b.tx,b.ty,17,7,0,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
+      ctx.translate(x,y-z);ctx.rotate(u*8);sbc('#56f8dc',20);ctx.fillStyle='#77ffe0';
+      ctx.beginPath();ctx.arc(0,0,9,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#c8fff5';ctx.lineWidth=2;
+      ctx.beginPath();ctx.ellipse(0,0,15,5,.5,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-2,-2,4,0,Math.PI*2);ctx.fill();
+    } else {
+      const p=Math.max(0,(b.age-B.flight)/B.glow);
+      ctx.globalCompositeOperation='lighter';ctx.translate(b.tx,b.ty);ctx.globalAlpha=1-p;
+      sbc('#5cffd9',18*(1-p));ctx.strokeStyle='#8cffe3';ctx.lineWidth=5*(1-p)+1;
+      ctx.beginPath();ctx.arc(0,0,b.r*(.65+.35*Math.min(1,p*3)),0,Math.PI*2);ctx.stroke();
+      if(p<.25){
+        ctx.globalAlpha=(1-p/.25)*.8;ctx.fillStyle='#edfff9';
+        ctx.beginPath();ctx.arc(0,0,b.r*(.35+2*p),0,Math.PI*2);ctx.fill();
+        for(let i=0;i<8;i++){
+          const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(Math.cos(a)*18,Math.sin(a)*18);
+          ctx.lineTo(Math.cos(a)*b.r*(.8+p),Math.sin(a)*b.r*(.8+p));ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+  }
+  ctx.restore();sb(0);
 }
 
 // Wellen und dauerhafte Akteure haben ein eigenes Budget. Sie verdrängen weder
@@ -3371,10 +3538,8 @@ function updateKartenEvos(dt){
   for(const e of Object.values(runKartenEvos)){
     e.phase+=dt/1000; e.puls=Math.max(0,e.puls-dt/950);
     e.x=player.x; e.y=player.y;
-    if(e.id==='drucksalve'){
-      const tip=player.radius+bladeLength();
-      e.x+=Math.cos(swordAngle)*tip; e.y+=Math.sin(swordAngle)*tip;
-    } else if(e.id==='blutkristall' || e.id==='splitterfaecher'){
+    if(e.id==='drucksalve') e.y-=player.radius+40;
+    else if(e.id==='blutkristall' || e.id==='splitterfaecher'){
       const a=e.phase*(e.id==='blutkristall'?1.2:-1.4),r=player.radius+(e.id==='blutkristall'?23:35);
       e.x+=Math.cos(a)*r; e.y+=Math.sin(a)*r;
     } else if(e.id==='gewitterherz') e.y-=player.radius+18;
@@ -3435,9 +3600,10 @@ function zeichneKartenEvos(){
         ctx.beginPath(); ctx.arc(0,0,12+e.puls*3,-.7,.7); ctx.stroke(); ctx.restore();
       }
     } else if(e.id==='drucksalve'){
-      ctx.save(); ctx.translate(e.x,e.y); ctx.rotate(swordAngle+Math.PI/2);
-      ctx.beginPath(); ctx.moveTo(-10,-7); ctx.lineTo(5,-7); ctx.lineTo(10,0); ctx.lineTo(5,7); ctx.lineTo(-10,7); ctx.stroke();
-      ctx.fillStyle='#f0fbff'; ctx.beginPath(); ctx.arc(0,0,3.5,0,Math.PI*2); ctx.fill(); ctx.restore();
+      ctx.save(); ctx.translate(e.x,e.y);
+      ctx.beginPath(); ctx.ellipse(0,0,15+e.puls*4,6,e.phase*.3,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='#f0fbff'; ctx.beginPath(); ctx.arc(0,0,4+e.puls*2,0,Math.PI*2); ctx.fill();
+      ctx.beginPath();ctx.moveTo(1,-12);ctx.lineTo(-4,-3);ctx.lineTo(4,3);ctx.lineTo(-1,12);ctx.stroke();ctx.restore();
     } else if(e.id==='gewitterherz'){
       if(e.kette && e.kette.length>1){
         ctx.save(); ctx.globalAlpha=.2+.65*e.puls; ctx.lineWidth=1.5+e.puls;
@@ -3464,14 +3630,11 @@ function zeichneKartenEvos(){
       }
       ctx.fillStyle='#edffff'; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill(); ctx.restore();
     } else if(e.id==='flammenorbit'){
-      const r=player.radius+bladeLength()+CONFIG.funkenkranz.radius[1];
-      ctx.save(); ctx.globalAlpha=.4; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.arc(e.x,e.y,r,0,Math.PI*2); ctx.stroke();
-      ctx.globalAlpha=.75;
-      for(let i=0;i<12;i++){
-        const a=i*Math.PI/6-e.phase*1.4;
-        ctx.save(); ctx.translate(e.x+Math.cos(a)*r,e.y+Math.sin(a)*r); ctx.rotate(a);
-        ctx.beginPath(); ctx.moveTo(-3,-4); ctx.quadraticCurveTo(10,-6,4,5); ctx.stroke(); ctx.restore();
+      ctx.save();ctx.translate(e.x,e.y);ctx.rotate(-e.phase*.7);ctx.strokeStyle='#70ffe3';
+      for(let i=0;i<4;i++){
+        const a=i*Math.PI/2,r=player.radius+10+e.puls*8;
+        ctx.save();ctx.translate(Math.cos(a)*r,Math.sin(a)*r);ctx.rotate(a);
+        ctx.beginPath();ctx.moveTo(-3,-5);ctx.lineTo(5,0);ctx.lineTo(-3,5);ctx.stroke();ctx.restore();
       }
       ctx.restore();
     }
@@ -3941,7 +4104,7 @@ function executeNova(){
     const n=master>=3?8:4;
     for(let i=0;i<n;i++){const a=i/n*Math.PI*2;pShots.push({x:player.x,y:player.y,vx:Math.cos(a)*420,vy:Math.sin(a)*420,dmg:Math.round(dmg*.28),life:.9,hitsLeft:1});}
   }
-  // Nova-Kaskade: feuert zusätzlich eine Phaser-Salve in alle Richtungen
+  // Nova-Kaskade: feuert zusätzlich eine Energiesalve in alle Richtungen
   if(evolvedOf('nova')==='novakaskade'){
     const n=12;
     for(let i=0;i<n;i++){
@@ -4174,14 +4337,14 @@ const ICON={
   stoss:'<circle cx="12" cy="12" r="2.4" fill="currentColor"/><path d="M12 6.8a5.2 5.2 0 0 1 0 10.4M12 6.8a5.2 5.2 0 0 0 0 10.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   bombe:'<circle cx="12" cy="14" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8V6M14.5 4.5a2 2 0 0 0 2-2 2 2 0 0 1 2 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10.2 13.6a2.2 2.2 0 0 1 2.2-2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   nova:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/>',
-  phaser:'<circle cx="5.5" cy="12" r="3" fill="currentColor"/><rect x="10" y="6.6" width="6.4" height="2.4" rx="1.2" fill="currentColor"/><rect x="10" y="15" width="6.4" height="2.4" rx="1.2" fill="currentColor"/><path d="M18.6 7.8h2.6M18.6 16.2h2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>',
+  phaser:'<circle cx="13" cy="3" r="2" fill="currentColor"/><path d="m12 6-5 8h5l-1 6 7-10h-5l2-4z" fill="currentColor"/><path d="M5 21h14M3 7l2 2M21 7l-2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
   // Nachhall ist eine Druckwelle vom Treffer aus. Vorher lieh er sich ICON.boost,
   // eine Flamme — die sagte nichts ueber die Wirkung.
   farbe:'<path d="M12 3a9 9 0 0 0 0 18c1.4 0 2-.8 2-1.8 0-.6-.4-1-.4-1.6 0-.9.7-1.5 1.6-1.5H17a4.4 4.4 0 0 0 4-4.4C21 6.6 17 3 12 3z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="7.6" cy="11" r="1.3" fill="currentColor"/><circle cx="11" cy="7.4" r="1.3" fill="currentColor"/><circle cx="15.4" cy="8.6" r="1.3" fill="currentColor"/>',
   nachhall:'<circle cx="6" cy="12" r="2.4" fill="currentColor"/><path d="M10.2 7.6a6.2 6.2 0 0 1 0 8.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.2 5a9.9 9.9 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".62"/><path d="M18.2 2.6a13.6 13.6 0 0 1 0 18.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".34"/>',
   // Auslese-Module: Jede Karte trägt ein eigenes Symbol.
   funkenkranz:'<path d="M5 6a8 8 0 0 1 14 2M19 18a8 8 0 0 1-14-2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m4 4 3 3-3 3-3-3zm16 10 3 3-3 3-3-3z" fill="currentColor"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.5" opacity=".5"/>',
-  brandspur:'<path d="M5 21c-5-5 5-5 2-9M11 21c-4-4 4-5 2-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 2c1 4 5 5 5 9a5 5 0 0 1-10 0c0-2 1-4 3-6v5c3-2 3-5 2-8z" fill="currentColor"/>',
+  brandspur:'<path d="M3 15Q7-1 17 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="16" cy="11" r="5" fill="currentColor"/><ellipse cx="16" cy="21" rx="6" ry="1.5" fill="currentColor" opacity=".4"/><path d="M16 18v-2M8 21l2-3M22 21l-2-3" stroke="currentColor" stroke-width="1.5"/>',
   klingenteilung:'<path d="M12 4a8 8 0 1 1-6.93 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4.2 4.6v4.2h4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 20a8 8 0 0 0 6.93-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/><path d="M19.8 19.4v-4.2h-4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>',
   taktschlag:'<circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="6.4" fill="none" stroke="currentColor" stroke-width="1.8" opacity=".75"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"/>',
   nachfassen:'<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 3" opacity=".5"/><path d="M12 3a9 9 0 0 1 6.36 15.36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>',
@@ -4507,22 +4670,6 @@ function update(dt){
   if(swordAngle>Math.PI*2){ swordAngle-=Math.PI*2; resetMissedOrbit(); }
   player.face = swordAngle;
   updateKartenEvos(dt);
-  // Ein Mal pro Takt, auch mit mehreren Klingen. Weltposition bleibt nach dem Setzen fest.
-  if(modulRang('brandspur') && dt>0){
-    const B=CONFIG.brandspur, rang=modulRang('brandspur')-1;
-    brandspurCd-=dt;
-    if(brandspurCd<=0){
-      brandspurCd+=B.interval;
-      if(powerFields.filter(f=>f.kind==='brandspur').length>=B.cap){
-        const alt=powerFields.findIndex(f=>f.kind==='brandspur');
-        powerFields.splice(alt,1);
-      }
-      const tip=player.radius+bladeLength(), life=B.life[rang];
-      powerFields.push({kind:'brandspur',x:player.x+Math.cos(swordAngle)*tip,y:player.y+Math.sin(swordAngle)*tip,
-        ang:swordAngle,r:B.radius[rang],t:life,max:life,tick:0,
-        dmg:B.dmg*(1+bonuses.dmg),color:'#ff9c42'});
-    }
-  }
   // Effekt-Timer
   if(stossWaveT>0){ stossWaveT -= dt/380; if(stossWaveT<0) stossWaveT=0; }
   if(wirbelT>0){ wirbelT -= dt/420; if(wirbelT<0) wirbelT=0; }
@@ -4532,7 +4679,7 @@ function update(dt){
   if(spinHitTimer<=0){
     spinHitTimer = CONFIG.spinHitInterval;
     const bladeLen = bladeLength();
-    if(barriere>0 && treeFlags.leuchtfeuer && powerFields.filter(f=>f.kind!=='brandspur').length<14 && powerFields.filter(f=>f.kind==='lightTrail').length<6){
+    if(barriere>0 && treeFlags.leuchtfeuer && powerFields.length<14 && powerFields.filter(f=>f.kind==='lightTrail').length<6){
       const ta=swordAngle, tx=player.x+Math.cos(ta)*(player.radius+bladeLen), ty=player.y+Math.sin(ta)*(player.radius+bladeLen);
       powerFields.push({kind:'lightTrail',x:tx,y:ty,r:28,t:260,tick:0,color:'#ffd257',shown:false});
     }
@@ -4598,7 +4745,6 @@ function update(dt){
       en.hp -= dmg;
       if(treffer){
         if(faecherBereit){ feuereSplitterfaecher(toEnemy,dmg); faecherBereit=false; }
-        if(hatSprung('phaser')) fireBladePhaser(anglesNow[trefferIndex]);
         tutorialSweetSpotTreffer();
         if(en.panzer) orbitFortschritt('panzer_sweet');
         handleBladeModuleSweet(en,toEnemy,dmg);
@@ -4730,7 +4876,6 @@ function update(dt){
   } else if(shards.some(s=>s.kind!=='funkenkranz')) shards=shards.filter(s=>s.kind==='funkenkranz');
   if(modulRang('funkenkranz')){
     const F=CONFIG.funkenkranz, rang=modulRang('funkenkranz')-1, anzahl=F.count[rang];
-    const flamme=runKartenEvos.flammenorbit;
     const funken=shards.filter(s=>s.kind==='funkenkranz');
     if(funken.length!==anzahl){
       const phase=funken.length?funken[0].ang:-swordAngle;
@@ -4740,17 +4885,12 @@ function update(dt){
     const radius=player.radius+bladeLength()+F.radius[rang];
     for(const s of shards){
       if(s.kind!=='funkenkranz') continue;
-      s.ang=(s.ang-F.speed*dt/1000)%(Math.PI*2); s.cd-=dt; s.r=radius; s.size=F.hitRadius[rang]+(flamme?5:0);
+      s.ang=(s.ang-F.speed*dt/1000)%(Math.PI*2); s.cd-=dt; s.r=radius; s.size=F.hitRadius[rang];
       s.x=player.x+Math.cos(s.ang)*radius; s.y=player.y+Math.sin(s.ang)*radius;
-      if(flamme) for(const f of powerFields){
-        if(f.kind!=='brandspur' || f.entzuendet || Math.hypot(f.x-s.x,f.y-s.y)>f.r+s.size+6) continue;
-        f.entzuendet=true; f.r*=1.7; f.dmg*=4; f.t=Math.max(f.t,2800); f.max=f.t;
-        f.color='#ffcd70'; flamme.puls=1; flamme.treffer++;
-      }
       if(s.cd<=0){
         for(const en of enemies){
           if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+s.size){
-            en.hp-=Math.round(F.dmg[rang]*(1+bonuses.dmg)*(flamme?1.5:1)); s.cd=F.hitCd; break;
+            en.hp-=Math.round(F.dmg[rang]*(1+bonuses.dmg)); s.cd=F.hitCd; break;
           }
         }
       }
@@ -4968,19 +5108,7 @@ function update(dt){
       if(sfx) sfx('hurt');
     }
   }
-  // Phaser: gleichmäßiger Takt von der Klingenspitze entlang ihrer Tangente.
-  if(isCarried('phaser')){
-    phaserCd-=dt; phaserSoundCd-=dt;
-    // 50 ms sind drei 60-Hz-Bilder; Rundungsreste dürfen den nächsten Schuss nicht verzögern.
-    if(phaserCd<=1e-6 && dt>0){
-      fireBladePhaser(); phaserCd+=CONFIG.phaser.rate;
-      // Der schnelle Geschossstrom klingt höchstens alle 200 ms, ohne Gegner bleibt er still.
-      if(phaserSoundCd<=0){
-        if(enemies.length && sfx) sfx('laserPlayer');
-        phaserSoundCd=200;
-      }
-    }
-  }
+  updateBangers(dt);
   // Begleiter: umkreist den Spieler, zieht Beute an und schießt — beides zugleich
   for(const hf of helfer){
     const W=begleiterWerte(hf.stufe);
@@ -5009,7 +5137,7 @@ function update(dt){
       }
     }
   }
-  // eigene Projektile (Phaser) – treffen Gegner, verglühen
+  // Eigene Projektile von Mächten, Begleitern und Evolutionen.
   for(let i=pShots.length-1;i>=0;i--){
     const s=pShots[i];
     s.x+=s.vx*dt/1000; s.y+=s.vy*dt/1000; s.life-=dt/1000;
@@ -5020,8 +5148,6 @@ function update(dt){
       if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+5){
         const shotColor=s.moduleColor||(s.spectral?'#c77dff':'#9ad0ff');
         en.hp-=s.dmg; spawnParticles(s.x,s.y,shotColor,5); pushFloat(s.x,s.y-12,'-'+s.dmg,shotColor);
-        if(s.drucksalve) kartenEvoWelle('drucksalve',s.x,s.y,CONFIG.nachhall.radius,
-          (CONFIG.phaser.dmg+CONFIG.nachhall.dmg)*abilScale(SPRUNG_STUFE)*(1+bonuses.dmg));
         if(s.stormSlow) en.slowT=Math.max(en.slowT||0,600);
         if(s.moduleNova>=2) modulePulse(en.x,en.y,55,Math.round(s.dmg*.52),'#c77dff',210);
         if(!s.hitIds)s.hitIds=[]; s.hitIds.push(en);
@@ -5089,12 +5215,7 @@ function update(dt){
       feldDt=Math.max(0,-delayRest); f.delay=0;
     }
     f.tick-=feldDt; f.t-=feldDt;
-    if(f.kind==='brandspur'){
-      if(f.tick<=0){
-        for(const en of enemies) if(Math.hypot(en.x-f.x,en.y-f.y)<f.r+en.radius) en.hp-=f.dmg;
-        f.tick+=CONFIG.brandspur.tick;
-      }
-    } else if(f.kind==='stase'){
+    if(f.kind==='stase'){
       for(const en of enemies) if(Math.hypot(en.x-f.x,en.y-f.y)<f.r+en.radius)
         en.slowT=Math.max(en.slowT||0,260);
     } else if(f.kind==='lightTrail'){
@@ -6222,12 +6343,12 @@ function draw(){
     ctx.fillStyle='#fff'; sb(18);
     ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
   }
-  // Eigene Projektile; Phaser übernimmt die Klingenfarbe und eine längere Strichform.
+  // Eigene Projektile; Plasmasplitter hinterlassen einen kurzen hellen Schweif.
   for(const s of pShots){
     if(!sichtbar(s.x,s.y,22)) continue;
     const shotColor=s.moduleColor||(s.spectral?'#c77dff':'#9ad0ff');
     ctx.strokeStyle=shotColor; sbc(shotColor,12); ctx.lineWidth=3; ctx.lineCap='round';
-    const spur=s.kind==='phaser'?.055:.03;
+    const spur=s.kind==='plasma'?.04:.03;
     ctx.beginPath(); ctx.moveTo(s.x - s.vx*spur, s.y - s.vy*spur); ctx.lineTo(s.x, s.y); ctx.stroke();
     ctx.fillStyle='#eaf6ff'; sb(14);
     ctx.beginPath(); ctx.arc(s.x,s.y,4,0,Math.PI*2); ctx.fill();
@@ -6237,22 +6358,6 @@ function draw(){
   for(const f of powerFields){
     if(f.hidden || !Number.isFinite(f.r)) continue;
     if(!sichtbar(f.x,f.y,f.r+16)) continue;
-    if(f.kind==='brandspur'){
-      // Verkohltes Mal mit drei Glutzungen statt eines weiteren Trefferrings.
-      const fade=Math.min(1,Math.max(0,f.t/360)), pulse=.8+.2*Math.sin(now/95+f.ang);
-      ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(f.ang); ctx.globalAlpha=fade;
-      ctx.globalCompositeOperation='source-over'; ctx.fillStyle='rgba(65,24,12,.5)'; sb(0);
-      ctx.beginPath(); ctx.ellipse(0,0,f.r,f.r*.72,0,0,Math.PI*2); ctx.fill();
-      ctx.globalCompositeOperation='lighter'; ctx.strokeStyle=f.color; sbc(f.color,8);
-      ctx.lineWidth=2.5; ctx.lineCap='round';
-      for(let k=-1;k<=1;k++){
-        const x=k*f.r*.4, h=f.r*(k===0?.75:.45)*pulse;
-        ctx.beginPath(); ctx.moveTo(x,f.r*.35); ctx.quadraticCurveTo(x-f.r*.25,0,x,-h); ctx.stroke();
-      }
-      ctx.strokeStyle='#ffe1a0'; ctx.lineWidth=1.2;
-      ctx.beginPath(); ctx.moveTo(-f.r*.25,2); ctx.lineTo(0,-f.r*.35); ctx.lineTo(f.r*.2,1); ctx.stroke();
-      ctx.restore(); continue;
-    }
     const rest=Math.max(0,Math.min(1,f.t/1900));
     ctx.save(); ctx.globalAlpha=.18+.22*rest; ctx.fillStyle=f.color; ctx.strokeStyle=f.color;
     ctx.setLineDash(f.kind==='stase'?[5,7]:[12,5]); ctx.lineDashOffset=-now/65;
@@ -6270,6 +6375,7 @@ function draw(){
     ctx.beginPath(); ctx.moveTo(f.x,f.y); ctx.lineTo(f.x+Math.cos(f.ang)*f.len, f.y+Math.sin(f.ang)*f.len); ctx.stroke();
     ctx.restore();
   }
+  zeichneBangers();
   // Bomben: ticken – Kern wächst, Ring läuft ab (Zünd-Anzeige)
   for(const b of bombs){
     if(!sichtbar(b.x,b.y,30)) continue;
@@ -6424,7 +6530,7 @@ function draw(){
     ctx.save(); ctx.globalCompositeOperation='lighter';
     for(const s of shards){
       if(s.kind==='funkenkranz'){
-        const color=runKartenEvos.flammenorbit?'#ffb05b':(['#3bd17a','#35e0e0'].includes(currentSkin().blade)?'#ffb5f5':'#65ffe0');
+        const color=['#3bd17a','#35e0e0'].includes(currentSkin().blade)?'#ffb5f5':'#65ffe0';
         sbc(color,12); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineCap='round';
         ctx.beginPath(); ctx.arc(player.x,player.y,s.r,s.ang,s.ang+.42); ctx.stroke();
         ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.ang-Math.PI/2); ctx.scale(s.size/7,s.size/7);
