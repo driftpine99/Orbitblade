@@ -163,9 +163,14 @@ function start(opts = {}) {
 function makeOrbitBot(api, { tempoFaktor = 1.0 } = {}) {
   let winkel = 0;
   let frequenz = 0;
-  return function bot(dtSek) {
+  /* dtSek hat bewusst einen Vorgabewert: Ein Aufruf ohne Argument machte speed
+     zu NaN und damit die Spielerposition zu NaN. Der Lauf lief danach weiter,
+     aber jede Entfernungsprüfung war falsch — die Messung sah still wie eine
+     gültige aus. Ein fehlendes Argument darf keine stille Falschmessung ergeben. */
+  return function bot(dtSek = 1 / 60) {
     const p = api.G('player');
     if (!p) return;
+    if (!Number.isFinite(dtSek)) throw new Error('makeOrbitBot: dtSek ist ' + dtSek);
     const gegner = api.G('enemies') || [];
     let ziel = null, beste = Infinity;
     for (const en of gegner) {
@@ -217,7 +222,9 @@ function makeOrbitBot(api, { tempoFaktor = 1.0 } = {}) {
 
 /** Führt einen vollständigen Lauf aus. Optionen:
     god, minutes (Abbruchgrenze), endlos (nach Sieg weiterspielen bis Tod/Grenze),
-    botTempo, onWave(wave), search (z.B. '?perf=1&wave=26&pts=15&god=1'), startWave. */
+    bot (false schaltet ihn ab), botTempo, onWave(wave, state), wave, stopBeiWelle.
+    Auslesen werden zufällig gewählt; Wiedereinstiegs-Countdowns werden übersprungen.
+    URL-Messschalter werden beim Erzeugen der API über start({search}) gesetzt. */
 function run(api, opts = {}) {
   const grenzeFrames = Math.round((opts.minutes ?? 30) * 60 * 60);
   const bot = opts.bot !== false ? makeOrbitBot(api, { tempoFaktor: opts.botTempo ?? 1 }) : null;
@@ -238,31 +245,25 @@ function run(api, opts = {}) {
   api.G('killEnemy = (function(f){ return function(){ f.apply(null, arguments); globalThis.__kills = (globalThis.__kills||0)+1; }; })(killEnemy);');
   api.G('globalThis.__onWave = function(w){ globalThis.__lastWave = w; };');
 
-  // Auslese automatisch entscheiden, sonst wartet der Lauf ewig auf einen Tipp.
-  api.G(`oeffneAuslese = (function(f){
-    return function(){
-      f();
-      try{
-        const karten = (typeof ausleseKarten !== 'undefined' && ausleseKarten) ? ausleseKarten : [];
-        if(karten.length){ waehleAuslese(karten[Math.floor(Math.random()*karten.length)]); }
-        else schliesseAuslese();
-        if(state === 'countdown'){ state = 'playing'; }
-      }catch(e){ try{ schliesseAuslese(); }catch(_e){} }
-    };
-  })(oeffneAuslese);`);
+  if (opts.god) {
+    // Schon vor dem ersten Bild schützen: Nachheilen nach gameOver() wäre zu spät.
+    api.G('if(typeof hurtPlayer === "function" && !hurtPlayer.__simBlank){ hurtPlayer = function(){ return; }; hurtPlayer.__simBlank = true; }');
+  }
 
   let letzteWelle = api.G('typeof wave!=="undefined" ? wave : 1');
 
   for (let f = 0; f < grenzeFrames; f++) {
+    // Beide Auslese-Arten (Karten und Weichen, auch Endlos-Echos) benutzen denselben
+    // Zustand. Erst nach dem Öffnen antworten, damit die echte Spiellogik fertig ist.
+    api.G(`if(state === 'auslese'){
+      if(ausleseKarten.length) waehleAuslese(ausleseKarten[Math.floor(Math.random()*ausleseKarten.length)]);
+      else schliesseAuslese();
+    }
+    if(state === 'countdown') finishCombatResume();`);
     api.step(1);
     stat.frames++;
-    if (bot) bot(1 / 60);
-    if (opts.god) {
-      // Vor dem nächsten Bild heilen: gameOver() feuert sonst im selben Bild,
-      // in dem hp auf 0 fällt — ein Nachheilen käme zu spät.
-      api.G('if(typeof hurtPlayer === "function" && !hurtPlayer.__simBlank){ hurtPlayer = function(){ return; }; hurtPlayer.__simBlank = true; }');
-    }
     const st = api.G('state');
+    if (bot && st === 'playing') bot(1 / 60);
     const w = api.G('typeof __lastWave!=="undefined" ? __lastWave : wave');
     if (w > letzteWelle) { if (opts.onWave) opts.onWave(w, st); letzteWelle = w; }
     if (st === 'gameover') { stat.tod = true; break; }
@@ -295,6 +296,7 @@ if (require.main === module) {
     god: !!arg.god,
     minutes: Number(arg.minutes || 32),
     endlos: !!arg.endlos,
+    wave: arg.wave ? Number(arg.wave) : undefined,
     stopBeiWelle: arg.wellestop ? Number(arg.wellestop) : undefined,
     botTempo: Number(arg.tempo || 1),
   };
