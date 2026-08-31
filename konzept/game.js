@@ -1204,6 +1204,7 @@ const PERF_WAVE = PERF_DEBUG ? perfZahl('wave') : 0;
 const PERF_PTS  = PERF_DEBUG ? perfZahl('pts')  : 0;
 const PERF_GOD  = PERF_DEBUG && /(?:\?|&)god=1(?:&|$)/.test(location.search||'');
 const PERF_DPR  = PERF_DEBUG ? perfZahl('dpr') : 0;   // in Hundertstel, z. B. dpr=100 -> 1,00
+const PERF_ZOOM = PERF_DEBUG ? (parseInt((location.search.match(/[?&]zoom=(\d+)/)||[])[1],10)||0) : 0;
 /* `?perf=1&gpu=1`: liest nach jedem Bild ein einzelnes Pixel zurück. Das zwingt die
    Grafikpipeline leerzulaufen, wodurch die sonst unsichtbare, aufgestaute GPU-Zeit als
    Phase `gpuSync` messbar wird. Bewusst eingriffsintensiv — die erzwungene
@@ -1340,6 +1341,7 @@ function perfBericht(){
     schlimmsteBilder:perfSchlimmste,
     welle:wave, mengen,
     zustand:{ dpr:Math.round(renderDpr*100)/100, dprErzwungen:PERF_DPR>0,
+      zoom:Math.round(weltZoom*100)/100, zoomErzwungen:PERF_ZOOM>0,
       hintergrund:hintergrundHalb?'halb':'voll',
       sparmodus, effekte:fxAn, messlauf, ebenenAus:ebenenAus.length? ebenenAus : 'keine' }
   };
@@ -2205,6 +2207,20 @@ function schliesseAuslese(name){
 }
 document.getElementById('auslese-reroll').addEventListener('click',wuerfleAusleseNeu);
 
+/* WELTZOOM
+   Ohne Zoom entspricht eine Welteinheit einem CSS-Pixel — auf einem 390 px
+   breiten Handy sieht man dadurch nur 1,1 s voraus, bevor ein Soldat von der
+   Seite im Koerper steht. Der Zoom stellt eine Mindest-Weltbreite auf der
+   KURZEN Bildschirmseite sicher; das ist die Seite, an der die Vorwarnzeit am
+   knappsten ist, und sie ist in beiden Ausrichtungen die richtige Bezugsgroesse.
+   Auf grossen Bildschirmen ist der Faktor 1 — dort wird bewusst nichts veraendert. */
+const WELT_KURZ_MIN = 520;
+let weltZoom = 1;
+function berechneWeltZoom(w, h){
+  if(PERF_ZOOM > 0) return PERF_ZOOM / 100;   // Messschalter ?zoom=75
+  return Math.min(1, Math.min(w, h) / WELT_KURZ_MIN);
+}
+
 function resize(){
   const rawDpr=window.devicePixelRatio||1;
   const dprLimit=IS_TOUCH ? CONFIG.render.touchDpr : CONFIG.render.desktopDpr;
@@ -2218,6 +2234,7 @@ function resize(){
   const vv=window.visualViewport;
   const w=vv? vv.width : (document.documentElement.clientWidth||window.innerWidth);
   const h=vv? vv.height : (document.documentElement.clientHeight||window.innerHeight);
+  weltZoom = berechneWeltZoom(w, h);
   canvas.width=Math.round(w*renderDpr); canvas.height=Math.round(h*renderDpr);
   canvas.style.width=w+'px'; canvas.style.height=h+'px';
   ctx.setTransform(renderDpr,0,0,renderDpr,0,0);
@@ -2526,7 +2543,7 @@ function makeEnemy(type){
   const dScale=1+ (wave-1)*CONFIG.wave.dmgScale;
   const diff=curDiff();
   const w=canvas.clientWidth||window.innerWidth,h=canvas.clientHeight||window.innerHeight;
-  const spawnDist=Math.hypot(w,h)/2 + 60;
+  const spawnDist=Math.hypot(w,h)/2/weltZoom + 60;
   const ang=laufRnd()*Math.PI*2;
   const x=player.x+Math.cos(ang)*spawnDist, y=player.y+Math.sin(ang)*spawnDist;
   // Leben nach Schwierigkeit: Bosse bekommen einen eigenen, stärkeren Nachlass
@@ -4496,12 +4513,12 @@ function update(dt){
   separiereGegner();
   perfMark('separieren');
   // enemies update
-  const recycleDist=Math.hypot(w,h)*0.95;   // weit außer Sicht = wird neu positioniert
+  const recycleDist=Math.hypot(w,h)*0.95/weltZoom;   // weit außer Sicht = wird neu positioniert
   for(const en of enemies){
     let dx=player.x-en.x, dy=player.y-en.y; let d=Math.hypot(dx,dy);
     // Dauerhaftes Weglaufen soll die Welle nicht einfrieren: Nachzügler rücken nach
     if(d>recycleDist){
-      const a=laufRnd()*Math.PI*2, sd=Math.hypot(w,h)/2+40;
+      const a=laufRnd()*Math.PI*2, sd=Math.hypot(w,h)/2/weltZoom+40;
       en.x=player.x+Math.cos(a)*sd; en.y=player.y+Math.sin(a)*sd;
       dx=player.x-en.x; dy=player.y-en.y; d=Math.hypot(dx,dy);
     }
@@ -5179,7 +5196,8 @@ function zeichnePerfOverlay(w,h){
   // sagte damit nichts über die belasteten Bilder aus.
   zeilen.push('max Gegner '+m.sichtbar.max+'/'+m.gegner.max+' (Ø '+m.gegner.schnitt+') · Felder '+m.felder.max);
   zeilen.push('max Partikel '+m.partikel.max+' · Zahlen '+m.zahlen.max+' · Schuss '+m.schuesse.max+'/'+m.eigeneSchuesse.max);
-  zeilen.push('Welle '+b.welle+' · DPR '+z.dpr+(z.dprErzwungen?'!':'')+' · Spar '+(z.sparmodus?'AN':'aus')+' · FX '+(z.effekte?'an':'AUS')+(z.messlauf?' · MESSLAUF':''));
+  zeilen.push('Welle '+b.welle+' · DPR '+z.dpr+(z.dprErzwungen?'!':'')+' · Zoom '+z.zoom.toFixed(2)+(z.zoomErzwungen?'!':''));
+  zeilen.push('Spar '+(z.sparmodus?'AN':'aus')+' · FX '+(z.effekte?'an':'AUS')+(z.messlauf?' · MESSLAUF':''));
   zeilen.push('Hintergrund '+z.hintergrund.toUpperCase()+'   [Shift+H]');
   zeilen.push('aus: '+(Array.isArray(z.ebenenAus)? z.ebenenAus.join(' ') : 'keine')+'   [Shift+1..8]');
   const zh=13, hoehe=zeilen.length*zh+14, oben=h-hoehe-8;
@@ -5470,7 +5488,8 @@ function drawLandmark(ctx,w,h,camX,camY,par,tile,ti,tj,bio){
 }
 function draw(){
   const w=canvas.clientWidth||window.innerWidth,h=canvas.clientHeight||window.innerHeight;
-  vpW=w; vpH=h;                   // Sichtbereich für sichtbar() — ein DOM-Zugriff statt hunderter
+  // Sichtbereich in Welteinheiten: bei Zoom 0,75 sieht man ein Drittel mehr Welt.
+  vpW=w/weltZoom; vpH=h/weltZoom;
   ctx.clearRect(0,0,w,h);
   /* WICHTIG: Der Canvas-Zustand überlebt den Bildwechsel. Ohne diesen Reset behielt
      shadowBlur den Wert vom Ende des letzten Bildes — dadurch wurde der komplette
@@ -5480,7 +5499,7 @@ function draw(){
   ctx.shadowBlur=0; ctx.shadowColor='transparent';
   ctx.globalAlpha=1; ctx.globalCompositeOperation='source-over';
   bestimmeEffektstufe();
-  camX = player.x - w/2; camY = player.y - h/2;   // Kamera zentriert den Spieler
+  camX = player.x - vpW/2; camY = player.y - vpH/2;   // Kamera zentriert den Spieler
   let sx=0,sy=0;
   if(shake>0){ sx=(Math.random()-0.5)*shake*2; sy=(Math.random()-0.5)*shake*2; }
   ctx.save(); ctx.translate(sx,sy);
@@ -5500,9 +5519,9 @@ function draw(){
   perfMark('zHintergrund');
 
   // — Welt-Ebene (Kamera folgt Spieler) —
-  ctx.save(); ctx.translate(-camX,-camY);
+  ctx.save(); ctx.scale(weltZoom,weltZoom); ctx.translate(-camX,-camY);
   sichtbareGegner=0;
-  if(wave>=CONFIG.hindernisAbWelle) drawHindernisse(ctx,w,h,camX,camY,biome);
+  if(wave>=CONFIG.hindernisAbWelle) drawHindernisse(ctx,vpW,vpH,camX,camY,biome);
   const bladeLen = bladeLength();
   // dezenter Reichweiten-Ring
   ctx.strokeStyle='rgba(120,180,255,0.05)'; ctx.lineWidth=1;
@@ -6215,11 +6234,11 @@ function draw(){
     let bossArrow=null;
     for(const en of enemies){
       const dx=en.x-player.x, dy=en.y-player.y;
-      const sx2=dx-0, sy2=dy-0;
+      const sx2=dx*weltZoom, sy2=dy*weltZoom;   // Bildschirmabstand für Sichtprüfung und Pfeile
       // sichtbar? (mit etwas Rand, damit Pfeile nicht direkt am Bildrand aufpoppen)
       if(Math.abs(sx2)<w/2-30 && Math.abs(sy2)<h/2-30) continue;
       const ang=Math.atan2(dy,dx);
-      const dist=Math.hypot(dx,dy);
+      const dist=Math.hypot(sx2,sy2);
       if(en.type==='boss'){
         if(!bossArrow || dist<bossArrow.dist) bossArrow={ang,dist};
         continue;
