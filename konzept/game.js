@@ -32,14 +32,23 @@ const CONFIG = {
   spinDamage: 12,          // Rundum-Grundschaden pro Treffer-Tick
   spinArcBonus: 26,        // Zusatzschaden, wenn die Klinge den Gegner wirklich trifft
   spinArcHalf: 0.5,        // halbe Trefferbreite der Klinge (rad) → ca. 57° gesamt
-  /* Fokusziel 18 statt 12. Bei 12 war die Leiste nach 5,3 s voll, die kuerzeste
-     Abklingzeit liegt bei 5,0 s — die beworbene Entscheidung "sparen oder ausgeben"
-     konnte rechnerisch nie existieren, gemessen war perfektes Timing 0,6 % wert. Bei 18
-     dauert es 8,4 s: fuer Bombe und Sog entsteht eine echte Wahl, fuer Wirbel, Nova und
-     Schock bleibt der Fokus bequem rechtzeitig da. Absichtlich nicht 20 — dort waeren
-     die meisten Einsaetze unverstaerkt, und das Spiel soll nicht anspruchsvoller werden. */
-  fokusZiel: 18,           // so viele Volltreffer laden die Fokus-Leiste
-  fokusBonus: 1.9,         // damit schlägt die nächste aktive Macht zu
+  /* FOKUS: aus dem Normalfall wird der Hoehepunkt.
+     Vorher 18 Volltreffer und Bonus 1,9. Gemessen waren dadurch 42 bis 46 Einsaetze
+     je Lauf fokussiert — mehr als die Haelfte aller Einsaetze. "Fokussiert" war der
+     Normalzustand und keine Auszeichnung.
+     Schlimmer war die Wirkung: Ein normaler Wirbel toetete in KEINER Welle einen
+     einzigen Gegner, der fokussierte nur bis etwa Welle 5. Bei Welle 20 blieben mit
+     Bonus 1,9 noch 52 von 174 Lebenspunkten stehen — knapp daneben ist die
+     schlechteste Stelle, weil der Spieler sieht, dass nichts passiert.
+     Bonus 4,0 raeumt die Gruppe in allen geprueften Wellen (20, 26, 29) vollstaendig
+     ab; 3,0 liess bei Welle 26 noch 23 Leben stehen. Erst ein sichtbares Ergebnis
+     macht den Einsatz zum Ereignis.
+     Ziel 85 statt 18 macht ihn selten: gemessen ergibt das rund 11 fokussierte
+     Einsaetze je Lauf und trifft damit den Zielkorridor 8 bis 12 aus dem Konzept.
+     Der normale Einsatz bleibt bewusst schwach — er ist Werkzeug zum Anordnen, nicht
+     Schadensmittel. Die Klinge macht den Schaden. */
+  fokusZiel: 85,           // so viele Volltreffer laden die Fokus-Leiste
+  fokusBonus: 4.0,         // damit schlägt die nächste aktive Macht zu
   panzerAbWelle: 12,       // ab hier tauchen Panzergegner auf (auf „Meister" früher)
   // Sog zieht Gegner heran, statt sie wegzustoßen — er SETZT Sweet-Spot-Treffer auf,
   // statt selbst viel Schaden zu machen. Deshalb bewusst schwach im Schaden.
@@ -3456,10 +3465,17 @@ function doActive(slot){
   }
   if(natuerlicherFokus){
     fokusBereit=false; fokus=0;
-    spawnParticles(player.x,player.y,'#dcb5ff',24);
-    particles.push({ring:true,x:player.x,y:player.y,color:'#ffffff',life:.62,max:.62});
-    pushFloat(player.x,player.y-42,'FOKUS ×'+fokusFaktor().toFixed(1),'#f2e5ff',1.15);
-    shake=Math.max(shake,9);
+    /* Der fokussierte Einsatz ist jetzt selten (rund 11 je Lauf) und raeumt die
+       Gruppe ab — er darf sich auch so anfuehlen. Vorher unterschied er sich vom
+       normalen Einsatz nur durch 24 statt 14 Partikel und Ruetteln 9 statt 8; das
+       war nicht wahrnehmbar. Zwei Ringe mit unterschiedlicher Dauer geben ihm eine
+       eigene, laengere Gestalt, und der hitstop liefert die kurze Zeitlupe. */
+    spawnParticles(player.x,player.y,'#dcb5ff',44);
+    particles.push({ring:true,x:player.x,y:player.y,color:'#ffffff',life:1.2,max:1.2});
+    particles.push({ring:true,x:player.x,y:player.y,color:'#c77dff',life:.7,max:.7});
+    pushFloat(player.x,player.y-42,'FOKUS ×'+fokusFaktor().toFixed(1),'#f2e5ff',1.4);
+    shake=Math.max(shake,15);
+    hitstop(120);
     if(sfx) sfx('focus');
     orbitFortschritt('fokus_einsatz');
   } else if(echoLadung){
