@@ -189,6 +189,48 @@ Der Schalter bleibt bestehen, damit beides auf dem Gerät gegeneinander spielbar
 ist. Ohne `?band=1` ist jeder Zahlenwert unverändert — belegt durch 0 Abweichungen
 über 4 Geometriezustände und 54 Verhaltensfälle in `tools/charakterisierung.js`.
 
+### B2b — Was stattdessen gebaut wurde: die Abstandskurve
+
+Beide Hälften des Bandes sind zurückgestellt. Der Innenrand scheitert an der
+Gegner-KI (B2a). Die größere Reichweite war nur das **Mittel**, um Platz für ein
+45-px-Band zu schaffen — ohne den Innenrand ist sie ein Machtzuwachs ohne
+Begründung, der zudem alle 19 abgeleiteten Flächen mitzieht (Nova +16 %,
+Sog-Halteradius +47 %). Beides bleibt hinter `?band=1` erhalten und dokumentiert,
+damit die Messungen nicht neu erarbeitet werden müssen.
+
+**Gebaut und ab sofort Standard ist die einfachste Form desselben Ziels:**
+
+> Der Schaden folgt dem Abstand. An der Hülle **0,82**, an der Klingenspitze
+> **1,32**, dazwischen linear. Kein Loch, kein sicherer Hafen — wer klebt, nimmt
+> weiter Schaden, nur weniger.
+
+Damit ist der Grundbefund aus Teil A behoben: Abstand war die einzige Achse, die
+der Spieler wirklich bedient, und sie hatte **null** Wirkung.
+
+| Ringabstand | flach (heute) | mit Kurve | Verhältnis |
+|---:|---:|---:|---:|
+| 40 px (klebend) | 38.628 | 32.648 | **0,845** |
+| 50 px | 38.576 | 38.576 | 1,000 |
+| 60 px | 38.576 | 44.504 | 1,154 |
+| 70 px (Rand) | 38.576 | 48.408 | **1,255** |
+
+**1,49× zwischen kleben und Rand**, bei **−1,0 % Gesamtleistung** im Prüfstand mit
+anrückenden Gegnern. Das Paar 0,82/1,32 ist genau darauf eingestellt: die Achse
+entsteht, die Macht bleibt gleich.
+
+Belegt über `tools/charakterisierung.js`: Von 4 Geometriezuständen und 54
+Verhaltensfällen bewegen sich **ausschließlich `gesamtschaden` und
+`schadenProSekunde`** — keine Auslösezahlen, keine Fokusrate, keine Panzerlogik.
+Die Kartenverhältnisse bleiben erhalten (Phaser Rang 2 +38,6 %, Plasmabombe
++45,7 % — wie vor der Änderung), die Aufnahmeprüfung hält.
+
+**Sichtbar gemacht:** Ein warmer Ring markiert den Abstand, ab dem der Faktor 1
+erreicht ist. Weiter außen wird es stärker. Ohne diese Marke wäre die Kurve eine
+unsichtbare Zahl — und genau das verbietet die Leitplanke.
+
+`?flach=1` stellt das alte, abstandsblinde Verhalten für den direkten Vergleich
+wieder her.
+
 ## B3 — Vom Abtasten zum Fegen
 
 Der 120-ms-Tick macht Tempo wirkungslos. Neu ist die Trefferfläche der Bogen, den
@@ -405,12 +447,11 @@ Die Fragmentwährung entfällt als Zahlungsmittel, die Objekte bleiben.
 2. **Charakterisierungsmessung** des Trefferblocks (178 Zeilen, 23 Systeme).
 3. ~~Abstoßrate entscheiden und messen~~ — **erledigt am 31.08.**, siehe B2:
    Schub = Eigentempo × Eindringtiefe / 20. `tools/mess_band.js`.
-4. **Band gebaut** hinter `?band=1` — Reichweite 65, Innenrand 20, wegbasierter
-   Abstoßer, `jaeger.haltNah` 115→140, Klinge und Innenring gezeichnet. Ergebnis
-   in B2a: Die Reichweite trägt, der Innenrand nicht. **Nächster Schritt ist
-   deshalb nicht Feineinstellung, sondern die Entscheidung:** Gegner-KI so
-   ändern, dass Gegner auf Bandabstand stehen wollen — oder den Innenrand fallen
-   lassen und nur die Reichweite behalten.
+4. **Band gebaut, gemessen, zurückgestellt** (B2a) — es lebt hinter `?band=1`
+   weiter. **Stattdessen ausgeliefert: die Abstandskurve** (B2b), die dasselbe
+   Ziel ohne Loch, ohne Reichweitenänderung und ohne KI-Abhängigkeit erreicht.
+   Der Innenrand wird erst wieder zum Thema, wenn Gegner einen Grund haben, auf
+   Bandabstand stehenzubleiben.
 5. **Sweep** (B3) mit Ausgleich der −28 % und einer Entscheidung zur Trefferdecke.
 6. **Trägheit**, dann Form.
 7. **Akte** als Struktur über die vorhandenen Wellen.

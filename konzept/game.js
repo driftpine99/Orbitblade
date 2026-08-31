@@ -39,7 +39,20 @@ const CONFIG = {
        aussen 65  ergibt fuer einen Soldaten 18+65+18 = 101 px, Band 45 px breit
        wegK 40    Weg im Loch, ab dem der Widerstand das Tempo uebersteigt;
                   bestimmt die Eindringtiefe, siehe abstossenImBand() */
-  band: { innen: 20, aussen: 65, wegK: 40, jaegerHaltNah: 140, innenFaktor: 0.5 },
+  /* ABSTANDSKURVE. Der Grundbefund des Konzepts: Schaden war bei 10 px
+     identisch mit 70 px — der Abstand, die einzige Achse die der Spieler
+     wirklich bedient, hatte gar keine Wirkung. `nahe` gilt an der Huelle,
+     `fern` an der Klingenspitze, dazwischen linear. Kein Loch, kein
+     sicherer Hafen: wer klebt, nimmt weiterhin Schaden, nur weniger.
+     `?flach=1` schaltet auf das alte, abstandsblinde Verhalten zurueck. */
+  abstand: { nahe: 0.82, fern: 1.32 },
+  /* DAS BAND (`?band=1`) — dokumentierte Sackgasse, absichtlich erhalten.
+     Aussenrand 65 statt 38 und ein Loch unter `innen` px. Gemessen: Gegner
+     laufen geradlinig zu und leben deshalb im Loch statt im Band; schon ohne
+     Band kleben sie 39 % der Zeit am Spieler. Als Loch kostet das 40,8 %
+     Grundschaden. Wieder sinnvoll erst mit Gegnern, die auf Bandabstand
+     stehen WOLLEN. Siehe docs/Konzept-2-Entwurf.md B2a. */
+  band: { innen: 20, aussen: 65, wegK: 40, innenFaktor: 0.5 },
   spinDamage: 12,          // Rundum-Grundschaden pro Treffer-Tick
   spinArcBonus: 26,        // Zusatzschaden, wenn die Klinge den Gegner wirklich trifft
   spinArcHalf: 0.5,        // halbe Trefferbreite der Klinge (rad) → ca. 57° gesamt
@@ -1524,6 +1537,24 @@ function tutorialSweetSpotTreffer(){
    sein, sonst laesst er sich nicht beurteilen. Ohne den Schalter ist jeder
    Zahlenwert unveraendert — die Charakterisierungs-Basislinie bleibt gruen. */
 const BAND_AN = /(?:\?|&)band=1(?:&|$)/.test((typeof location!=='undefined' && location.search)||'');
+/* `?flach=1` stellt das alte, abstandsblinde Trefferverhalten wieder her —
+   fuer den direkten Vergleich auf dem Geraet. */
+const FLACH_AN = /(?:\?|&)flach=1(?:&|$)/.test((typeof location!=='undefined' && location.search)||'');
+/* Schadensfaktor nach Abstand: 1 an der Klingenspitze, `nahe` an der Huelle.
+   `d` ist Mittelpunkt zu Mittelpunkt, `randAbstand` also der Abstand der
+   Huellen — dieselbe Rechnung wie bei Trefferpruefung und Kontaktschaden,
+   damit die Kurve fuer einen Panzer genauso liegt wie fuer eine Drohne. */
+function vollschadenRadius(bladeLen){
+  const A = CONFIG.abstand;
+  return player.radius + bladeLen * Math.min(1, Math.max(0, (1 - A.nahe) / Math.max(.001, A.fern - A.nahe)));
+}
+function abstandsFaktor(d, enRadius, bladeLen){
+  if(FLACH_AN) return 1;
+  const A = CONFIG.abstand;
+  const randAbstand = d - player.radius - enRadius;
+  const t = bladeLen > 0 ? Math.min(1, Math.max(0, randAbstand / bladeLen)) : 1;
+  return A.nahe + (A.fern - A.nahe) * t;
+}
 /* Zuschlag des Innenrands auf `player.radius + en.radius`. Ohne Band 0, dann
    verhaelt sich jede Pruefung unten wie vorher. */
 function bandInnen(){ return BAND_AN ? CONFIG.band.innen : 0; }
@@ -4770,16 +4801,12 @@ function update(dt){
       // Der Spieler-Radius muss deshalb mitgerechnet werden — sonst blieben die äußeren
       // 18 px der sichtbaren Klinge wirkungslos.
       if(d >= player.radius + bladeLen + en.radius) continue;
-      /* Innenrand: Wer naeher steht als der Bandbeginn, wird schwaecher
-         getroffen. innenFaktor 0 macht daraus ein echtes Loch — dann kampieren
-         Gegner dort, wo die Klinge sie nie erreicht (gemessen: -42,7 % Schaden,
-         weil eine geradeaus laufende KI genau dort ihre Zeit verbringt).
-         Ein Faktor darueber haelt die Absicht "nah ist schwach" aufrecht, ohne
-         einen sicheren Hafen zu schaffen. Ohne `?band=1` ist bandLoch 0. */
-      let bandFaktor = 1;
+      /* Abstand entscheidet mit: an der Spitze voll, an der Huelle gedaempft.
+         Zusaetzlich das Loch, falls `?band=1` laeuft (dokumentierte Sackgasse). */
+      let bandFaktor = abstandsFaktor(d, en.radius, bladeLen);
       if(BAND_AN && d < player.radius + bandLoch + en.radius){
-        bandFaktor = CONFIG.band.innenFaktor;
-        if(!bandFaktor) continue;
+        bandFaktor *= CONFIG.band.innenFaktor;
+        if(!CONFIG.band.innenFaktor) continue;
       }
       // Trifft eine der Klingen den Gegner gerade wirklich?
       const toEnemy = Math.atan2(dy,dx);
@@ -4804,7 +4831,7 @@ function update(dt){
       if(treffer && runAbilities.schneide){
         dmg = Math.round(dmg * (1 + CONFIG.schneide.proStufe*runAbilities.schneide));
       }
-      // Abschlag fuer alles, was innerhalb des Bandes steht.
+      // Abstandskurve und, falls aktiv, der Bandabschlag.
       if(bandFaktor !== 1) dmg = Math.max(1, Math.round(dmg * bandFaktor));
       // Präzisions-Sweet und Schneide Rang 4 durchschlagen Panzer vollständig.
       // Doppelorbit bezahlt seine Verlässlichkeit: Seine Sweet Hits werden von
@@ -5020,7 +5047,8 @@ function update(dt){
          Jaeger. Bliebe haltNah bei 115, stuende der ladende Jaeger kuenftig im
          Band statt knapp dahinter, und seine ganze Rolle — Position gegen Kill
          abwaegen — kippte. 140 haelt denselben Abstand zum Rand wie heute. */
-      const haltNah = BAND_AN ? CONFIG.band.jaegerHaltNah : CONFIG.jaeger.haltNah;
+      const haltNah = CONFIG.jaeger.haltNah
+        + (BAND_AN ? CONFIG.band.aussen - CONFIG.bladeBaseLen : 0);
       if(en.jagdPhase==='an' && d<=haltNah) en.jagdPhase='laden';
       // shootCd (bereits Vorframe-Wert) beendet den Rückzug notfalls auch fern von haltFern —
       // sonst bliebe ein verfolgter Jäger dauerhaft rückwärts in der Kartenmitte kleben.
@@ -5997,9 +6025,16 @@ function draw(){
   // dezenter Reichweiten-Ring
   ctx.strokeStyle='rgba(120,180,255,0.05)'; ctx.lineWidth=1;
   ctx.beginPath(); ctx.arc(player.x,player.y, bladeLen+player.radius, 0, Math.PI*2); ctx.stroke();
+  /* Die Abstandskurve braucht eine sichtbare Marke, sonst ist sie eine
+     unsichtbare Zahl — und genau das verbietet die Leitplanke. Ab hier steht
+     der Faktor auf 1 oder darueber, weiter aussen wird es staerker. Der Ring
+     ist bewusst waermer und deutlicher als der blasse Reichweitenring. */
+  if(!FLACH_AN){
+    ctx.strokeStyle='rgba(255,210,87,0.13)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(player.x,player.y, vollschadenRadius(bladeLen), 0, Math.PI*2); ctx.stroke();
+  }
   /* Der Innenrand braucht eine sichtbare Kante, sonst ist die tote Zone eine
-     unsichtbare Strafe. Deutlicher als der Aussenring: dort passiert nichts,
-     hier verliert der Spieler seinen Schaden. */
+     unsichtbare Strafe. */
   if(BAND_AN){
     ctx.strokeStyle='rgba(255,120,120,0.16)'; ctx.lineWidth=1.5;
     ctx.beginPath(); ctx.arc(player.x,player.y, player.radius+bandInnen(), 0, Math.PI*2); ctx.stroke();

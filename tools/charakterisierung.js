@@ -137,7 +137,9 @@ function expressions(api) {
   add('leuchtfeuer_spitzenabstand', 'update', /tx=player\.x\+Math\.cos\(ta\)\*\(([^)]+)\)/);
   add('sweet_schwelle_soldat', 'update', /return d<([^&]+) && anglesNow/);
   add('trefferschwelle_soldat', 'update', /if\(d >= ([^)]+)\) continue;/);
-  add('zeichen_reichweitenring', 'draw', /ctx\.arc\(player\.x,player\.y, ([^,]*bladeLen[^,]*), 0, Math\.PI\*2\); ctx\.stroke\(\);/);
+  add('zeichen_reichweitenring', 'draw', /ctx\.arc\(player\.x,player\.y, (bladeLen\+player\.radius), 0, Math\.PI\*2\); ctx\.stroke\(\);/);
+  // Marke der Abstandskurve: ab hier steht der Faktor auf 1 oder darueber.
+  add('vollschaden_ring', 'draw', /ctx\.arc\(player\.x,player\.y, (vollschadenRadius\(bladeLen\)), 0, Math\.PI\*2\); ctx\.stroke\(\);/);
   add('tutorial_reichweitenring', 'draw', /ctx\.arc\(player\.x,player\.y,([^,]*bladeLen[^,]*),0,Math\.PI\*2\); ctx\.stroke\(\); ctx\.restore\(\);/);
   add('tutorial_upgrade_markierung', 'draw', /ctx\.arc\(0,0,([^,]+),a-\.22,a\+\.22\)/);
   add('klingenschweif_laenge', 'draw', /roundRect\(player\.radius, -2\.5, ([^,]+), 5, 2\.5\)/);
