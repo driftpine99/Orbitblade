@@ -5745,6 +5745,7 @@ function hexPath(c,r){ c.beginPath(); for(let i=0;i<6;i++){ const a=Math.PI/3*i;
    Pixeln wird beim Kopieren ausgeglichen und ist bei weichen Schwaden
    unsichtbar. */
 const NEBEL_SCHWELLE = 2;      // logische Pixel Parallaxversatz bis zum Neumalen
+const NEBEL_SKALA = 0.5;       // je Achse — ein Viertel der Flaeche je Neumalen
 let nebelLeinwand=null, nebelCtx=null, nebelBio=null;
 let nebelPX=1e9, nebelPY=1e9, nebelW=0, nebelH=0;
 
@@ -5760,13 +5761,19 @@ function drawNebulae(zielCtx,w,h,camX,camY,bio){
     nebelCtx=nebelLeinwand.getContext && nebelLeinwand.getContext('2d');
   }
   if(!nebelCtx || nebelCtx===zielCtx){ malNebel(zielCtx,w,h,px,py,bio); return; }
-  const dw=Math.max(1,Math.round(w)), dh=Math.max(1,Math.round(h));
+  /* Der Vorrat liegt auf halber Kante, also einem Viertel der Flaeche. Bei
+     weichen Verlaeufen sieht man das nach dem Hochskalieren nicht, aber der
+     Ausschlag beim Neumalen wird viermal kleiner — und genau dieser Ausschlag
+     ist es, den man als einzelnen Aussetzer spuert. Ein Mittelwert, der gut
+     aussieht, aber alle zwanzig Bilder alles auf einmal zahlt, ruckelt
+     schlimmer als eine gleichmaessige Last. */
+  const dw=Math.max(1,Math.round(w*NEBEL_SKALA)), dh=Math.max(1,Math.round(h*NEBEL_SKALA));
   const neuGroesse = nebelLeinwand.width!==dw || nebelLeinwand.height!==dh;
   if(neuGroesse){ nebelLeinwand.width=dw; nebelLeinwand.height=dh; nebelW=dw; nebelH=dh; }
   if(neuGroesse || bio!==nebelBio
      || Math.abs(px-nebelPX)>=NEBEL_SCHWELLE || Math.abs(py-nebelPY)>=NEBEL_SCHWELLE){
-    nebelCtx.setTransform(1,0,0,1,0,0);
-    nebelCtx.clearRect(0,0,dw,dh);
+    nebelCtx.setTransform(NEBEL_SKALA,0,0,NEBEL_SKALA,0,0);
+    nebelCtx.clearRect(0,0,w,h);
     malNebel(nebelCtx,w,h,px,py,bio);
     nebelPX=px; nebelPY=py; nebelBio=bio;
   }
