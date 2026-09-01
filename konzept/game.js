@@ -25,7 +25,12 @@ const CONFIG = {
   playerRadius: 18,
   // Unsichtbarer Joystick: überall ziehen, keine Anzeige.
   // maxRadius klein halten -> kurzer Daumenweg bis Vollgas.
-  stick: { maxRadius: 52, deadZone: 7, followEdge: true },
+  /* Unsichtbarer Joystick. maxRadius ist der Weg bis Vollausschlag: kuerzer =
+     kleinere Fingerbewegungen reichen. minFaktor gibt das Tempo direkt hinter
+     der Totzone — ohne ihn kriecht die Figur bei kleinen Ausschlaegen, statt
+     zu laufen. Die Feinsteuerung bleibt erhalten, weil zwischen minFaktor und
+     1 weiter analog abgebildet wird. */
+  stick: { maxRadius: 34, deadZone: 5, minFaktor: 0.35, followEdge: true },
   // Plasmaklinge: Rundumschaden als verzeihende Basis, die echte Klingenposition
   // ("Sweet Spot") gibt deutlich mehr. Dadurch zählen Rotation und Doppelklinge wirklich.
   swordSpinSpeed: 6.0,     // Rotationstempo (rad/s)
@@ -2430,7 +2435,12 @@ const WELT_KURZ_MIN = 520;
 let weltZoom = 1;
 function berechneWeltZoom(w, h){
   if(PERF_ZOOM > 0) return PERF_ZOOM / 100;   // Messschalter ?zoom=75
-  return Math.min(1, Math.min(w, h) / WELT_KURZ_MIN);
+  /* Untergrenze, weil ein Fenster von 0 px sonst weltZoom auf 0 setzt — und
+     jede daraus abgeleitete Groesse auf NaN: spawnDist wird NaN, damit auch
+     jede Gegnerposition, und danach ist jede Abstandspruefung falsch, ohne
+     dass etwas sichtbar abstuerzt. Null ist auf dem Geraet kein Sonderfall:
+     Wegwischen der App und Drehen liefern kurzzeitig genau das. */
+  return Math.max(0.35, Math.min(1, Math.min(w, h) / WELT_KURZ_MIN));
 }
 
 function resize(){
@@ -2836,8 +2846,11 @@ function stickMoveTo(cx,cy){
     setJoystick(dx/len, dy/len);                        // Vollausschlag
     return;
   }
-  // zwischen Totzone und Vollausschlag sauber auf 0..1 abbilden
-  const f=(len-S.deadZone)/(S.maxRadius-S.deadZone);
+  // Zwischen Totzone und Vollausschlag auf minFaktor..1 abbilden. Der Sockel
+  // sorgt dafuer, dass schon eine kleine Bewegung die Figur wirklich laufen
+  // laesst; darueber bleibt es analog.
+  const t=(len-S.deadZone)/(S.maxRadius-S.deadZone);
+  const f=S.minFaktor+(1-S.minFaktor)*t;
   setJoystick(dx/len*f, dy/len*f);
 }
 function stickStart(cx,cy){ stickOrigin={x:cx,y:cy}; setJoystick(0,0); }
