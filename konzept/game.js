@@ -1366,8 +1366,20 @@ function perfProbe(){
   for(let i=0;i<PERF_KLASSEN.length;i++) if(perf.frame<=PERF_KLASSEN[i]){ perfKlassen[i]++; break; }
   // Kontext der schlechtesten Bilder festhalten
   if(perf.frame>20 && (perfSchlimmste.length<6 || perf.frame>perfSchlimmste[perfSchlimmste.length-1].frame)){
-    let spitze='', spitzeMs=0;
-    for(const k in perfPhasenBild) if(perfPhasenBild[k]>spitzeMs){ spitzeMs=perfPhasenBild[k]; spitze=k; }
+    /* Die groesste Phase zu nennen ist irrefuehrend, wenn die Phasen zusammen
+       fast nichts erklaeren. Auf dem X1 Carbon dauerte das schlimmste Bild
+       99,8 ms, davon 1,0 Update und 1,9 Zeichnen — und als "Spitze" stand dort
+       zHintergrund mit 0,47 ms, also einem halben Prozent des Bildes. Das hat
+       die Fehlersuche zweimal in den Hintergrund gelenkt. Erklaeren die Phasen
+       weniger als die Haelfte, wird stattdessen der unerklaerte Rest gemeldet:
+       Rastern, Verdraengung, fremde Last — jedenfalls nichts, was der Spielcode
+       in der Hand hat. */
+    let spitze='', spitzeMs=0, phasenSumme=0;
+    for(const k in perfPhasenBild){
+      phasenSumme+=perfPhasenBild[k];
+      if(perfPhasenBild[k]>spitzeMs){ spitzeMs=perfPhasenBild[k]; spitze=k; }
+    }
+    if(phasenSumme < perf.frame*0.5){ spitze='UNERKLAERT'; spitzeMs=perf.frame-phasenSumme; }
     perfSchlimmste.push({
       frame:Math.round(perf.frame*10)/10, update:Math.round(perf.update*100)/100,
       draw:Math.round(perf.draw*100)/100, spitze, spitzeMs:Math.round(spitzeMs*100)/100,
@@ -5638,6 +5650,10 @@ function bestimmeEffektstufe(){
    zweiten Einschaltung dauerhaft ein — ein Gerät, das ihn zweimal gebraucht hat, wird
    ihn wieder brauchen, und ein springendes Bild ist schlimmer als ein weicheres. */
 const SPAR_AN_MS=18.5, SPAR_AUS_MS=16.9;
+/* Zweites Kriterium: Anteil der Bilder, die ihren Bildschirmtakt verpassen.
+   20 ms liegt sicher ueber 16,7 ms und trifft nicht die normale Streuung.
+   8 % heisst: jedes zwoelfte Bild setzt aus — das sieht man. */
+const SPAR_SPAET_MS=20, SPAR_SPAET_ANTEIL=0.08;
 const SPAR_FENSTER=90;                 // ~1,5 s bei 60 fps
 /* Aufwärmen ausklammern: Die ersten Sekunden eines Laufs ruckeln immer — erste
    Zuweisung der Hintergrundleinwand, GPU-Texturupload, JIT. Gemessen auf dem
@@ -5653,15 +5669,26 @@ function messeBildrate(t){
   fpsLetzte=t;
   // Nur Kampfbilder, und keine Zustandssprünge aus Menü oder Orbitpfad: eine einzelne
   // Pause von zwei Sekunden würde den Schnitt sonst über jede Schwelle heben.
-  if(state!=='playing' || !(d>0) || d>100) return;
+  /* Nur echte Pausen verwerfen. Die alte Grenze von 100 ms warf ausgerechnet die
+     schlimmsten Bilder weg — auf dem X1 Carbon gemessen: ein Bild mit 99,8 ms
+     lag knapp darunter, alles darueber zaehlte gar nicht mehr. */
+  if(state!=='playing' || !(d>0) || d>250) return;
   if(sparAufwaerm<SPAR_AUFWAERM){ sparAufwaerm++; return; }
   fpsProbe.push(d);
   if(fpsProbe.length<SPAR_FENSTER) return;
-  let summe=0; for(const v of fpsProbe) summe+=v;
+  /* Zwei Kriterien statt einem. Der Schnitt allein uebersieht genau das Muster,
+     das ein Mensch als Ruckeln beschreibt: gemessen 2189 Bilder unter 17 ms und
+     122 verpasste Bildschirmtakte — Schnitt 17,7 ms, also unter der Schwelle,
+     und der Sparmodus blieb aus, obwohl jedes zwanzigste Bild aussetzte.
+     Ein einzelnes langes Bild wird fuer den Schnitt gedeckelt, damit es ihn
+     nicht allein ueber die Schwelle hebt; als verspaetet zaehlt es trotzdem. */
+  let summe=0, spaet=0;
+  for(const v of fpsProbe){ summe+=Math.min(v,100); if(v>SPAR_SPAET_MS) spaet++; }
   const schnitt=summe/fpsProbe.length;
+  const spaetAnteil=spaet/fpsProbe.length;
   fpsProbe.length=0;
-  if(schnitt>SPAR_AN_MS){ sparGut=0; sparSchlecht++; }
-  else if(schnitt<SPAR_AUS_MS){ sparSchlecht=0; sparGut++; }
+  if(schnitt>SPAR_AN_MS || spaetAnteil>SPAR_SPAET_ANTEIL){ sparGut=0; sparSchlecht++; }
+  else if(schnitt<SPAR_AUS_MS && spaetAnteil<SPAR_SPAET_ANTEIL*0.5){ sparSchlecht=0; sparGut++; }
   else { sparSchlecht=0; sparGut=0; }              // Graubereich ändert nichts
   if(!sparmodus && sparSchlecht>=2){
     sparmodus=true; sparEinschaltungen++; sparSchlecht=0; resize();
