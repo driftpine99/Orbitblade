@@ -5730,13 +5730,58 @@ function hexPath(c,r){ c.beginPath(); for(let i=0;i<6;i++){ const a=Math.PI/3*i;
 // Biome-Deko: Parallax-Sterne (deterministisch je Zelle) + Landmarken an einem Welt-Raster
 /* Nebelschwaden: große, weiche Farbflächen mit sehr langsamer Parallaxe.
    Sie tragen den Großteil der Tiefenwirkung und kosten nur wenige Gradienten. */
-function drawNebulae(ctx,w,h,camX,camY,bio){
-  const par=0.04, span=4200;
+/* NEBEL AUF VORRAT
+   Gemessen mit tools/mess_fuellrate.js: Die Schwaden fuellten 12,65 Bildschirm-
+   flaechen je Bild additiv — 99,9 % der gesamten additiven Fuellung und zwei
+   Drittel der gesamten Zeichenflaeche, voellig unabhaengig von Gegnern, Karten
+   und Effekten. Auf einem Geraet mit DPR 2 sind das bei 1440x900 rund 16 Mio.
+   additiv gemischte Pixel je Bild.
+
+   Dabei ist ihr Parallaxfaktor 0,04: Sie bewegen sich um 4 % der Kamerastrecke.
+   Ein Bild, das sich fast nicht aendert, wurde 60-mal je Sekunde neu gefuellt.
+   Deshalb liegen sie jetzt auf einer eigenen Leinwand und werden erst neu
+   gemalt, wenn ihr Versatz um NEBEL_SCHWELLE gewandert ist; dazwischen kostet
+   die Ebene einen einzigen Bildkopierbefehl. Der Restversatz von unter zwei
+   Pixeln wird beim Kopieren ausgeglichen und ist bei weichen Schwaden
+   unsichtbar. */
+const NEBEL_SCHWELLE = 2;      // logische Pixel Parallaxversatz bis zum Neumalen
+let nebelLeinwand=null, nebelCtx=null, nebelBio=null;
+let nebelPX=1e9, nebelPY=1e9, nebelW=0, nebelH=0;
+
+function drawNebulae(zielCtx,w,h,camX,camY,bio){
+  const par=0.04;
+  const px=camX*par, py=camY*par;
+  /* Ohne eigene Leinwand (Harness, sehr alte Browser) direkt zeichnen — lieber
+     die alte Last als ein schwarzes Bild. */
+  const eigene = typeof document!=='undefined' && typeof document.createElement==='function';
+  if(!eigene){ malNebel(zielCtx,w,h,px,py,bio); return; }
+  if(!nebelLeinwand){
+    nebelLeinwand=document.createElement('canvas');
+    nebelCtx=nebelLeinwand.getContext && nebelLeinwand.getContext('2d');
+  }
+  if(!nebelCtx || nebelCtx===zielCtx){ malNebel(zielCtx,w,h,px,py,bio); return; }
+  const dw=Math.max(1,Math.round(w)), dh=Math.max(1,Math.round(h));
+  const neuGroesse = nebelLeinwand.width!==dw || nebelLeinwand.height!==dh;
+  if(neuGroesse){ nebelLeinwand.width=dw; nebelLeinwand.height=dh; nebelW=dw; nebelH=dh; }
+  if(neuGroesse || bio!==nebelBio
+     || Math.abs(px-nebelPX)>=NEBEL_SCHWELLE || Math.abs(py-nebelPY)>=NEBEL_SCHWELLE){
+    nebelCtx.setTransform(1,0,0,1,0,0);
+    nebelCtx.clearRect(0,0,dw,dh);
+    malNebel(nebelCtx,w,h,px,py,bio);
+    nebelPX=px; nebelPY=py; nebelBio=bio;
+  }
+  zielCtx.save(); zielCtx.globalCompositeOperation='lighter';
+  zielCtx.drawImage(nebelLeinwand, Math.round(nebelPX-px), Math.round(nebelPY-py), w, h);
+  zielCtx.restore();
+}
+
+function malNebel(ctx,w,h,px,py,bio){
+  const span=4200;
   ctx.save(); ctx.globalCompositeOperation='lighter';
   for(const n of NEBULAE){
     // um die Kamera herum kacheln, damit sie nie ausgehen
-    const bx=((n.x-camX*par)%span+span)%span - span*0.5 + w*0.5;
-    const by=((n.y-camY*par)%span+span)%span - span*0.5 + h*0.5;
+    const bx=((n.x-px)%span+span)%span - span*0.5 + w*0.5;
+    const by=((n.y-py)%span+span)%span - span*0.5 + h*0.5;
     if(bx<-n.r || bx>w+n.r || by<-n.r || by>h+n.r) continue;
     /* Der Verlauf hängt nur an Farbe und Radius, nicht an der Position. Einmal um den
        Ursprung gebaut, danach nur noch verschoben — bisher entstand er je Schwade und Bild neu. */

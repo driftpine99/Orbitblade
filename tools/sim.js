@@ -12,7 +12,6 @@ const vm = require('vm');
 
 /* ---------- Stubs ---------- */
 
-let ctxCache = null;
 function makeCtx() {
   const gradient = { addColorStop() {} };
   const target = {
@@ -32,7 +31,10 @@ function makeCtx() {
     set(t, k, v) { t[k] = v; return true; },
   });
 }
-function sharedCtx() { if (!ctxCache) ctxCache = makeCtx(); return ctxCache; }
+/* Jede Leinwand bekommt ihren EIGENEN Kontext, so wie im Browser. Vorher teilten
+   sich alle einen — damit war jede Zwischenleinwand (Hintergrundpuffer, Nebel-
+   Vorrat) vom Hauptcanvas ununterscheidbar, und Code, der genau darauf prueft,
+   nahm im Harness stets den Notpfad. */
 
 function makeEl(tag) {
   const cls = new Set();
@@ -65,7 +67,11 @@ function makeEl(tag) {
     textContent: '', innerHTML: '', value: '', title: '',
     offsetWidth: 100, offsetHeight: 40,
     width: 300, height: 150,
-    getContext(kind) { return kind === '2d' ? sharedCtx() : null; },
+    getContext(kind) {
+      if (kind !== '2d') return null;
+      if (!el.__ctx) el.__ctx = makeCtx();
+      return el.__ctx;
+    },
     toDataURL: () => '',
   };
   // Das Spielfeld braucht feste Ausmaße; alle anderen Elemente bekommen dieselben Werte.
@@ -150,6 +156,10 @@ function start(opts = {}) {
   // Ein einzelner draw()-Aufruf muss mit den Stubs durchlaufen; danach bleibt er
   // aus Geschwindigkeitsgründen blank, bis jemand ihn wieder freigibt.
   api.G('draw()');
+  /* Das echte draw bleibt erreichbar, sonst ist die Zeichenlast headless gar
+     nicht messbar — die Zuweisung unten wuerde es sonst endgueltig verwerfen.
+     Siehe tools/mess_fuellrate.js. */
+  api.G('globalThis.__drawEcht = draw;');
   api.G('draw = function(){};');
 
   return api;
