@@ -38,8 +38,13 @@ const MITSCHRIFT = `(function(){
   var pfadFlaeche = 0, pfadUmfang = 0;
   function comp(){ return ctx.globalCompositeOperation || 'source-over'; }
   M.orte = {};
+  M.blur = 0; M.blurFlaeche = 0;
   function buche(art, flaeche){
     var k = comp();
+    /* shadowBlur kostet keine Flaeche, sondern einen Weichzeichner je Form —
+       in Canvas2D um Groessenordnungen teurer als dieselbe Form ohne. Getrennt
+       zaehlen, sonst bleibt der Posten unsichtbar. */
+    if(ctx.shadowBlur > 0){ M.blur++; M.blurFlaeche += flaeche; }
     M.flaeche[k] = (M.flaeche[k] || 0) + flaeche;
     M.aufrufe[art] = (M.aufrufe[art] || 0) + 1;
     // Herkunft mitschreiben: ohne sie weiss man, DASS viel gefuellt wird,
@@ -125,8 +130,10 @@ function lauf(karten, name) {
   const m = api.G('__mess');
   const gegner = api.G('enemies.length');
   const nebel = api.G('__nebel') / Math.max(1, bilder);
+  const blur = api.G('__mess.blur') / Math.max(1, bilder);
+  const blurFlaeche = api.G('__mess.blurFlaeche') / Math.max(1, bilder) / (1280*720);
   const schirm = 1280 * 720;
-  const raus = { name, bilder, gegner, nebel, schirme: {} };
+  const raus = { name, bilder, gegner, nebel, blur, blurFlaeche, schirme: {} };
   for (const k of Object.keys(m.flaeche)) raus.schirme[k] = m.flaeche[k] / Math.max(1, bilder) / schirm;
   raus.aufrufe = {};
   for (const k of Object.keys(m.aufrufe)) raus.aufrufe[k] = m.aufrufe[k] / Math.max(1, bilder);
@@ -154,7 +161,8 @@ const FAELLE = [
 
 console.log('Ueberstrichene Flaeche je Bild, in Bildschirmen (1280x720), Welle ' + WELLE + '\n');
 console.log('Fall'.padEnd(20) + 'Gegner'.padStart(7) + 'additiv'.padStart(10)
-  + 'normal'.padStart(9) + 'gesamt'.padStart(9) + '  Nebel/Bild' + '  Befehle/Bild');
+  + 'normal'.padStart(9) + 'gesamt'.padStart(9) + '  Nebel/Bild'
+  + '  Blur/Bild' + ' BlurFlaeche' + '  Befehle/Bild');
 const zeilen = [];
 let letzteOrte = null;
 for (const [name, karten] of FAELLE) {
@@ -171,6 +179,7 @@ for (const [name, karten] of FAELLE) {
   console.log(name.padEnd(20) + String(r.gegner).padStart(7)
     + add.toFixed(2).padStart(10) + (norm + rest).toFixed(2).padStart(9)
     + (add + norm + rest).toFixed(2).padStart(9) + r.nebel.toFixed(2).padStart(12)
+    + r.blur.toFixed(1).padStart(11) + r.blurFlaeche.toFixed(2).padStart(12)
     + befehle.toFixed(0).padStart(14));
 }
 if (letzteOrte) {

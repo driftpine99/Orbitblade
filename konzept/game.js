@@ -6508,7 +6508,14 @@ function draw(){
       ctx.beginPath(); ctx.arc(en.x,en.y,r*1.05,0,Math.PI*2); ctx.fill();
       ctx.restore();
     }
-    // HP-Bar (clean)
+    /* HP-Bar (clean) — und zwar wirklich: ohne dieses sb(0) erbte sie den
+       Weichzeichner vom Gegnerkoerper. Das waren zwei weichgezeichnete
+       Fuellungen je Gegner und Bild fuer einen 4 px hohen Balken, an dem man
+       ein Leuchten ohnehin nicht sieht. Gemessen mit tools/mess_fuellrate.js
+       waren bei 20 Gegnern 64 von 96 Zeichenbefehlen weichgezeichnet; davon
+       gingen 40 auf diese beiden Zeilen. shadowBlur kostet in Canvas2D ein
+       Vielfaches derselben Form ohne. */
+    sb(0);
     const bw=r*2.4, bh=4, by=en.y-r-13;
     ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.roundRect(en.x-bw/2,by,bw,bh,2); ctx.fill();
     ctx.fillStyle=en.type==='boss'?(en.color||'#c77dff'):'#4de0a0'; ctx.beginPath(); ctx.roundRect(en.x-bw/2,by,bw*Math.max(0,en.hp/en.maxHp),bh,2); ctx.fill();
@@ -6817,7 +6824,11 @@ function draw(){
       const ex=cx+Math.cos(ang)*mx, ey=cy+Math.sin(ang)*my;
       const fade=Math.max(0.25, Math.min(1, 1-(dist-Math.max(w,h)/2)/900));
       ctx.save(); ctx.translate(ex,ey); ctx.rotate(ang);
-      ctx.globalAlpha=fade; ctx.shadowColor=color; sb(big?16:8);
+      /* Nur die grosse Marke (Boss, Ereignis) leuchtet. Die kleinen Pfeile
+         waren mit 7 weichgezeichneten Formen je Bild der groesste verbliebene
+         Blur-Posten — fuer Dreiecke von elf Pixeln, bei denen das Leuchten
+         gegen die Deckkraft ohnehin kaum ankommt. */
+      ctx.globalAlpha=fade; ctx.shadowColor=color; sb(big?16:0);
       ctx.fillStyle=color;
       const s=big?1.6:1;
       ctx.beginPath();
