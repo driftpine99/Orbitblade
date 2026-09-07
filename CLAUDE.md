@@ -214,6 +214,14 @@ sind **Startwerte, noch nicht balancegemessen** (siehe Abschnitt 6 und 7):
 | `energieklingenwurf` | Energieklingen-Wurf | Timer ~3,2 s: Klinge fliegt zum Ziel und kehrt zum Live-Spielerpunkt zurück, je Flugrichtung ein Treffer, Rückweg härter |
 | `macht_echo` | Macht-Echo | Timer ~5 s: markiert den Bewegungs-Ringpuffer, Geistfigur läuft ihn ab und trifft jedes Ziel einmal, kein Endknall |
 
+Trefferregressionen sind über `node tools/pruefe_maechte.js` abgesichert:
+Die Wurfklinge prüft Flugsegmente einschließlich Umkehr- und Andockframe; Hin- und
+Rückweg haben getrennte Trefferlisten. Der Phaser trifft entlang der Strahlrichtung
+von nah nach fern; die Drucksalve entsteht erst am letzten tatsächlichen Treffer.
+Arsenal-Salven verteilen sich auf unterschiedliche lebende Startziele, tote Körper
+verbrauchen keine Geschosse. Echo-Bewegung und Homing-Lenkung verwenden Spielzeit
+statt Bildanzahl. Das sind Funktionskorrekturen, keine Balance-Abnahme.
+
 - Unterstützung bleibt: `lebensregen` (Passive) sowie `klingenteilung`,
   `taktschlag`, `nachfassen`, `glasklinge` (Module). Keine zehnte Angriffs-Power.
 - Je Ding gibt es **Neu** und **Verstärkt**. Passive springen intern von 1 auf
@@ -254,12 +262,15 @@ fünf Wellen. Vier Ereignistypen sorgen auf regulären Wellen 6/11/16/21/26 für
 Abwechslung. Schwierigkeit entsteht auch durch Warnformen und Positionierung,
 nicht nur durch mehr Gegner oder höhere HP.
 
-Der **Jäger** sperrt in der letzten Zielphase seine Schussrichtung sichtbar (fester
+Der **Jäger** sperrt ab Beginn der Zielphase seine Schussrichtung sichtbar (fester
 Zielstrahl statt Nachführen) und feuert entlang dieser gesperrten Linie; nach dem
 Schuss hält er eine kurze, verwundbare **Erholung** (`CONFIG.jaeger.recoverMs`), bevor
 er zurückweicht (Phase `erholung`). Seitliches Ausweichen bringt den Spieler damit
 sichtbar aus der Linie und ermöglicht einen erreichbaren Konter. Kein zusätzlicher
-Schuss. Die Regel gilt gezielt für den Jäger und ist noch mit echten Läufen zu prüfen.
+Schuss. Höchstens zwei Jäger laden gleichzeitig; der Platz wird vor Beginn der
+Warnung vergeben und verzögert keinen bereits angekündigten Schuss. Richtung,
+Warnlimit und Erholung sind headless geprüft; die menschliche Konterbarkeit bleibt
+im Spieltest zu beurteilen.
 
 ### 3.7 Langzeitfortschritt, Tageslauf und Endlos
 
@@ -485,6 +496,10 @@ oder garantierten Laufzeiten werden.
 ## 6. Prüfverfahren und Werkzeuge
 
 ### 6.1 Grundprüfung und vollständiger Lauf
+
+`node tools/pruefe_maechte.js` ergänzt die Grundprüfung um gezielte Regressionen
+für Treffer, Echo-Bildtakt, Boss-Griff, Jäger, beide Kartenränge, alle sechs
+Fusionsauswahlen, Pause/Reset und eine idempotente v11-Spielstandmigration.
 
 ```powershell
 node --check konzept/game.js

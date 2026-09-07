@@ -123,7 +123,7 @@ const CONFIG = {
   // haltNah liegt knapp hinter der Klingenreichweite (~88 px bei Jaeger-Radius 16):
   // wer waehrend des Ladens hineingeht, riskiert die Position fuer den Kill. haltFern
   // ist nur die Zieldistanz des Rueckzugs — shootCd beendet ihn notfalls frueher.
-  jaeger: { shootRange:300, chargeMs:850, cooldown:700, haltNah:115, haltFern:270, recoverMs:420 },
+  jaeger: { shootRange:300, chargeMs:850, cooldown:700, haltNah:115, haltFern:270, recoverMs:420, maxLadend:2 },
   exploder: { fuseMs:650, blast:95 },              // Zünd-Puls vor der Explosion, Schadensabfall
   xpOrb: { chance:0.15, pity:8, xp:30, radius:9 },
   // Rote Lebenskugeln: seltener als XP-Orbs, heilen einen festen Anteil der Leiste
@@ -731,7 +731,7 @@ const KARTEN_EVOLUTIONEN={
   klingenchor:{zutaten:['klingenteilung','taktschlag'],name:'Klingenchor',icon:'taktschlag',color:'#ffd257',
     desc:'Jede Klinge sendet in jedem zweiten Umlauf eine eigene starke Welle aus.'},
   drucksalve:{zutaten:['phaser','nachhall'],name:'Drucksalve',icon:'nachhall',color:'#a7e7ff',
-    desc:'Jeder Machtblitz entfesselt beim Einschlag zusätzlich eine Druckwelle. Nachhall bleibt erhalten.'},
+    desc:'Der Phaser-Strahl erzeugt am letzten getroffenen Gegner eine Druckwelle. Die Singularität bleibt erhalten.'},
   gewitterherz:{zutaten:['kettenblitz','konterstoss'],name:'Gewitterherz',icon:'kette',color:'#b6a2ff',
     desc:'Erlittener Schaden entlädt eine Blitzkette durch alle nahen Gegner.'},
   blutkristall:{zutaten:['glasklinge','lebensregen'],name:'Blutkristall',icon:'glasklinge',color:'#ff809c',
@@ -3721,7 +3721,9 @@ function updateBangers(dt){
     // Swept-Segment: jeden Frame die noch nicht getroffenen Gegner auf der gesperrten
     // Linie prüfen, bis die Durchschläge (pierceLeft) verbraucht sind.
     if(b.pierceLeft>0){
-      for(const en of enemies){
+      const geordnet=enemies.filter(en=>en.hp>0 && !b.hitIds.includes(en))
+        .sort((a,c)=>(a.x-c.x)*b.dirX+(a.y-c.y)*b.dirY);
+      for(const en of geordnet){
         if(en.hp<=0 || b.hitIds.includes(en)) continue;
         const proj=(en.x-b.x0)*b.dirX+(en.y-b.y0)*b.dirY;      // Projektion auf die Strahlachse
         if(proj<0 || proj>b.len) continue;
@@ -3732,8 +3734,10 @@ function updateBangers(dt){
           if(b.pierceLeft<=0) break;
         }
       }
-      // Drucksalve-Fusion: einmalig am zuletzt getroffenen Gegner (Strahl selbst bleibt).
-      if(!b.druckDone && b.lastHit){ kartenEvoWelle('drucksalve',b.lastHit.x,b.lastHit.y,CONFIG.nachhall.radius,b.dmg*.4); b.druckDone=true; }
+    }
+    // Erst am Ende steht der letzte tatsächliche Treffer fest, auch bei späteren Querläufern.
+    if(!b.druckDone && b.lastHit && (b.pierceLeft<=0 || b.age+1e-6>=P.life)){
+      kartenEvoWelle('drucksalve',b.lastHit.x,b.lastHit.y,CONFIG.nachhall.radius,b.dmg*.4); b.druckDone=true;
     }
     if(b.age+1e-6>=P.life) machtblitze.splice(i,1);
   }
@@ -3808,24 +3812,29 @@ function updateBangers(dt){
     if(wurfCd<=1e-6) wurfCd = starteWurf() ? CONFIG.wurf.interval[hatSprung('energieklingenwurf')?1:0] : 300;
   }
   if(wurfklinge){
-    const w=wurfklinge; w.life-=dt; const sp=CONFIG.wurf.speed*dt/1000;
-    if(w.phase==='hin'){
-      w.x+=w.dirX*sp; w.y+=w.dirY*sp; w.dist+=sp;
+    const w=wurfklinge, phase=w.phase, x0=w.x, y0=w.y;
+    w.life-=dt; const sp=CONFIG.wurf.speed*dt/1000;
+    let angedockt=false;
+    if(phase==='hin'){
+      const weg=Math.min(sp,Math.max(0,w.reach-w.dist));
+      w.x+=w.dirX*weg; w.y+=w.dirY*weg; w.dist+=weg;
       if(w.dist>=w.reach || w.life<=0) w.phase='zurueck';    // Umkehr bei Reichweite oder Sicherheitszeit
     } else {
       const dx=player.x-w.x, dy=player.y-w.y, d=Math.hypot(dx,dy)||1;   // verfolgt den bewegten Spieler
-      w.x+=dx/d*sp; w.y+=dy/d*sp;
-      if(d<=sp+18){ wurfklinge=null; }                       // sauberes, harmloses Andocken
+      const weg=Math.min(sp,d); w.x+=dx/d*weg; w.y+=dy/d*weg;
+      angedockt=d<=sp+18;
     }
-    if(wurfklinge){
-      const liste = w.phase==='hin'? w.hin : w.zurueck, mult = w.phase==='hin'? 1 : CONFIG.wurf.rueckMult;
+    {
+      // Das zurückgelegte Segment gehört noch zur ursprünglichen Flugrichtung.
+      // Auch der letzte Abschnitt vor dem Andocken darf treffen.
+      const liste = phase==='hin'? w.hin : w.zurueck, mult = phase==='hin'? 1 : CONFIG.wurf.rueckMult;
       for(const en of enemies){
         if(en.hp<=0 || liste.includes(en)) continue;
-        if(Math.hypot(en.x-w.x,en.y-w.y) < w.radius+en.radius){
+        if(abstandZumSegment(en.x,en.y,x0,y0,w.x,w.y) < w.radius+en.radius){
           const dd=Math.round(w.dmg*mult); en.hp-=dd; en.flashT=1; pushFloat(en.x,en.y-14,'-'+dd,'#8cffe3'); liste.push(en);
         }
       }
-      if(w.life<=-2000) wurfklinge=null;                     // harte Obergrenze
+      if(angedockt || w.life<=-2000) wurfklinge=null;        // harte Obergrenze
     }
   }
   // Macht-Echo (ID macht_echo): Bewegungs-Ringpuffer führen + getaktetes Geist-Echo.
@@ -3839,7 +3848,7 @@ function updateBangers(dt){
     const m=machtEcho;
     if(m.phase==='mark'){ m.t-=dt; if(m.t<=0) m.phase='lauf'; }
     else {
-      const step=Math.max(1, m.pfad.length/CONFIG.echo.laufFrames);
+      const step=(m.pfad.length-1)*dt/(CONFIG.echo.laufFrames*1000/60);
       const from=Math.floor(m.idx), to=Math.min(m.pfad.length-1, Math.floor(m.idx+step));
       for(let i=from;i<=to;i++){
         const gx=m.pfad[i].x, gy=m.pfad[i].y;
@@ -4648,7 +4657,7 @@ function telekinetischesArsenal(){
   const slv=abilityLevel('splitter')||1;
   const anzahl=slv>=SPRUNG_STUFE?5:3;
   const frei=Math.max(0, 6 - pShots.filter(s=>s.homing).length);   // Dichte begrenzen
-  const spawn=Math.min(anzahl, frei);
+  const spawn=Math.min(anzahl, frei, lebend.length);
   if(spawn<=0) return false;
   lebend.sort((a,b)=>Math.atan2(a.y-player.y,a.x-player.x)-Math.atan2(b.y-player.y,b.x-player.x));
   const dmg=Math.round(CONFIG.abil.splitterDamage*abilScale(slv)*1.6);
@@ -4715,6 +4724,11 @@ function starteWurf(){
     dmg:Math.round(CONFIG.wurf.dmg[rang]*(1+bonuses.dmg)), life:2600, hin:[], zurueck:[] };
   if(sfx) sfx('laserPlayer');
   return true;
+}
+function abstandZumSegment(x,y,x0,y0,x1,y1){
+  const dx=x1-x0,dy=y1-y0,l2=dx*dx+dy*dy;
+  const t=l2?Math.max(0,Math.min(1,((x-x0)*dx+(y-y0)*dy)/l2)):0;
+  return Math.hypot(x-x0-dx*t,y-y0-dy*t);
 }
 /* Macht-Echo (ID macht_echo): kopiert bei Auslösung den Bewegungs-Ringpuffer UNVERÄNDERLICH.
    Erst eine kurze Vormarkierung des Wegs (mark), dann läuft eine Geistfigur ihn vom älteren
@@ -5426,7 +5440,10 @@ function update(dt){
     // Gegenangriff nach einem Ausweichen erreichbar. Kein zusätzlicher Schuss.
     if(en.type==='jaeger'){
       en.shootCd=(en.shootCd||0)-dt;
-      if(en.jagdPhase==='laden' && en.shootCd<=0 && !(en.stunT>0)){
+      // Ein Warnfenster reserviert seinen Platz vor dem ersten sichtbaren Ladeframe.
+      // Bereits angekündigte Schüsse werden durch das Limit niemals verzögert.
+      const ladeplatz=en.chargeT>0 || enemies.filter(e=>e.hp>0 && e.type==='jaeger' && e.chargeT>0).length<CONFIG.jaeger.maxLadend;
+      if(en.jagdPhase==='laden' && en.shootCd<=0 && !(en.stunT>0) && ladeplatz){
         if(en.chargeT<=0){ const inv=1/(d||1); en.aimX=dx*inv; en.aimY=dy*inv; }   // Richtung einmalig sperren
         en.chargeT=(en.chargeT||0)+dt;
         if(en.chargeT>=CONFIG.jaeger.chargeMs){
@@ -5600,13 +5617,14 @@ function update(dt){
     // Homing (Telekinetisches Arsenal): bei Zielverlust neues gültiges Ziel wählen, sonst
     // sanft zum Ziel einlenken bei konstantem Tempo — läuft ohne Ziel gerade aus.
     if(s.homing){
-      if(!s.zielRef || s.zielRef.hp<=0){
+      if(!s.zielRef || s.zielRef.hp<=0 || !enemies.includes(s.zielRef)){
         let best=null,bd=1e9; for(const en of enemies){ if(en.hp<=0)continue; const d=Math.hypot(en.x-s.x,en.y-s.y); if(d<bd){bd=d;best=en;} }
         s.zielRef=best;
       }
       if(s.zielRef){
         const sp=Math.hypot(s.vx,s.vy)||300, dx=s.zielRef.x-s.x, dy=s.zielRef.y-s.y, d=Math.hypot(dx,dy)||1;
-        s.vx+=(dx/d*sp-s.vx)*0.2; s.vy+=(dy/d*sp-s.vy)*0.2;
+        const lenkung=1-Math.pow(.8,dt/(1000/60));
+        s.vx+=(dx/d*sp-s.vx)*lenkung; s.vy+=(dy/d*sp-s.vy)*lenkung;
         const nv=Math.hypot(s.vx,s.vy)||1; s.vx=s.vx/nv*sp; s.vy=s.vy/nv*sp;
       }
     }
@@ -5614,6 +5632,7 @@ function update(dt){
     if(s.life<=0){ pShots.splice(i,1); continue; }
     let hit=false;
     for(const en of enemies){
+      if(en.hp<=0) continue;
       if(s.hitIds&&s.hitIds.includes(en)) continue;
       if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+5){
         const shotColor=s.moduleColor||(s.spectral?'#c77dff':'#9ad0ff');
