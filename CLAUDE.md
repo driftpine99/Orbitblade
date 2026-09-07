@@ -262,6 +262,20 @@ fünf Wellen. Vier Ereignistypen sorgen auf regulären Wellen 6/11/16/21/26 für
 Abwechslung. Schwierigkeit entsteht auch durch Warnformen und Positionierung,
 nicht nur durch mehr Gegner oder höhere HP.
 
+Die aktive Canvas-Darstellung nutzt klar getrennte, familienfreundliche Silhouetten
+mit großen Materialflächen: Der Lichthüter trägt Helm, Schulterplatten, Brustvolumen,
+Mantel und Stiefel; die Leerenklinge ist ein asymmetrischer schwebender Void-Ritter
+mit Finnen, Schichtpanzer und instabilem Kern. Drohne (zweiflügeliger Interceptor),
+Soldat (Fronthelm und Kompaktbeine), Schwer (Belagerungsmech mit Schulterpods),
+Panzer (mobile Schildkrabbe), Jäger (Scharfschützen-Gleiter mit Lauf und Heckfinnen),
+Exploder (viergeteilte Reaktormine) und Brutknoten (dreibeinige Brutkapsel) besitzen
+eigene Körpergeometrien. Auch die vier Bossformen sind als Brutkelch, Frontkeil,
+offener Spiralwerfer und Schildstern eigenständig gezeichnet. Die Klingenformen
+unterscheiden sich zusätzlich an Griff und Emitter. Alles ist rein visuell und
+erhält Radien, Warnformen und aimX/aimY-Ausrichtung des Jägers. Es entstehen keine
+zusätzlichen Partikel- oder Schattenpassagen; die Performance auf Zielgeräten ist
+noch zu prüfen.
+
 Der **Jäger** sperrt ab Beginn der Zielphase seine Schussrichtung sichtbar (fester
 Zielstrahl statt Nachführen) und feuert entlang dieser gesperrten Linie. Körper und
 Waffenlauf behalten dieselbe Richtung während der Warnung und Erholung; nach dem

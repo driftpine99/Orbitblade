@@ -1988,76 +1988,71 @@ function zeichneKonstrukt(g, lean, farbe, kern, blur){
    bleiben vorerst als sichere Rueckfallebene im Quelltext; alle aktiven Aufrufe nutzen
    diese kompakteren, staerker unterscheidbaren Canvas-Figuren. */
 function zeichneLichthueterNeu(g, moving, lean, bobPhase, farbe, blur){
-  const bl=blur||(v=>{g.shadowBlur=v;}), t=Date.now();
-  const stride=moving?Math.sin(bobPhase)*3.2:0;
-  g.lineJoin='round';
-  // Beine und geteilter, lichtdurchlaessiger Mantel.
-  g.fillStyle='#c7d2df';
-  g.beginPath(); g.roundRect(-7+stride*.5,7,5.5,10,2.5); g.fill();
-  g.beginPath(); g.roundRect(1.5-stride*.5,7,5.5,10,2.5); g.fill();
-  g.fillStyle='rgba(92,190,255,.22)';
-  for(const s of [-1,1]){
-    g.beginPath(); g.moveTo(s*7,-5); g.quadraticCurveTo(s*(18+lean*.25),6,s*(13+lean),18);
-    g.lineTo(s*(4+lean*.35),11); g.lineTo(s*3,-3); g.closePath(); g.fill();
-  }
-  // Goldener Schutzhalo als sofort lesbares Merkmal des Hueters.
-  g.save(); g.strokeStyle='rgba(229,185,91,.75)'; g.lineWidth=1.8;
-  g.shadowColor='#e5b95b'; bl(6); g.globalAlpha=.82+Math.sin(t/650)*.08;
-  g.beginPath(); g.arc(0,-14,11.8,0,Math.PI*2); g.stroke();
-  for(let i=0;i<4;i++){
-    const a=Math.PI/4+i*Math.PI/2;
-    g.beginPath(); g.moveTo(Math.cos(a)*10,-14+Math.sin(a)*10); g.lineTo(Math.cos(a)*14,-14+Math.sin(a)*14); g.stroke();
-  }
-  g.restore(); bl(0);
-  // Weiss-goldener, spitz zulaufender Brustpanzer.
-  g.strokeStyle='#d9b45c'; g.lineWidth=1.15; g.fillStyle='#edf3f8';
-  g.beginPath(); g.moveTo(-9,-8); g.lineTo(-11,1); g.lineTo(0,11); g.lineTo(11,1); g.lineTo(9,-8); g.closePath(); g.fill(); g.stroke();
-  g.fillStyle='#c7d2df'; g.beginPath(); g.moveTo(-7,-6); g.lineTo(0,6); g.lineTo(7,-6); g.lineTo(0,-1); g.closePath(); g.fill();
-  const pul=.55+.45*Math.sin(t/380);
-  g.save(); g.shadowColor=farbe; bl(10*pul); g.fillStyle=farbe;
-  g.beginPath(); g.arc(0,-1.5,2.5,0,Math.PI*2); g.fill(); g.restore(); bl(0);
-  // Breite Schulterplatten.
-  g.fillStyle='#f6f8fb';
-  for(const s of [-1,1]){
-    g.beginPath(); g.moveTo(s*7,-7); g.lineTo(s*15,-5); g.lineTo(s*12,1); g.lineTo(s*7,-1); g.closePath(); g.fill(); g.stroke();
-  }
-  // Geschlossener Helm mit Krone und cyanfarbenem Visier.
-  g.fillStyle='#eef3f8'; g.beginPath();
-  g.moveTo(0,-24); g.lineTo(7,-19); g.lineTo(6,-11); g.lineTo(0,-7); g.lineTo(-6,-11); g.lineTo(-7,-19); g.closePath(); g.fill(); g.stroke();
-  g.fillStyle='#d9b45c'; g.beginPath(); g.moveTo(0,-26); g.lineTo(2,-21); g.lineTo(0,-18); g.lineTo(-2,-21); g.closePath(); g.fill();
-  g.save(); g.shadowColor=farbe; bl(7); g.fillStyle=farbe;
-  g.beginPath(); g.moveTo(-4.8,-17); g.lineTo(0,-14.5); g.lineTo(4.8,-17); g.lineTo(4.2,-14.5); g.lineTo(0,-12.6); g.lineTo(-4.2,-14.5); g.closePath(); g.fill(); g.restore(); bl(0);
+  const bl=blur||(v=>{g.shadowBlur=v;}), stride=moving?Math.sin(bobPhase)*3:0;
+  const kontur='#111a28';
+  g.lineJoin='round'; g.lineCap='round'; g.strokeStyle=kontur; g.lineWidth=1.5; bl(0);
+  // Zweigeteilter Mantel: breite, bewegte Form hinter den Gliedmaßen.
+  g.fillStyle='#1b2b43'; g.beginPath(); g.moveTo(-8,-7); g.lineTo(-14+lean*.25,13); g.lineTo(-4+lean,9); g.lineTo(0,15); g.lineTo(4+lean,9); g.lineTo(14+lean*.25,13); g.lineTo(8,-7); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#304967'; g.beginPath(); g.moveTo(-7,-5); g.lineTo(-10+lean*.4,10); g.lineTo(-3+lean*.7,7); g.lineTo(-1,13); g.lineTo(0,-4); g.closePath(); g.fill();
+  // Beine, Knie und deutlich abgesetzte Stiefel.
+  g.fillStyle='#33465d'; g.beginPath(); g.roundRect(-7+stride*.45,5,5.5,10,2); g.fill(); g.stroke(); g.beginPath(); g.roundRect(1.5-stride*.45,5,5.5,10,2); g.fill(); g.stroke();
+  g.fillStyle='#7690a6'; g.fillRect(-6.5+stride*.45,8,4.5,2.5); g.fillRect(2-stride*.45,8,4.5,2.5);
+  g.fillStyle='#172235'; g.beginPath(); g.roundRect(-8+stride*.45,13,7,4.5,2); g.fill(); g.stroke(); g.beginPath(); g.roundRect(1-stride*.45,13,7,4.5,2); g.fill(); g.stroke();
+  g.fillStyle='#aec4d6'; g.fillRect(-7+stride*.45,13,5.5,1.5); g.fillRect(1.5-stride*.45,13,5.5,1.5);
+  // Brustpanzer: dunkler Unteranzug, helle Schalen und goldene Mittelrippe.
+  g.fillStyle='#26384f'; g.beginPath(); g.moveTo(-9,-8); g.lineTo(9,-8); g.lineTo(10,4); g.lineTo(5,9); g.lineTo(-5,9); g.lineTo(-10,4); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#e6eef4'; g.beginPath(); g.moveTo(-7,-6); g.lineTo(-1,-7); g.lineTo(-1,5); g.lineTo(-5,7); g.lineTo(-8,3); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#c0d1df'; g.beginPath(); g.moveTo(1,-7); g.lineTo(7,-6); g.lineTo(8,3); g.lineTo(5,7); g.lineTo(1,5); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#8ba4b8'; g.beginPath(); g.moveTo(-6,1); g.lineTo(6,1); g.lineTo(4,5); g.lineTo(-4,5); g.closePath(); g.fill();
+  g.fillStyle='#d9b45c'; g.beginPath(); g.moveTo(-1,-7); g.lineTo(1,-7); g.lineTo(1,5); g.lineTo(0,8); g.lineTo(-1,5); g.closePath(); g.fill();
+  // Große Schulterhauben und sichtbare Oberarme/Hände machen den Körper lesbar.
+  g.fillStyle='#f1f5f7'; g.beginPath(); g.moveTo(-8,-8); g.lineTo(-15,-6); g.lineTo(-14,-1); g.lineTo(-9,1); g.lineTo(-7,-4); g.closePath(); g.fill(); g.stroke(); g.beginPath(); g.moveTo(8,-8); g.lineTo(15,-6); g.lineTo(14,-1); g.lineTo(9,1); g.lineTo(7,-4); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#d9b45c'; g.beginPath(); g.moveTo(-14,-5); g.lineTo(-16,5); g.lineTo(-12,7); g.lineTo(-9,0); g.closePath(); g.fill(); g.stroke(); g.beginPath(); g.moveTo(14,-5); g.lineTo(16,5); g.lineTo(12,7); g.lineTo(9,0); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#d9e4ec'; g.beginPath(); g.arc(-14,7,2.4,0,Math.PI*2); g.fill(); g.stroke(); g.beginPath(); g.arc(14,7,2.4,0,Math.PI*2); g.fill(); g.stroke();
+  // Geschlossener Ritterhelm mit Stirnkamm, Wangenplatten und lokalem Visierlicht.
+  g.fillStyle='#eef4f7'; g.beginPath(); g.moveTo(-8,-20); g.lineTo(-4,-24); g.lineTo(5,-23); g.lineTo(9,-18); g.lineTo(7,-11); g.lineTo(3,-8); g.lineTo(-5,-9); g.lineTo(-8,-13); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#b7c9d7'; g.beginPath(); g.moveTo(-7,-19); g.lineTo(-2,-22); g.lineTo(-2,-10); g.lineTo(-6,-12); g.closePath(); g.fill();
+  g.fillStyle='#ffffff'; g.beginPath(); g.moveTo(0,-22); g.lineTo(5,-21); g.lineTo(7,-18); g.lineTo(0,-18); g.closePath(); g.fill();
+  g.fillStyle='#263852'; g.beginPath(); g.moveTo(-7,-18); g.lineTo(7,-17); g.lineTo(6,-13); g.lineTo(-6,-13); g.closePath(); g.fill(); g.stroke();
+  g.save(); g.shadowColor=farbe; bl(5); g.fillStyle=farbe; g.beginPath(); g.roundRect(-5.5,-16.5,11,2,1); g.fill(); g.restore(); bl(0);
+  g.fillStyle='#d9b45c'; g.beginPath(); g.moveTo(-2,-24); g.lineTo(0,-27); g.lineTo(2,-23); g.lineTo(1,-19); g.lineTo(-1,-19); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#ffffff'; g.beginPath(); g.moveTo(4,-21); g.lineTo(7,-19); g.lineTo(5,-18); g.closePath(); g.fill();
 }
 
 function zeichneLeerenklingeNeu(g, lean, farbe, kern, blur){
-  const bl=blur||(v=>{g.shadowBlur=v;}), t=Date.now();
-  const schweb=Math.sin(t/520)*1.9, leere='#a855f7', leereHell='#e9d5ff';
-  g.translate(0,schweb); g.lineJoin='round';
-  // Instabiles Portal statt technischer Triebwerksglut.
-  g.save(); g.globalAlpha=.62; g.strokeStyle=leere; g.lineWidth=2; g.shadowColor=leere; bl(12);
-  g.beginPath(); g.ellipse(0,14,9,3.3,0,0,Math.PI*2); g.stroke(); g.restore(); bl(0);
-  g.strokeStyle='rgba(216,180,254,.52)'; g.lineWidth=1;
-  // Schwarze Energiefinnen reagieren sichtbar auf Bewegung.
-  for(const s of [-1,1]){
-    const flap=Math.sin(t/260+s)*2;
-    g.fillStyle='#171022'; g.beginPath();
-    g.moveTo(s*6,-7); g.lineTo(s*(19+Math.abs(lean)*.2),-11+flap); g.lineTo(s*13,-2); g.lineTo(s*18,7-flap); g.lineTo(s*6,4); g.closePath(); g.fill(); g.stroke();
-    g.save(); g.strokeStyle=leere; g.shadowColor=leere; bl(7); g.globalAlpha=.75;
-    g.beginPath(); g.moveTo(s*7,-5); g.lineTo(s*16,-8+flap); g.moveTo(s*8,2); g.lineTo(s*16,5-flap); g.stroke(); g.restore(); bl(0);
-  }
-  // Geschichteter schwarzer Panzer mit violetten Rissen.
-  g.fillStyle='#100d17'; g.beginPath();
-  g.moveTo(0,-20); g.lineTo(8,-11); g.lineTo(10,3); g.lineTo(0,13); g.lineTo(-10,3); g.lineTo(-8,-11); g.closePath(); g.fill(); g.stroke();
-  g.fillStyle='#252033'; g.beginPath(); g.moveTo(0,-15); g.lineTo(6,-8); g.lineTo(5,4); g.lineTo(0,8); g.lineTo(-5,4); g.lineTo(-6,-8); g.closePath(); g.fill();
-  g.save(); g.strokeStyle=leere; g.shadowColor=leere; bl(9); g.lineWidth=1.5;
-  g.beginPath(); g.moveTo(-5,3); g.lineTo(0,8); g.lineTo(5,3); g.moveTo(0,-13); g.lineTo(0,-8); g.stroke();
-  g.fillStyle=leere; g.beginPath(); g.ellipse(lean*.15,-5,4.8,2.8,0,0,Math.PI*2); g.fill();
-  bl(3); g.fillStyle=leereHell; g.beginPath(); g.ellipse(lean*.15,-5,1.4,2,0,0,Math.PI*2); g.fill(); g.restore(); bl(0);
-  // Hornplatten unterscheiden den Umriss auch ohne Farbe.
-  g.fillStyle='#171220';
-  g.beginPath(); g.moveTo(-5,-16); g.lineTo(-10,-24); g.lineTo(-2,-19); g.closePath(); g.fill(); g.stroke();
-  g.beginPath(); g.moveTo(5,-16); g.lineTo(10,-24); g.lineTo(2,-19); g.closePath(); g.fill(); g.stroke();
-  g.translate(0,-schweb);
+  const bl=blur||(v=>{g.shadowBlur=v;}), t=Date.now(), leere='#a855f7', kontur='#110d18';
+  const bob=Math.sin(t/520)*1.9; g.translate(0,bob); g.lineJoin='round'; g.lineCap='round'; g.strokeStyle=kontur; g.lineWidth=1.6; bl(0);
+  // Zerklüfteter Mantel und eine einzelne hohe Rückenfinne geben der Form Richtung.
+  g.fillStyle='#181221'; g.beginPath(); g.moveTo(-8,-8); g.lineTo(-16,7); g.lineTo(-9,5); g.lineTo(-13,15); g.lineTo(-2,10); g.lineTo(1,17); g.lineTo(8,7); g.lineTo(7,-8); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#3d3150'; g.beginPath(); g.moveTo(-7,-7); g.lineTo(-12,7); g.lineTo(-5,5); g.lineTo(-4,12); g.lineTo(0,8); g.lineTo(0,-6); g.closePath(); g.fill();
+  g.fillStyle='#24182f'; g.beginPath(); g.moveTo(6,-10); g.lineTo(15,-20); g.lineTo(11,-5); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#795b8d'; g.beginPath(); g.moveTo(9,-10); g.lineTo(13,-17); g.lineTo(11,-7); g.closePath(); g.fill();
+  // Schwebende Beinschienen und schwere, ungleiche Sabatons.
+  g.fillStyle='#33263f'; g.beginPath(); g.moveTo(-7,6); g.lineTo(-1,7); g.lineTo(-2,15); g.lineTo(-9,14); g.closePath(); g.fill(); g.stroke(); g.beginPath(); g.moveTo(2,6); g.lineTo(8,5); g.lineTo(10,13); g.lineTo(3,15); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#765e88'; g.beginPath(); g.moveTo(-9,13); g.lineTo(-2,13); g.lineTo(-4,17); g.lineTo(-12,16); g.closePath(); g.fill(); g.stroke(); g.beginPath(); g.moveTo(4,13); g.lineTo(10,11); g.lineTo(14,15); g.lineTo(5,17); g.closePath(); g.fill(); g.stroke();
+  // Unterkörper und drei versetzte Brustplatten.
+  g.fillStyle='#211729'; g.beginPath(); g.moveTo(-9,-8); g.lineTo(8,-9); g.lineTo(10,5); g.lineTo(3,10); g.lineTo(-7,7); g.lineTo(-11,0); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#59456b'; g.beginPath(); g.moveTo(-8,-7); g.lineTo(1,-9); g.lineTo(0,-1); g.lineTo(-7,1); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#826a95'; g.beginPath(); g.moveTo(1,-8); g.lineTo(7,-7); g.lineTo(8,0); g.lineTo(0,-1); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#493557'; g.beginPath(); g.moveTo(-7,2); g.lineTo(7,0); g.lineTo(7,5); g.lineTo(1,9); g.lineTo(-6,6); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#9c83ad'; g.beginPath(); g.moveTo(2,-7); g.lineTo(6,-6); g.lineTo(6,-3); g.lineTo(1,-3); g.closePath(); g.fill();
+  // Instabiler Kern sitzt im Panzer, mit einem einzigen scharfen Glanzpunkt.
+  g.save(); g.shadowColor=leere; bl(7); g.fillStyle=leere; g.beginPath(); g.moveTo(-3,-3); g.lineTo(2,-6); g.lineTo(5,-1); g.lineTo(1,4); g.lineTo(-4,1); g.closePath(); g.fill(); g.fillStyle=kern; g.beginPath(); g.arc(1,-2,1.4,0,Math.PI*2); g.fill(); g.restore(); bl(0);
+  // Linke Schulter ist ein hoher Schild, rechts hängt ein bewaffneter Arm tiefer.
+  g.fillStyle='#392746'; g.beginPath(); g.moveTo(-8,-9); g.lineTo(-17,-7); g.lineTo(-16,2); g.lineTo(-10,5); g.lineTo(-7,-1); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#876b9b'; g.beginPath(); g.moveTo(-15,-6); g.lineTo(-10,-7); g.lineTo(-10,1); g.lineTo(-14,2); g.closePath(); g.fill();
+  g.fillStyle='#543e63'; g.beginPath(); g.moveTo(8,-7); g.lineTo(14,-4); g.lineTo(13,4); g.lineTo(8,3); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#725884'; g.beginPath(); g.moveTo(13,2); g.lineTo(18,7); g.lineTo(13,11); g.lineTo(10,4); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#1d1425'; g.beginPath(); g.arc(17,8,2.4,0,Math.PI*2); g.fill(); g.stroke();
+  // Helm: schmale Augenöffnung, Wangenplatten und asymmetrische Hörner.
+  g.fillStyle='#2a1d34'; g.beginPath(); g.moveTo(-8,-22); g.lineTo(-3,-26); g.lineTo(7,-23); g.lineTo(10,-15); g.lineTo(5,-9); g.lineTo(-5,-10); g.lineTo(-9,-15); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#675078'; g.beginPath(); g.moveTo(-6,-21); g.lineTo(-2,-24); g.lineTo(-1,-11); g.lineTo(-6,-13); g.closePath(); g.fill();
+  g.fillStyle='#8b71a0'; g.beginPath(); g.moveTo(0,-23); g.lineTo(5,-21); g.lineTo(7,-17); g.lineTo(0,-17); g.closePath(); g.fill();
+  g.fillStyle='#17101e'; g.beginPath(); g.moveTo(-7,-18); g.lineTo(7,-18); g.lineTo(6,-14); g.lineTo(-6,-14); g.closePath(); g.fill(); g.stroke();
+  g.save(); g.shadowColor=leere; bl(5); g.fillStyle=leere; g.beginPath(); g.moveTo(-5,-16.8); g.lineTo(6,-17); g.lineTo(4,-15); g.lineTo(-5,-15.2); g.closePath(); g.fill(); g.restore(); bl(0);
+  g.fillStyle='#211629'; g.beginPath(); g.moveTo(-5,-22); g.lineTo(-12,-30); g.lineTo(-8,-19); g.closePath(); g.fill(); g.stroke(); g.beginPath(); g.moveTo(5,-22); g.lineTo(11,-27); g.lineTo(8,-18); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle='#a487b7'; g.beginPath(); g.moveTo(-10,-28); g.lineTo(-7,-23); g.lineTo(-8,-20); g.closePath(); g.fill();
+  g.translate(0,-bob);
 }
 
 /* Die Klinge zeichnet sich selbst — auf das Spielfeld oder auf eine Vorschau-Leinwand.
@@ -2103,16 +2098,30 @@ function zeichneKlinge(g, x0, laenge, form, farbe, kern, blur){
     }
   }
   bl(0);
-  // Griff — die Form prägt auch ihn, sonst sähe alles am Ansatz gleich aus
-  g.fillStyle='#c2cbdb'; g.beginPath(); g.roundRect(4,-3,15,6,2); g.fill();
-  g.fillStyle='#5d6b82';
-  g.beginPath(); g.rect(9,-3,2,6); g.fill();
-  g.beginPath(); g.rect(13,-3,2,6); g.fill();
-  if(form.spitz){   // Parierstange
-    g.fillStyle='#aab7cc'; g.beginPath(); g.roundRect(x0-4, -7.5, 3.2, 15, 1.5); g.fill();
-  }
-  if(form.zwei){    // Gabel, aus der beide Strahlen austreten
-    g.fillStyle='#aab7cc'; g.beginPath(); g.roundRect(x0-4, -5.8, 3.2, 11.6, 1.5); g.fill();
+  // Drei deutlich verschiedene Griff-/Emitter-Silhouetten; die Energieklinge selbst
+  // bleibt exakt an den vorhandenen Endpunkten und Hitboxmaßen.
+  if(form.spitz){
+    g.strokeStyle='#172232'; g.lineWidth=1.2;
+    g.fillStyle='#34485f'; g.beginPath(); g.roundRect(2,-4,19,8,2); g.fill(); g.stroke();
+    g.fillStyle='#b9cad8'; g.beginPath(); g.roundRect(5,-2.5,12,5,1.2); g.fill();
+    g.fillStyle='#eef5f8'; g.fillRect(6,-2,10,1.2); g.fillStyle='#687f95'; g.fillRect(7,1,9,1.1);
+    g.fillStyle='#d6a843'; g.beginPath(); g.moveTo(x0-4,-7); g.lineTo(x0+1,-4); g.lineTo(x0+1,4); g.lineTo(x0-4,7); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle='#ffe286'; g.fillRect(x0-2,-3.2,2,6.4);
+  } else if(form.zwei){
+    g.strokeStyle='#142131'; g.lineWidth=1.2;
+    g.fillStyle='#263d52'; g.beginPath(); g.roundRect(3,-6,18,12,3); g.fill(); g.stroke();
+    g.fillStyle='#54758c'; g.beginPath(); g.roundRect(6,-4.2,12,8.4,2); g.fill();
+    g.fillStyle='#d4e8f4'; g.fillRect(7,-2.8,10,1.4); g.fillRect(7,1.4,10,1.4);
+    g.fillStyle='#8dc9e8'; g.beginPath(); g.roundRect(x0-4,-6.5,5,4.5,1); g.fill(); g.stroke(); g.beginPath(); g.roundRect(x0-4,2,5,4.5,1); g.fill(); g.stroke();
+    g.fillStyle='#eafaff'; g.fillRect(x0-2.8,-5.4,2.5,1.2); g.fillRect(x0-2.8,3.1,2.5,1.2);
+  } else {
+    g.strokeStyle='#172232'; g.lineWidth=1.2;
+    g.fillStyle='#263447'; g.beginPath(); g.roundRect(2,-4.5,19,9,2.5); g.fill(); g.stroke();
+    g.fillStyle='#d7dfeb'; g.beginPath(); g.roundRect(5,-2.4,13,4.8,1.5); g.fill();
+    g.fillStyle='#ffffff'; g.fillRect(6,-1.8,11,1.1); g.fillStyle='#71869a'; g.fillRect(7,.8,10,1.1);
+    g.fillStyle='#60768c'; g.fillRect(9,-4.5,2.2,9); g.fillRect(14,-4.5,2.2,9);
+    g.fillStyle='#a9bfd0'; g.fillRect(9.4,-3.2,1.2,2.2); g.fillRect(14.4,1,1.2,2.2);
+    g.fillStyle='#40566d'; g.beginPath(); g.roundRect(x0-2,-5.2,3.5,10.4,1); g.fill(); g.stroke();
   }
 }
 // Fähigkeiten-Helfer: getragen? Stufe? Skalierung je Stufe? freigeschaltet?
@@ -6788,76 +6797,84 @@ function draw(){
       ctx.setLineDash([]); ctx.restore();
     }
     ctx.save(); ctx.translate(en.x,en.y); ctx.rotate(ang);
-    ctx.lineJoin='round'; sbc(en.color,15); ctx.strokeStyle=en.color; ctx.lineWidth=2.5;
+    ctx.lineJoin='round'; sb(0); ctx.strokeStyle='#182333'; ctx.lineWidth=2.5;
     const tNow=now;
     if(en.type==='drohne'){
-      // Drohne: schnelle Pfeil-/Rautenform, Sensorauge pulsiert beim Scannen
-      ctx.fillStyle='#0a1526';
-      ctx.beginPath(); ctx.moveTo(r,0); ctx.lineTo(-r*0.2,r*0.8); ctx.lineTo(-r*0.7,0); ctx.lineTo(-r*0.2,-r*0.8); ctx.closePath(); ctx.fill(); ctx.stroke();
-      const eye=0.12*Math.sin(tNow/90);
-      sb(6); ctx.fillStyle=en.color; ctx.beginPath(); ctx.arc(r*0.28,0,r*0.2+eye,0,Math.PI*2); ctx.fill();
+      // Zweiflügeliger Interceptor: breite Tragflächen, zentraler Sensor und Hecktriebwerke.
+      ctx.fillStyle='#49647b'; ctx.beginPath(); ctx.moveTo(r*1.05,0); ctx.lineTo(r*.18,-r*.32); ctx.lineTo(-r*.72,-r*.92); ctx.lineTo(-r*.48,-r*.18); ctx.lineTo(-r*.72,r*.92); ctx.lineTo(r*.18,r*.32); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#7895a8'; ctx.beginPath(); ctx.moveTo(r*.2,-r*.2); ctx.lineTo(-r*.52,-r*.7); ctx.lineTo(-r*.34,-r*.12); ctx.lineTo(r*.2,-r*.08); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(r*.2,r*.2); ctx.lineTo(-r*.52,r*.7); ctx.lineTo(-r*.34,r*.12); ctx.lineTo(r*.2,r*.08); ctx.closePath(); ctx.fill();
+      ctx.fillStyle=en.color; ctx.beginPath(); ctx.arc(r*.34,0,r*.21,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#bcecff'; ctx.beginPath(); ctx.arc(r*.4,-r*.06,r*.07,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#5b9fc5'; ctx.fillRect(-r*.8,-r*.18,r*.25,r*.36);
     } else if(en.type==='soldat'){
-      // Soldat: gepanzertes Quadrat, Visier-Glow pulsiert („atmet")
-      ctx.fillStyle='#1c1020';
-      ctx.beginPath(); ctx.roundRect(-r*0.8,-r*0.8,r*1.6,r*1.6,6); ctx.fill(); ctx.stroke();
-      sb(6+4*Math.sin(tNow/110)); ctx.fillStyle=en.color; ctx.beginPath(); ctx.roundRect(r*0.02,-r*0.3,r*0.5,r*0.6,3); ctx.fill();
+      // Infanterie: Fronthelm, Schulterplatten und kompakte getrennte Beine.
+      ctx.fillStyle='#8e5b3e'; ctx.beginPath(); ctx.roundRect(-r*.7,-r*.12,r*1.4,r*1.02,5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#d09768'; ctx.beginPath(); ctx.roundRect(-r*.84,-r*.72,r*1.68,r*.72,5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#f0bc86'; ctx.beginPath(); ctx.roundRect(-r*.62,-r*.62,r*1.1,r*.18,2); ctx.fill();
+      ctx.fillStyle='#65402e'; ctx.beginPath(); ctx.roundRect(-r*.98,-r*.55,r*.42,r*.55,3); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.roundRect(r*.56,-r*.55,r*.42,r*.55,3); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=en.color; ctx.beginPath(); ctx.roundRect(r*.02,-r*.42,r*.58,r*.22,2); ctx.fill();
+      ctx.fillStyle='#bb7042'; ctx.beginPath(); ctx.moveTo(-r*.5,r*.08); ctx.lineTo(r*.5,r*.08); ctx.lineTo(r*.38,r*.55); ctx.lineTo(-r*.38,r*.55); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#dda06d'; ctx.fillRect(-r*.38,r*.14,r*.48,r*.12);
+      ctx.fillStyle='#17141a'; ctx.fillRect(-r*.48,r*.55,r*.34,r*.42); ctx.fillRect(r*.14,r*.55,r*.34,r*.42);
+      ctx.fillStyle='#6d4b3b'; ctx.fillRect(-r*.5,r*.55,r*.38,r*.12); ctx.fillRect(r*.12,r*.55,r*.38,r*.12);
     } else if(en.type==='schwer'){
-      // Schwer: massiver Hexpanzer, Reaktorkern pulsiert
-      ctx.fillStyle='#1e0d0d';
-      hexPath(ctx,r); ctx.fill(); ctx.stroke();
-      const core=1+0.18*Math.sin(tNow/130);
-      sb(6); ctx.fillStyle=en.color; ctx.beginPath(); ctx.arc(0,0,r*0.34*core,0,Math.PI*2); ctx.fill();
+      // Belagerungsmech: gedrungener Leib mit massiven Schulterpods.
+      ctx.fillStyle='#81434d'; ctx.beginPath(); ctx.roundRect(-r*.75,-r*.66,r*1.5,r*1.32,7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#bb6468'; ctx.beginPath(); ctx.roundRect(-r*1.08,-r*.62,r*.48,r*1.12,5); ctx.fill(); ctx.stroke(); ctx.roundRect(r*.6,-r*.62,r*.48,r*1.12,5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#e08782'; ctx.fillRect(-r*.96,-r*.48,r*.16,r*.72); ctx.fillRect(r*.7,-r*.48,r*.16,r*.72);
+      ctx.fillStyle='#983c3d'; ctx.beginPath(); ctx.moveTo(-r*.45,-r*.66); ctx.lineTo(r*.45,-r*.66); ctx.lineTo(r*.32,-r*.25); ctx.lineTo(-r*.32,-r*.25); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#d16865'; ctx.beginPath(); ctx.moveTo(-r*.28,-r*.58); ctx.lineTo(r*.28,-r*.58); ctx.lineTo(r*.2,-r*.47); ctx.lineTo(-r*.22,-r*.47); ctx.closePath(); ctx.fill();
+      const core=1+0.18*Math.sin(tNow/130); ctx.fillStyle=en.color; ctx.beginPath(); ctx.arc(0,r*.12,r*.30*core,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#ffd0c7'; ctx.beginPath(); ctx.arc(-r*.08,r*.04,r*.09,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#211116'; ctx.fillRect(-r*.42,r*.48,r*.84,r*.2); ctx.fillStyle='#6a3038'; ctx.fillRect(-r*.32,r*.51,r*.64,r*.07);
     } else if(en.type==='panzer'){
       /* Panzer: massive Platten mit sichtbaren Fugen. Der Umriss muss auf einen Blick
          „hier prallt etwas ab" sagen, sonst wirkt der reduzierte Schaden wie ein Fehler. */
-      ctx.fillStyle='#141b26';
-      hexPath(ctx,r); ctx.fill();
-      ctx.lineWidth=3; ctx.strokeStyle=en.color; ctx.stroke(); ctx.lineWidth=1.5;
-      // Plattenfugen
-      ctx.strokeStyle='rgba(200,215,235,0.35)';
-      for(let i=0;i<3;i++){
-        const a=i*Math.PI/3 + tNow/2600;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a)*r*0.35, Math.sin(a)*r*0.35);
-        ctx.lineTo(Math.cos(a)*r*0.92, Math.sin(a)*r*0.92);
-        ctx.stroke();
-      }
-      // Kern: die verwundbare Stelle, sichtbar aber klein
-      sb(7); ctx.fillStyle=en.color;
-      ctx.beginPath(); ctx.arc(0,0,r*0.22,0,Math.PI*2); ctx.fill(); sb(0);
+      // Mobile Schildkrabbe: niedriger Körper, überlappende Schildplatten und Kopfkern.
+      ctx.fillStyle='#5e738c'; ctx.beginPath(); ctx.ellipse(-r*.08,0,r*.92,r*.72,0,0,Math.PI*2); ctx.fill(); ctx.lineWidth=3; ctx.stroke();
+      ctx.fillStyle='#8fa5b8'; ctx.beginPath(); ctx.ellipse(-r*.18,-r*.08,r*.58,r*.42,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#34495d'; ctx.beginPath(); ctx.moveTo(r*.45,-r*.4); ctx.lineTo(r*1.02,-r*.2); ctx.lineTo(r*1.02,r*.2); ctx.lineTo(r*.45,r*.4); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=en.color; ctx.beginPath(); ctx.arc(r*.73,0,r*.18,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#26394b';
+      ctx.fillRect(-r*.62,-r*.9,r*.28,r*.34); ctx.fillRect(-r*.1,-r*.98,r*.28,r*.38);
+      ctx.fillRect(-r*.62,r*.56,r*.28,r*.34); ctx.fillRect(-r*.1,r*.6,r*.28,r*.38);
+      ctx.fillStyle='#0e1721'; for(const yy of [-.5,0,.5]) ctx.fillRect(-r*.45,r*yy*.7,r*.55,r*.08);
     } else if(en.type==='jaeger'){
-      // Jäger: spitzer Pfeil mit Lauf nach vorn; Flügel-Flossen flattern, beim Laden glüht die Mündung
-      ctx.fillStyle='#16100a';
-      ctx.beginPath(); ctx.moveTo(r+4,0); ctx.lineTo(-r*0.5,r*0.7); ctx.lineTo(-r*0.8,0); ctx.lineTo(-r*0.5,-r*0.7); ctx.closePath(); ctx.fill(); ctx.stroke();
-      const flap=Math.sin(tNow/70)*3;
-      ctx.fillStyle='rgba(255,210,87,0.7)';
-      ctx.beginPath(); ctx.moveTo(-r*0.2,r*0.3); ctx.lineTo(-r*0.7,r*0.7+flap); ctx.lineTo(-r*0.6,r*0.1); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(-r*0.2,-r*0.3); ctx.lineTo(-r*0.7,-r*0.7-flap); ctx.lineTo(-r*0.6,-r*0.1); ctx.closePath(); ctx.fill();
+      // Scharfschützen-Gleiter: schlanker Rumpf, langer Lauf und Heckfinnen.
+      ctx.fillStyle='#3b301b'; ctx.beginPath(); ctx.moveTo(r*1.2,0); ctx.lineTo(r*.32,-r*.35); ctx.lineTo(-r*.7,-r*.3); ctx.lineTo(-r*.9,0); ctx.lineTo(-r*.7,r*.3); ctx.lineTo(r*.32,r*.35); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#9a762d'; ctx.beginPath(); ctx.moveTo(-r*.2,-r*.3); ctx.lineTo(-r*.82,-r*.82); ctx.lineTo(-r*.6,-r*.12); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-r*.2,r*.3); ctx.lineTo(-r*.82,r*.82); ctx.lineTo(-r*.6,r*.12); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#e0b449'; ctx.beginPath(); ctx.moveTo(-r*.55,-r*.57); ctx.lineTo(-r*.75,-r*.7); ctx.lineTo(-r*.62,-r*.28); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(-r*.55,r*.57); ctx.lineTo(-r*.75,r*.7); ctx.lineTo(-r*.62,r*.28); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#18150e'; ctx.fillRect(r*.22,-r*.13,r*1.16,r*.26); ctx.fillStyle='#8b7336'; ctx.fillRect(r*.3,-r*.06,r*.95,r*.08);
       if(en.chargeT>0){
         sb(18); ctx.fillStyle='#ffe28a';
         ctx.beginPath(); ctx.arc(r+6,0,2.5+en.chargeT*6/CONFIG.jaeger.chargeMs,0,Math.PI*2); ctx.fill();
       } else {
         sb(6); ctx.fillStyle=en.color; ctx.beginPath(); ctx.arc(r*0.35,0,r*0.18,0,Math.PI*2); ctx.fill();
       }
+      sb(0); ctx.fillStyle='#d0a43d'; ctx.fillRect(-r*.75,-r*.12,r*.2,r*.24); ctx.fillStyle='#ffe38a'; ctx.fillRect(-r*.7,-r*.07,r*.1,r*.08);
     } else if(en.type==='exploder'){
-      // Exploder: gepanzerte Kugel mit pulsierendem Kern; beim Zünden wächst ein heller Ring
-      ctx.fillStyle='#2a0a18';
-      ctx.beginPath(); ctx.arc(0,0,r*0.95,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      // Viergeteilte Reaktormine: vier Schalen stehen um den freien pinken Kern.
+      for(let k=0;k<4;k++){ ctx.save(); ctx.rotate(k*Math.PI/2); ctx.fillStyle=k%2?'#54203f':'#67264a'; ctx.beginPath(); ctx.roundRect(-r*.38,-r*.9,r*.76,r*.62,4); ctx.fill(); ctx.stroke(); ctx.fillStyle='#9b416d'; ctx.beginPath(); ctx.roundRect(-r*.22,-r*.82,r*.44,r*.13,2); ctx.fill(); ctx.restore(); }
       const pulse = 1+0.15*Math.sin(now/140);
-      sb(10); ctx.fillStyle=en.exploding? '#ffd257' : en.color;
-      ctx.beginPath(); ctx.arc(0,0,r*0.32*pulse,0,Math.PI*2); ctx.fill();
+      sb(10); ctx.fillStyle=en.exploding? '#ffd257' : '#ff5aa2';
+      ctx.beginPath(); ctx.arc(0,0,r*0.29*pulse,0,Math.PI*2); ctx.fill(); sb(0);
+      ctx.strokeStyle='#8d315f'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(0,0,r*.42,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='#ffd7ef'; ctx.beginPath(); ctx.arc(-r*.08,-r*.08,r*.09,0,Math.PI*2); ctx.fill();
       if(en.exploding){
         const ft=Math.max(0, en.explodeT/CONFIG.exploder.fuseMs);   // 1 -> 0 während des Zündens
         sb(30); ctx.strokeStyle='rgba(255,90,162,'+(0.4+(1-ft)*0.6).toFixed(2)+')'; ctx.lineWidth=3;
         ctx.beginPath(); ctx.arc(0,0,r*0.9+(1-ft)*20,0,Math.PI*2); ctx.stroke();
       }
     } else if(en.type==='knoten'){
-      // Brutknoten: unbewegliche Kapsel, pulsiert im Rhythmus der Bossheilung
-      ctx.fillStyle='#0a2018';
-      ctx.beginPath(); ctx.arc(0,0,r*0.9,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      // Dreibeinige Brutkapsel: Kapselbauch ruht sichtbar auf drei Stützbeinen.
+      ctx.strokeStyle=en.color; ctx.lineWidth=2.5; ctx.fillStyle='#0a2018';
+      for(let k=0;k<3;k++){ const a=k*Math.PI*2/3+Math.PI/2; ctx.beginPath(); ctx.moveTo(Math.cos(a)*r*.35,Math.sin(a)*r*.35); ctx.lineTo(Math.cos(a)*r*1.05,Math.sin(a)*r*1.05); ctx.stroke(); }
+      ctx.beginPath(); ctx.ellipse(0,-r*.08,r*.72,r*.82,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
       const puls=1+0.18*Math.sin(tNow/220);
       sb(10); ctx.fillStyle=en.color;
       ctx.beginPath(); ctx.arc(0,0,r*0.42*puls,0,Math.PI*2); ctx.fill();
+      sb(0); ctx.fillStyle='#baffd5'; ctx.fillRect(-r*.08,-r*.58,r*.16,r*.25);
     } else { // boss — mehrteilige Erscheinung: gegenläufige Ringe, Panzerplatten, Auge
       const wob=1+0.05*Math.sin(tNow/200);
       const charging = en.warnT>0;               // lädt gerade eine Fähigkeit
@@ -6884,41 +6901,41 @@ function draw(){
       // 3) Panzerkörper — je Variante eine eigene Silhouette
       ctx.lineWidth=3; ctx.fillStyle='#140a1e';
       if(form==='organic'){
-        // Brutmutter: rundlicher, atmender Leib mit Brutkammern
+        // Brutmutter: kelchartiger Leib mit drei schweren Brutkammern.
         const atem=1+0.07*Math.sin(tNow/430);
-        ctx.beginPath(); ctx.ellipse(0,0,r*1.05*atem,r*0.92*atem,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-r*.92, r*.5); ctx.quadraticCurveTo(-r*1.05,-r*.6,0,-r*1.08); ctx.quadraticCurveTo(r*1.05,-r*.6,r*.92,r*.5); ctx.quadraticCurveTo(0,r*1.08,-r*.92,r*.5); ctx.fill(); ctx.stroke();
         ctx.fillStyle='rgba('+rgb+',0.35)';
-        for(let k=0;k<5;k++){
+        for(let k=0;k<3;k++){
           const a=k*Math.PI*2/5 + tNow/2400;
-          ctx.beginPath(); ctx.arc(Math.cos(a)*r*0.55, Math.sin(a)*r*0.55, r*0.19*atem, 0, Math.PI*2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(Math.cos(a)*r*.55,Math.sin(a)*r*.42,r*.24*atem,r*.17*atem,0,0,Math.PI*2); ctx.fill();
         }
       } else if(form==='wedge'){
-        // Rammbock: schwerer Keil, Spitze zeigt in Laufrichtung (Körper ist bereits gedreht)
+        // Rammbock: mehrschichtige Frontkeilplatte mit rückwärtigem Maschinenblock.
         ctx.beginPath();
-        ctx.moveTo(r*1.15,0); ctx.lineTo(r*0.1,r*0.95); ctx.lineTo(-r*0.85,r*0.55);
-        ctx.lineTo(-r*0.85,-r*0.55); ctx.lineTo(r*0.1,-r*0.95);
+        ctx.moveTo(r*1.25,0); ctx.lineTo(r*.25,r*.9); ctx.lineTo(-r*.75,r*.65); ctx.lineTo(-r*.95,0);
+        ctx.lineTo(-r*.75,-r*.65); ctx.lineTo(r*.25,-r*.9);
         ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.fillStyle='rgba('+rgb+',0.5)';       // Rammplatte vorn
-        ctx.beginPath(); ctx.roundRect(r*0.55,-r*0.42,r*0.36,r*0.84,4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle='rgba('+rgb+',0.5)'; ctx.beginPath(); ctx.moveTo(r*.58,-r*.48); ctx.lineTo(r*1.12,0); ctx.lineTo(r*.58,r*.48); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle='#331a42'; ctx.fillRect(-r*.72,-r*.32,r*.38,r*.64);
       } else if(form==='ring'){
-        // Spiralwerfer: schlanker Kern mit weit auskragenden Werferarmen
-        ctx.beginPath(); ctx.arc(0,0,r*0.72,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        // Spiralwerfer: offener Kernkäfig mit drei getrennten Werferarmen.
+        ctx.beginPath(); ctx.arc(0,0,r*.62,0,Math.PI*2); ctx.fill(); ctx.stroke();
         ctx.save(); ctx.rotate(tNow/900);
         ctx.strokeStyle=en.color; ctx.lineWidth=4; sb(12);
         for(let k=0;k<3;k++){
           const a=k*Math.PI*2/3;
-          ctx.beginPath(); ctx.moveTo(Math.cos(a)*r*0.6, Math.sin(a)*r*0.6);
-          ctx.lineTo(Math.cos(a)*r*1.25, Math.sin(a)*r*1.25); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(Math.cos(a)*r*.48,Math.sin(a)*r*.48); ctx.lineTo(Math.cos(a)*r*1.28,Math.sin(a)*r*1.28); ctx.stroke();
+          ctx.fillStyle='#263b55'; ctx.beginPath(); ctx.arc(Math.cos(a)*r*1.12,Math.sin(a)*r*1.12,r*.16,0,Math.PI*2); ctx.fill();
         }
         ctx.restore();
       } else {
-        // Wächter: die bekannte Hexplatte mit Segmenten
-        hexPath(ctx,r); ctx.fill(); ctx.stroke();
+        // Wächter: sternförmiger Kommandokern mit vier angewinkelten Schildarmen.
+        ctx.beginPath(); for(let k=0;k<8;k++){ const a=k*Math.PI/4; const rr=k%2?r*.68:r*1.08; const x=Math.cos(a)*rr,y=Math.sin(a)*rr; k?ctx.lineTo(x,y):ctx.moveTo(x,y); } ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.fillStyle='rgba('+rgb+',0.22)';
-        for(let k=0;k<6;k++){
-          const a=k*Math.PI/3+Math.PI/6;
+        for(let k=0;k<4;k++){
+          const a=k*Math.PI/2+Math.PI/4;
           ctx.save(); ctx.rotate(a);
-          ctx.beginPath(); ctx.roundRect(r*0.52,-r*0.20,r*0.42,r*0.40,3); ctx.fill(); ctx.stroke();
+          ctx.beginPath(); ctx.roundRect(r*.46,-r*.25,r*.48,r*.5,3); ctx.fill(); ctx.stroke();
           ctx.restore();
         }
       }
