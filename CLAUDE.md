@@ -263,7 +263,8 @@ Abwechslung. Schwierigkeit entsteht auch durch Warnformen und Positionierung,
 nicht nur durch mehr Gegner oder höhere HP.
 
 Der **Jäger** sperrt ab Beginn der Zielphase seine Schussrichtung sichtbar (fester
-Zielstrahl statt Nachführen) und feuert entlang dieser gesperrten Linie; nach dem
+Zielstrahl statt Nachführen) und feuert entlang dieser gesperrten Linie. Körper und
+Waffenlauf behalten dieselbe Richtung während der Warnung und Erholung; nach dem
 Schuss hält er eine kurze, verwundbare **Erholung** (`CONFIG.jaeger.recoverMs`), bevor
 er zurückweicht (Phase `erholung`). Seitliches Ausweichen bringt den Spieler damit
 sichtbar aus der Linie und ermöglicht einen erreichbaren Konter. Kein zusätzlicher

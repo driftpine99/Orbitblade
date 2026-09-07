@@ -6757,7 +6757,9 @@ function draw(){
     const r=en.radius;
     if(!sichtbar(en.x,en.y,r*2.5+18)) continue;
     sichtbareGegner++;
-    const ang = Math.atan2(player.y-en.y, player.x-en.x);
+    // Körper und Waffenlauf zeigen während Warnung/Erholung in die echte Schussrichtung.
+    const zielGesperrt=en.type==='jaeger' && (en.chargeT>0 || en.jagdPhase==='erholung') && (en.aimX||en.aimY);
+    const ang = zielGesperrt ? Math.atan2(en.aimY,en.aimX) : Math.atan2(player.y-en.y, player.x-en.x);
     // Lichtaura in Gegnerfarbe: hebt die Figur vom jetzt reicheren Hintergrund ab
     // und macht auf einen Blick klar, welcher Typ da kommt.
     if(fxAn){
