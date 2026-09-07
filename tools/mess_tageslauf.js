@@ -16,13 +16,28 @@ function frisch(){
   api.G('resetGame()');
   api.G('randomEnemyType=(function(f){ return function(){ const t=f(); globalThis.__typen=(globalThis.__typen||[]); __typen.push(t); return t; }; })(randomEnemyType);');
   api.G('waehleWellenEreignis=(function(f){ return function(){ f(); if(laufEreignis){ globalThis.__ereignisse=(globalThis.__ereignisse||[]); __ereignisse.push(wave+":"+laufEreignis.id);} }; })(waehleWellenEreignis);');
-  api.G('oeffneAuslese=(function(f){ return function(){ f(); try{ const k=(typeof ausleseKarten!=="undefined"&&ausleseKarten)?ausleseKarten:[]; if(k.length){ globalThis.__karten=(globalThis.__karten||[]); __karten.push(k.map(c=>c.id+(c.kind==="verstaerkt"?"+":"-")).join(",")); waehleAuslese(k[0]); } else schliesseAuslese(); if(state==="countdown") state="playing"; }catch(e){} }; })(oeffneAuslese);');
+  // Nur normale Kartenangebote protokollieren; Weichen nicht als Angebot mitzählen.
+  api.G(`oeffneAuslese=(function(f){ return function(){
+    const offen=f.apply(this,arguments);
+    if(offen){
+      globalThis.__karten=globalThis.__karten||[];
+      __karten.push(ausleseKarten.map(c=>c.id+(c.kind==='verstaerkt'?'+':'-')).join(','));
+    }
+    return offen;
+  }; })(oeffneAuslese);`);
   return api;
 }
 
+function entscheideAuslese(api){
+  api.G(`if(state==='auslese'){
+    if(ausleseKarten.length) waehleAuslese(ausleseKarten[0]); else schliesseAuslese();
+  }
+  if(state==='countdown') finishCombatResume();`);
+}
+
 console.log('== 1) Signal ==');
-const sigA=frisch().G('(startTageslauf(), JSON.stringify({figur:laufVorgabe.figur,s1:laufVorgabe.slot1,s2:laufVorgabe.slot2,twist:laufVorgabe.twist.id,regel:laufVorgabe.regel.id}))');
-const sigB=frisch().G('(startTageslauf(), JSON.stringify({figur:laufVorgabe.figur,s1:laufVorgabe.slot1,s2:laufVorgabe.slot2,twist:laufVorgabe.twist.id,regel:laufVorgabe.regel.id}))');
+const sigA=frisch().G('(startTageslauf(), JSON.stringify({figur:laufVorgabe.figur,macht:laufVorgabe.slot1,twist:laufVorgabe.twist.id,regel:laufVorgabe.regel.id}))');
+const sigB=frisch().G('(startTageslauf(), JSON.stringify({figur:laufVorgabe.figur,macht:laufVorgabe.slot1,twist:laufVorgabe.twist.id,regel:laufVorgabe.regel.id}))');
 console.log(sigA);
 console.log('Signal identisch:', sigA===sigB);
 
@@ -44,7 +59,8 @@ function ereignisFolge(schnell){
   const bot=makeOrbitBot(api,{tempoFaktor:schnell?1.6:0.8});
   api.G('hurtPlayer=function(){return;}; hurtPlayer.__simBlank=true;');
   for(let f=0;f<60*60*16;f++){
-    api.step(1); bot(1/60);
+    entscheideAuslese(api);
+    api.step(1); if(api.G('state')==='playing') bot(1/60);
     if(api.G('state')==='gameover'||api.G('state')==='sieg') break;
     if(api.G('wave')>=27 && api.G('enemies').length===0) break;
   }
@@ -63,7 +79,8 @@ function ersteKarten(){
   const bot=makeOrbitBot(api,{});
   api.G('hurtPlayer=function(){return;}; hurtPlayer.__simBlank=true;');
   for(let f=0;f<60*60*6;f++){
-    api.step(1); bot(1/60);
+    entscheideAuslese(api);
+    api.step(1); if(api.G('state')==='playing') bot(1/60);
     if(api.G('typeof __karten!=="undefined"&&__karten.length')) break;
     if(api.G('state')==='gameover') break;
   }

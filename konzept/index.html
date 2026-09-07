@@ -2,14 +2,14 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Orbitblade — Konzeptfassung</title>
 <!-- Diese Versionskennung MUSS bei jeder Aenderung an game.js oder style.css
      hochgezaehlt werden. Sie stand vom 17.08. bis 31.08. still; in dieser Zeit
      lieferte GitHub Pages zwar neue Dateien aus, die Browser luden aber die
      zwischengespeicherte alte Fassung unter derselben Adresse. Gepushte
      Aenderungen kamen auf dem Geraet schlicht nicht an. -->
-<link rel="stylesheet" href="style.css?v=20260901-spar">
+<link rel="stylesheet" href="style.css?v=20260907-neun-maechte">
 </head>
 <body>
 <div id="game-wrap">
@@ -50,21 +50,27 @@
 
   <!-- Start Menu -->
   <div id="overlay-start" class="overlay">
-    <div class="logo">
-      <span class="logo-orbit" aria-hidden="true"></span>
-      <h1>Orbit<span class="logo-accent">blade</span></h1>
-    <p class="subtitle" style="color:var(--gold);letter-spacing:.14em;font-size:var(--fs-xs);text-transform:uppercase">Konzeptfassung zum Testen</p>
+    <div class="start-panel">
+      <div class="logo">
+        <span class="logo-orbit" aria-hidden="true"></span>
+        <h1>Orbit<span class="logo-accent">blade</span></h1>
+        <p class="subtitle build-label">Konzeptfassung zum Testen</p>
+      </div>
+      <p class="subtitle start-claim">Deine Klinge kreist. Überlebe die Arena.</p>
+      <button id="start-btn" class="primary">Spielen</button>
+      <div class="start-actions" aria-label="Weitere Spielarten und Vorbereitung">
+        <button id="tages-btn" class="secondary tages-btn">⚡ Tageslauf</button>
+        <button id="startmaechte-btn" class="secondary">Hauptmacht</button>
+        <button id="hangar-btn" class="secondary">Sammlung</button>
+      </div>
+      <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
+      <section id="start-orbitauftrag" class="orbitauftrag-karte kompakt" aria-label="Orbitauftrag"></section>
+      <div class="start-tools" aria-label="Hilfe und Einstellungen">
+        <button id="info-btn" class="secondary menu-tool">ⓘ Hilfe</button>
+        <button id="settings-btn" class="secondary menu-tool">⚙ Einstellungen</button>
+      </div>
+      <p class="hint">Zieh in eine Richtung — die Klinge greift von allein an.<br><span style="opacity:.7">PC: WASD/Pfeile · 1 für deine Hauptmacht.</span></p>
     </div>
-    <p class="subtitle">Deine Klinge kreist. Überlebe die Arena.</p>
-    <section id="start-orbitauftrag" class="orbitauftrag-karte" aria-label="Orbitauftrag"></section>
-    <section id="start-tagessignal" class="orbitauftrag-karte tagessignal-karte" aria-label="Tageslauf"></section>
-    <button id="start-btn" class="primary">Spiel starten</button>
-    <button id="tages-btn" class="secondary tages-btn">⚡ Tageslauf</button>
-    <button id="startmaechte-btn" class="secondary">Vorbereitung</button>
-    <button id="hangar-btn" class="secondary">Hangar</button>
-    <button id="info-btn" class="secondary menu-tool">ⓘ Hilfe</button>
-    <button id="settings-btn" class="secondary menu-tool">⚙ Einstellungen</button>
-    <p class="hint">Zieh in eine Richtung — die Klinge greift von allein an.<br><span style="opacity:.7">PC: WASD/Pfeile · 1 für deine Hauptmacht.</span></p>
   </div>
 
   <!-- Pause -->
@@ -86,14 +92,14 @@
     <button id="abbruch-ja" class="secondary gefahr">Ja, beenden</button>
   </div>
 
-  <!-- Codex: alle Fähigkeiten ansehen + die 2 aktiven Slots umrüsten -->
+  <!-- Codex: den aktuellen Laufaufbau ansehen -->
   <div id="overlay-codex" class="overlay hidden">
     <h2>Mächte &amp; Ausrüstung</h2>
     <div id="codex-scroll">
       <p class="codex-hinweis">Jeder Aufstieg schaltet im Lauf <b>den nächsten Schritt von selbst frei</b>.
       Hier siehst du deinen aktuellen Aufbau, Freischaltungen und Entwicklungen.</p>
 
-      <h3 class="sec-title">Aktive Mächte — auf Knopfdruck</h3>
+      <h3 class="sec-title">Hauptmacht — auf Knopfdruck</h3>
       <p class="sec-hinweis">Im Lauf festgelegt. Womit du startest, wählst du vor dem
       Spiel im Hauptmenü unter <b>„Vorbereitung"</b>.</p>
       <div id="codex-slots" class="slot-reihe"></div>
@@ -109,12 +115,12 @@
     <button id="codex-back" class="primary">Zurück</button>
   </div>
 
-  <!-- Startmächte: mit welchen aktiven Mächten jeder Lauf beginnt -->
+  <!-- Vorbereitung: Hauptmacht und später die Hilfsstufe wählen -->
   <div id="overlay-startmaechte" class="overlay compact-overlay hidden">
     <header class="compact-head"><button id="startmaechte-back" class="icon-back" aria-label="Zurück">‹</button><h2>Vorbereitung</h2><span></span></header>
     <nav id="prepare-tabs" class="compact-tabs">
       <button class="compact-tab active" data-prepare="maechte">Hauptmacht</button>
-      <button class="compact-tab" data-prepare="hilfe">Stufe</button>
+      <button id="hilfe-tab" class="compact-tab" data-prepare="hilfe">Stufe</button>
     </nav>
     <div id="startmaechte-scroll">
       <section class="prepare-panel" data-prepare-panel="hilfe"><p class="sec-hinweis">Hilfen sperren nichts. Bestmarken werden getrennt geführt. Prüfstufen schaltest du durch Siege frei; sie geben ausschließlich Kosmetik, nie Kampfkraft.</p><div id="hilfe-wahl"></div></section>
@@ -122,7 +128,7 @@
     </div>
   </div>
 
-  <!-- Auswahl für einen Slot: öffnet sich beim Antippen eines Slots -->
+  <!-- Auswahl der Hauptmacht -->
   <div id="overlay-pick" class="overlay hidden">
     <h2 id="pick-titel">Macht wählen</h2>
     <p class="subtitle" id="pick-hinweis"></p>
@@ -228,7 +234,7 @@
         <p>Besiegte Gegner lassen <b>Fragmente</b> fallen. Sie bleiben dir über den Tod
         hinaus erhalten — nichts verfällt.</p>
         <p>Im <b>Hangar</b> findest du Werkstatt und Sammlung. Die Werkstatt schaltet
-        Möglichkeiten frei — etwa einen zweiten Aktiv-Slot oder einen <b>Begleiter</b> —
+        Möglichkeiten frei — etwa neue Hauptmächte oder einen <b>Begleiter</b> —
         statt den nächsten Lauf mit dauerhaften Prozentwerten zu entscheiden.</p>
       </div>
       <div class="info-block">
@@ -272,6 +278,6 @@
     </div>
   </div>
 </div>
-<script src="game.js?v=20260901-spar"></script>
+<script src="game.js?v=20260907-neun-maechte"></script>
 </body>
 </html>

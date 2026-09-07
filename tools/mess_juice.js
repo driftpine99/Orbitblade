@@ -10,13 +10,26 @@ const api = start({});
 api.G('resetGame()');
 api.G('startTageslauf()');   // voller Inhalt, Ereignisse inklusive
 api.G('hitstop=(function(f){ return function(ms){ globalThis.__hs=((typeof __hs!=="undefined")?__hs:0)+1; globalThis.__hsMs=Math.min(200,((typeof __hsMs!=="undefined")?__hsMs:0)+ms); return f(ms); }; })(hitstop);');
-api.G('oeffneAuslese=(function(f){ return function(){ f(); try{ const k=(typeof ausleseKarten!=="undefined"&&ausleseKarten)?ausleseKarten:[]; if(k.length){ globalThis.__angebote=(typeof __angebote!=="undefined"?__angebote:[]); for(const c of k) __angebote.push(c.id+(c.kind==="verstaerkt"?"+":"-")); waehleAuslese(k[0]); } else { schliesseAuslese(); } if(state==="countdown") state="playing"; }catch(e){ console.log("[auslese-fehler]", e&&e.message, "| state:", state); try{ schliesseAuslese(); if(state==="countdown") state="playing"; }catch(_e){} } }; })(oeffneAuslese);');
+// Nur normale Kartenangebote messen; Weichen gehören nicht zur Karten-Gewichtung.
+api.G(`oeffneAuslese=(function(f){ return function(){
+  const offen=f.apply(this,arguments);
+  if(offen){
+    globalThis.__angebote=globalThis.__angebote||[];
+    for(const c of ausleseKarten) __angebote.push(c.id+(c.kind==='verstaerkt'?'+':'-'));
+  }
+  return offen;
+}; })(oeffneAuslese);`);
 
 const bot = makeOrbitBot(api, {});
 let maxKette = 0;
 for (let f = 0; f < 60 * 60 * 45; f++) {
+  // Karten und Weichen über denselben echten Auswahlweg beantworten.
+  api.G(`if(state==='auslese'){
+    if(ausleseKarten.length) waehleAuslese(ausleseKarten[0]); else schliesseAuslese();
+  }
+  if(state==='countdown') finishCombatResume();`);
   api.step(1);
-  bot(1 / 60);
+  if(api.G('state')==='playing') bot(1 / 60);
   const kz = api.G('kettenZahl');
   if (kz > maxKette) maxKette = kz;
   const st = api.G('state');

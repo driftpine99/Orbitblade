@@ -43,9 +43,6 @@ function messeKombination(stufe, welle, startwert) {
 
   const api = start({ search: '?perf=1' });
 
-  // Überschreibe renderSkillTree, damit requestAnimationFrame nicht blockiert
-  api.G('renderSkillTree=function(){};');
-
   // Setze Hilfsstufe VOR resetGame, weil hilfe() save.hilfe liest
   api.G('save.hilfe="' + stufe + '";');
   api.G('resetGame()');

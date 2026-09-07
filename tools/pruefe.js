@@ -37,7 +37,7 @@ const KALIBRIEREN = argv.includes('--kalibrieren');
    bewusst grosszuegig: die heutigen Banger liegen bei 1,2 bis 2,75 je Sekunde. */
 const EREIGNIS_GRENZE = 8;
 const EREIGNIS_FUNKTIONEN = [
-  ['machtblitzEinschlag', 'Machtblitz'],
+  ['starteMachtblitz', 'Phaser-Strahl'],   // Phaser ist jetzt ein Strahl; gezählt wird der Abschuss
   ['plasmaEinschlag', 'Plasmabombe'],
   ['feuereSplitterfaecher', 'Splitterfaecher'],
   ['triggerDurchschlag', 'Orbitkrone-Durchschlag'],
@@ -121,7 +121,7 @@ function stressLauf(sekunden) {
   // Welche Effekte sollten ueberhaupt feuern? Nur so faellt auf, wenn der
   // Pruefstand gar nichts ausgeloest hat und deshalb faelschlich gruen zeigt.
   const erwartet = [];
-  if (api.G("isCarried('phaser')")) erwartet.push('Machtblitz');
+  if (api.G("isCarried('phaser')")) erwartet.push('Phaser-Strahl');
   if (api.G("modulRang('brandspur')>0")) erwartet.push('Plasmabombe');
   return { max, raten, ereignisse: ez, erwartet, kampfSekunden };
 }
@@ -186,7 +186,7 @@ function regel1() {
 const VERBOTENE_BEGRIFFE = [
   [/F[äa]higkeitenbaum|Skillbaum|Talentbaum/i, 'Der Faehigkeitenbaum ist entfernt'],
   [/Tippe\s+oben\s+rechts/i, 'Verweist auf den entfernten Baum-Knopf'],
-  [/zweite[rn]?\s+Macht|zweiten\s+Macht|andere[rn]?\s+Macht|beide[rn]?\s+M[äa]chte|zweiten\s+Slot/i,
+  [/zweite(?:r|n|s|m)?\s+(?:Aktiv[-\s]*)?(?:Macht|Slot)|Aktiv-Slots?|andere[rn]?\s+Macht|beide[rn]?\s+M[äa]chte/i,
     'Es gibt nur noch einen aktiven Knopf'],
   [/Geschossstrom|Dauerfeuer|Brandmal/i, 'Phaser und Brandspur sind Machtblitz und Plasmabombe'],
 ];
@@ -422,11 +422,142 @@ function wirdVersteckt(id, el, regeln) {
   });
 }
 
+function pruefeEinKnopfVertrag() {
+  const fehler = [];
+  const api = sim.start({ search: '?perf=1&god=1' });
+  api.G('resetGame()');
+  const ist = api.G(`(function(){
+    var start=startMaechte(), signal=tagesSignal('2042-01-02'), o=opts();
+    return {
+      startSlot2:Object.prototype.hasOwnProperty.call(start,'slot2'),
+      signalSlot2:Object.prototype.hasOwnProperty.call(signal,'slot2'),
+      anordnung:Object.prototype.hasOwnProperty.call(o,'anordnung'),
+      activeSlot2:activeSlot2,
+      getragen:ACTIVE_IDS.filter(function(id){return isCarried(id);}).length,
+      hasSlot2:hasSlot2()
+    };
+  })()`);
+  if (ist.startSlot2 || ist.signalSlot2 || ist.anordnung || ist.activeSlot2 !== null
+      || ist.getragen !== 1 || ist.hasSlot2) {
+    fehler.push('Ein-Knopf-Vertrag verletzt: ' + JSON.stringify(ist));
+  }
+
+  const mig = api.G(`(function(){
+    var alt=Object.assign(clone(DEFAULT_SAVE),{
+      v:9,stars:23,meta:{slot2:1},opts:{seite:'links',anordnung:'uebereinander'},
+      startMaechte:{slot1:'wirbel',slot2:'stoss'},
+      presets:[{figur:'held',slot1:'wirbel',slot2:'stoss'}]
+    });
+    var einmal=migrateSave(clone(alt)), sterneEinmal=einmal.stars;
+    var zweimal=migrateSave(clone(einmal)); save=zweimal;
+    var start=startMaechte(), o=opts();
+    return {v:zweimal.v,sterneEinmal:sterneEinmal,sterneZweimal:zweimal.stars,
+      startSlot2:Object.prototype.hasOwnProperty.call(start,'slot2'),
+      presetSlot2:Object.prototype.hasOwnProperty.call(zweimal.presets[0],'slot2'),
+      anordnung:Object.prototype.hasOwnProperty.call(o,'anordnung')};
+  })()`);
+  if (mig.v !== 12 || mig.sterneEinmal !== 1023 || mig.sterneZweimal !== 1023
+      || mig.startSlot2 || mig.presetSlot2 || mig.anordnung) {
+    fehler.push('Migration v9→v12 ist nicht verlustfrei/idempotent: ' + JSON.stringify(mig));
+  }
+
+  const html = lies('konzept/index.html');
+  const buttons = (html.match(/class="[^"]*\bspecial-btn\b[^"]*"/g) || []).length;
+  if (buttons !== 1) fehler.push('HTML enthaelt ' + buttons + ' Machtknoepfe statt genau einem');
+  return fehler;
+}
+
+function pruefePauseVertrag() {
+  const fehler = [];
+  const api = sim.start({ search: '?perf=1&god=1' });
+  api.G('resetGame(); shieldUntil=spielJetzt()+2500; treeFlags.resonanzUntil=spielJetzt()+1800;');
+  const vor = api.G('({zeit:spielJetzt(),schild:shieldUntil-spielJetzt(),resonanz:treeFlags.resonanzUntil-spielJetzt()})');
+  api.G("handleKeyDown({key:'Escape',repeat:false,preventDefault:function(){}})");
+  if (api.G('state') !== 'paused') fehler.push('Escape oeffnet die Pause nicht stabil');
+  api.G("handleKeyDown({key:'Escape',repeat:true,preventDefault:function(){}})");
+  if (api.G('state') !== 'paused') fehler.push('gehaltenes Escape schaltet die Pause erneut um');
+  api.G('update(1000)');
+  const pausiert = api.G('({zeit:spielJetzt(),schild:shieldUntil-spielJetzt(),resonanz:treeFlags.resonanzUntil-spielJetzt()})');
+  if (pausiert.zeit !== vor.zeit || pausiert.schild !== vor.schild || pausiert.resonanz !== vor.resonanz) {
+    fehler.push('Laufuhr oder Fristen laufen in Pause weiter: ' + JSON.stringify({ vor, pausiert }));
+  }
+  api.G("handleKeyDown({key:'Escape',repeat:false,preventDefault:function(){}}); update(1000)");
+  const weiter = api.G('({state:state,zeit:spielJetzt(),schild:shieldUntil-spielJetzt(),resonanz:treeFlags.resonanzUntil-spielJetzt()})');
+  if (weiter.state !== 'playing' || Math.abs(weiter.zeit - (vor.zeit + 1000)) > 0.01
+      || Math.abs(weiter.schild - 1500) > 0.01 || Math.abs(weiter.resonanz - 800) > 0.01) {
+    fehler.push('Fristen laufen nach Fortsetzen nicht mit Spielzeit weiter: ' + JSON.stringify(weiter));
+  }
+
+  api.G("startCombatResume('Probe'); var __rest=combatResumeRest; pauseGame(); tickCombatResume(900)");
+  const countdownPause = api.G('({state:state,rest:combatResumeRest,vor:__rest})');
+  if (countdownPause.state !== 'paused' || countdownPause.rest !== countdownPause.vor) {
+    fehler.push('Countdown laeuft in Pause weiter: ' + JSON.stringify(countdownPause));
+  }
+  api.G('resumeGame(); tickCombatResume(500)');
+  const countdownWeiter = api.G('({state:state,rest:combatResumeRest})');
+  if (countdownWeiter.state !== 'countdown' || Math.abs(countdownWeiter.rest - 1500) > 0.01) {
+    fehler.push('Countdown wird nach Pause nicht korrekt fortgesetzt: ' + JSON.stringify(countdownWeiter));
+  }
+
+  api.G("finishCombatResume(); keys.w=true; mouseDown=true; stickStart(10,10); setJoystick(1,0); pauseOnBackground()");
+  const hintergrund = api.G('({state:state,tasten:Object.keys(keys).length,mouseDown:mouseDown,stick:stickOrigin,move:{x:moveVec.x,y:moveVec.y}})');
+  if (hintergrund.state !== 'paused' || hintergrund.tasten || hintergrund.mouseDown
+      || hintergrund.stick !== null || hintergrund.move.x || hintergrund.move.y) {
+    fehler.push('Hintergrundpause neutralisiert Eingaben nicht: ' + JSON.stringify(hintergrund));
+  }
+  return fehler;
+}
+
+function pruefeSaveRettung() {
+  const fehler = [];
+  const api = sim.start({});
+  const kaputt = '{nicht-json';
+  api.ctx.localStorage.setItem('orbitblade_konzept_save', kaputt);
+  api.ctx.localStorage.setItem('orbitblade_konzept_save_backup', JSON.stringify({ v: 11, stars: 321 }));
+  api.G('loadSave()');
+  const gerettet = api.G(`({stars:save.stars,hinweis:saveRecoveryNotice,
+    defekt:localStorage.getItem(SAVE_CORRUPT_KEY),
+    primaer:JSON.parse(localStorage.getItem(SAVE_KEY)).stars})`);
+  if (gerettet.stars !== 321 || gerettet.primaer !== 321 || gerettet.defekt !== kaputt
+      || !/wiederhergestellt/i.test(gerettet.hinweis)) {
+    fehler.push('gueltige Sicherung wird nicht sichtbar wiederhergestellt: ' + JSON.stringify(gerettet));
+  }
+
+  const leer = sim.start({});
+  const kaputt2 = '{auch-kaputt';
+  leer.ctx.localStorage.setItem('orbitblade_konzept_save', kaputt2);
+  leer.ctx.localStorage.setItem('orbitblade_konzept_save_backup', '[]');
+  leer.G('loadSave()');
+  const fallback = leer.G(`({v:save.v,stars:save.stars,hinweis:saveRecoveryNotice,
+    defekt:localStorage.getItem(SAVE_CORRUPT_KEY)})`);
+  if (fallback.v !== 12 || fallback.stars !== 0 || fallback.defekt !== kaputt2
+      || !/beschädigt/i.test(fallback.hinweis)) {
+    fehler.push('doppelte Korruption bleibt nicht recoverbar/sichtbar: ' + JSON.stringify(fallback));
+  }
+
+  const zukunft = sim.start({});
+  const neu = JSON.stringify({ v: 99, stars: 999 });
+  zukunft.ctx.localStorage.setItem('orbitblade_konzept_save', neu);
+  zukunft.G('loadSave()');
+  const future = zukunft.G('({v:save.v,stars:save.stars,defekt:localStorage.getItem(SAVE_CORRUPT_KEY)})');
+  if (future.v !== 12 || future.stars !== 0 || future.defekt !== neu) {
+    fehler.push('zukuenftige Save-Version wird still heruntergestuft: ' + JSON.stringify(future));
+  }
+  return fehler;
+}
+
 function regel4() {
   const zeilen = [];
   let ok = true;
   const regeln = versteckendeRegeln(lies('konzept/style.css'));
   const elemente = htmlElemente(lies('konzept/index.html'));
+
+  const vertragFehler=pruefeEinKnopfVertrag().concat(pruefePauseVertrag(), pruefeSaveRettung());
+  for (const meldung of vertragFehler) {
+    ok = false;
+    zeilen.push(meldung);
+  }
+  if (!vertragFehler.length) zeilen.push('Ein-Knopf, pausierbare Laufzeit und Save-Rettung verifiziert');
 
   const api = sim.start({ search: '?perf=1&god=1' });
   api.G('resetGame()');

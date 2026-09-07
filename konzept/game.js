@@ -17,8 +17,19 @@ const CONFIG = {
   bombe: { fuse: 1800, radius: 130, dmg: 70 },
   nova:  { range: 190, dmg: 40, stun: 500 },
   // Seltene Einschläge statt Dauerfeuer; IDs bleiben für Karten und Rezepte stabil.
-  phaser:{ dmg:[270,270], cooldown:[2600,1900], targets:[3,5], range:360, warn:250, bolt:350, scorch:400, stun:250 },
-  funkenkranz: { dmg:[40,48], hitCd:220, radius:[22,30], hitRadius:[7,11], count:[2,4], speed:3.8 },
+  // Phaser-Strahl (ID phaser): gerader, gesperrter Strahl vom Spieler; pierce = Durchschläge,
+  // width = halbe Strahlbreite, life = Sichtbarkeits-/Trefferfenster in ms (Swept-Segment).
+  // warn/bolt/scorch/stun/targets sind Altfelder der Machtblitz-Einschläge.
+  phaser:{ dmg:[210,210], cooldown:[1700,1500], pierce:[3,5], range:360, width:12, life:280, targets:[3,5], warn:250, bolt:350, scorch:400, stun:250 },
+  // Machtgriff (ID machtgriff): fokussierter Lichtgriff auf EIN gefährliches Ziel — hebt/hält
+  // normale Gegner kurz und zerquetscht sie; Bosse ohne Lift und ohne AoE. interval/hold Basis/Sprung.
+  machtgriff:{ interval:[7000,6000], hold:[650,850], dmg:150, eliteMult:1.7, bossMult:1.5 },
+  // Energieklingen-Wurf (ID energieklingenwurf): Klinge fliegt zum nächsten Ziel und kehrt zum
+  // LIVE-Spielerpunkt zurück; trifft je Flugrichtung einmal, Rückweg härter (rueckMult).
+  wurf:{ interval:[3200,3000], dmg:[46,60], reach:320, speed:520, radius:16, rueckMult:1.4 },
+  // Macht-Echo (ID macht_echo): Ringpuffer der Spielerbewegung; eine Geistfigur läuft den
+  // gespeicherten Weg ab und trifft jedes Ziel einmal. markMs = Vormarkierung, laufFrames = Dauer.
+  echo:{ interval:[5200,4600], dmg:[34,46], breite:[24,32], sampleMs:55, maxPunkte:40, markMs:250, laufFrames:26 },
   brandspur:{ dmg:[180,180], cooldown:[3200,2400], radius:[95,125], range:340, core:15, flight:450, gap:250, glow:500 },
   healPerKill: 3,
   playerBaseSpeed: 175,
@@ -88,7 +99,9 @@ const CONFIG = {
      davon, dass jetzt bis zu 51 Gegner gleichzeitig da sind. Schaden 26 -> 10 und
      Radius 95 -> 82 bringen sie auf +34/+89 %, also auf Augenhoehe mit der Glasklinge.
      Gemessen bei dichter wie bei verteilter Gegnerlage nahezu gleich. */
-  nachhall: { alle:4, radius:82, dmg:10 },
+  // Singularität (ID nachhall): zeitgesteuertes Kraftzentrum, das eine Gruppe zusammenzieht
+  // und kurz hält, dann leicht implodiert. alle/radius/dmg sind Altfelder der Vorversion.
+  nachhall: { alle:4, radius:82, dmg:10, singInterval:[6000,5500], pullR:200, pullForce:260, holdMs:950, implosionDmg:12, implosionR:120 },
   siegWelle: 30,           // hier steht der Endgegner — bis dahin ist das Spiel gewinnbar
   spinHitInterval: 120,    // ms zwischen den Treffer-Ticks
   // Tempo bewusst nah am Spieler (175): Weglaufen soll Zeit kosten, nicht alles lösen
@@ -110,7 +123,7 @@ const CONFIG = {
   // haltNah liegt knapp hinter der Klingenreichweite (~88 px bei Jaeger-Radius 16):
   // wer waehrend des Ladens hineingeht, riskiert die Position fuer den Kill. haltFern
   // ist nur die Zieldistanz des Rueckzugs — shootCd beendet ihn notfalls frueher.
-  jaeger: { shootRange:300, chargeMs:850, cooldown:700, haltNah:115, haltFern:270 },
+  jaeger: { shootRange:300, chargeMs:850, cooldown:700, haltNah:115, haltFern:270, recoverMs:420 },
   exploder: { fuseMs:650, blast:95 },              // Zünd-Puls vor der Explosion, Schadensabfall
   xpOrb: { chance:0.15, pity:8, xp:30, radius:9 },
   // Rote Lebenskugeln: seltener als XP-Orbs, heilen einen festen Anteil der Leiste
@@ -137,10 +150,13 @@ const CONFIG = {
   caps: { dmgMult:2.0, speedMult:1.6, rangeMult:1.8, fireRateMult:1.5, maxHpBonus:150 },
   // Freischaltbare Fähigkeiten (passiv, kein neuer Knopf)
   abil: {
-    chainDamage:14, chainRange:140,          // Kettenblitz: springt zum nächsten Gegner
-    counterDamage:22, counterRadius:110, counterCd:600, counterPush:20,  // Konterstoß bei Treffer;
-    // Rueckstoss war 90 und schob Gegner aus der Klingenbahn — die Passive machte dadurch schwaecher
-    splitterDamage:9, splitterCount:2, splitterRadius:70, splitterSpeed:3.2, splitterHitCd:250 // kreisende Splitter
+    chainDamage:14, chainRange:140, ketteInterval:[1200,1000],  // Ketten-Machtblitz (ID kettenblitz): zeitgesteuerte elektrische Kette
+    // Kinetische Welle (ID konterstoss): feuert jetzt ZEITGESTEUERT (kwelleInterval Basis/Sprung).
+    // counterCd bleibt der On-Hit-Takt der Gewitterherz-Fusion. Rueckstoss klein halten — 90 schob
+    // Gegner aus der Klingenbahn (72 px) und machte die Passive dadurch schwaecher.
+    counterDamage:22, counterRadius:110, counterCd:600, counterPush:20, kwelleInterval:[3300,2800],
+    splitterDamage:9, splitterCount:2, splitterRadius:70, splitterSpeed:3.2, splitterHitCd:250,
+    arsenalInterval:[2800,2300] // Telekinetisches Arsenal (ID splitter): Homing-Geschosse auf Timer statt kreisender Splitter
   },
   // Boss-Fähigkeiten. shockInner MUSS klar größer sein als die Angriffsreichweite
   // (Klinge ~38 + Boss-Radius 34 ≈ 72), sonst steht man beim Angreifen zwangsläufig
@@ -533,11 +549,9 @@ function tagesSignal(datum){
   const fig=figuren[Math.floor(rng()*figuren.length)];
   const frei=ACTIVE_IDS.filter(abilUnlocked);
   const m1=frei[Math.floor(rng()*frei.length)]||'wirbel';
-  const rest=frei.filter(id=>id!==m1);
-  const m2=rest.length? rest[Math.floor(rng()*rest.length)] : null;
   const twist=TAGES_TWISTS[Math.floor(rng()*TAGES_TWISTS.length)];
   const regel=TAGES_REGELN[Math.floor(rng()*TAGES_REGELN.length)];
-  return { datum, seed:tagesSeed(datum), figur:fig, slot1:m1, slot2:m2, twist, regel };
+  return { datum, seed:tagesSeed(datum), figur:fig, slot1:m1, twist, regel };
 }
 function baueTagesFaktoren(){
   tagesFaktoren={};
@@ -585,16 +599,20 @@ function renderTagessignal(){
   if(!karte&&!knopf) return;
   const sig=tagesSignal();
   const best=((save.tage||{})[sig.datum])||0;
-  const machtnamen=[sig.slot1,sig.slot2].filter(Boolean).map(id=>ABILITIES[id]?ABILITIES[id].name:id).join(' + ');
+  const machtname=ABILITIES[sig.slot1]?ABILITIES[sig.slot1].name:sig.slot1;
   if(karte){
     karte.innerHTML=
       '<span class="orbitauftrag-label">Tageslauf · '+sig.datum+'</span>'+
       '<div class="orbitauftrag-kopf"><b>'+FIGUREN[sig.figur].name+'</b><span>'+(best>0?'Beste Welle '+best:'offen')+'</span></div>'+
-      '<span class="orbitauftrag-figur">'+machtnamen+'</span>'+
+      '<span class="orbitauftrag-figur">'+machtname+'</span>'+
       '<p>✦ '+sig.twist.name+' — '+sig.twist.text+'<br>⚑ '+sig.regel.name+' — '+sig.regel.text+'</p>'+
       '<div class="orbitauftrag-fuss"><span>'+(best>0? 'Erneut spielen erlaubt':'Lohn: '+TAGES_LOHN+' ◆ für den ersten Abschluss heute')+'</span></div>';
   }
-  if(knopf) knopf.textContent='⚡ Tageslauf'+(best>0?' · Welle '+best:'');
+  if(knopf){
+    knopf.textContent='⚡ Tageslauf'+(best>0?' · Welle '+best:'');
+    knopf.title=machtname+' · '+sig.twist.name+' · '+sig.regel.name;
+    knopf.setAttribute('aria-label','Tageslauf mit '+machtname+(best>0?', beste Welle '+best:''));
+  }
 }
 function waehleWellenEreignis(){
   laufEreignis=null;
@@ -622,10 +640,10 @@ function hitstop(ms){ hitstopMs=Math.min(140,hitstopMs+ms); }
 // slot: 'active' (2 Slots, im Codex umrüstbar) | 'passive' (max 5) | 'weapon' (Waffen-Upgrade)
 // Freischalt-Wellen stehen ausschließlich in MILESTONES — hier bewusst nicht doppelt.
 const ABILITIES = {
-  kettenblitz:   { name:'Kettenblitz',     desc:'Treffer springt zum nächsten Gegner',                      slot:'passive', iconKey:'kette'  },
-  konterstoss:   { name:'Konterstoß',      desc:'Wirst du getroffen, schlägst du automatisch zurück',        slot:'passive', iconKey:'konter' },
-  splitter:      { name:'Splitter',        desc:'Kreisende Energiesplitter richten Zusatzschaden an',         slot:'passive', iconKey:'splitter', voll:true },
-  phaser:        { name:'Machtblitz',      desc:'Alle 2,6 Sekunden schlagen angekündigte Blitze in die 3 nächsten Gegner ein', slot:'passive', iconKey:'phaser' },
+  kettenblitz:   { name:'Ketten-Machtblitz', desc:'Alle ~1,2 s zuckt eine elektrische Kette durch nahe Gegner', slot:'passive', iconKey:'kette'  },
+  konterstoss:   { name:'Kinetische Welle', desc:'Alle paar Sekunden stößt eine Druckwelle rundum Gegner weg',  slot:'passive', iconKey:'konter' },
+  splitter:      { name:'Telekinet. Arsenal', desc:'Alle ~2,8 s schleudern Homing-Geschosse auf verteilte Ziele', slot:'passive', iconKey:'splitter', voll:true },
+  phaser:        { name:'Phaser-Strahl',   desc:'Alle ~1,7 s schießt ein gerader Strahl durch mehrere Gegner',                slot:'passive', iconKey:'phaser' },
   lebensregen:   { name:'Lebensregen',     desc:'Regeneriert Leben pro getötetem Gegner',                     slot:'passive', iconKey:'leben' },
   dreifachklinge:{ name:'Dreifachklinge',  desc:'Dritte Klinge — lückenlose Deckung',                         slot:'weapon',  iconKey:'dreifach', voll:true },
   wirbel:        { name:'Wirbel',          desc:'Spirale rund um dich — massiver Schaden',                    slot:'active',  iconKey:'wirbel',  start:true },
@@ -635,7 +653,11 @@ const ABILITIES = {
   // Neu in der Konzeptfassung — zwei davon zahlen direkt auf den Volltreffer ein
   sog:           { name:'Sog',             desc:'Zieht alle Gegner heran — bringt sie in deine Klinge',       slot:'active',  iconKey:'reichweite' },
   schneide:      { name:'Schneide',        desc:'Volltreffer richten deutlich mehr Schaden an',               slot:'passive', iconKey:'schaden' },
-  nachhall:      { name:'Nachhall',        desc:'Jeder vierte Volltreffer löst eine Druckwelle aus',          slot:'passive', iconKey:'nachhall' },
+  nachhall:      { name:'Singularität',    desc:'Alle ~6 s zieht ein Kraftzentrum eine Gegnergruppe zusammen', slot:'passive', iconKey:'nachhall' },
+  // Drei neue automatische Angriffsmächte (kein Rezeptpartner — Karten funktionieren ohne Fusion).
+  machtgriff:    { name:'Machtgriff',      desc:'Packt alle ~7 s ein gefährliches Einzelziel und zerquetscht es', slot:'passive', iconKey:'machtgriff' },
+  energieklingenwurf:{ name:'Energieklingen-Wurf', desc:'Schleudert regelmäßig eine Klinge, die trifft und zurückkehrt', slot:'passive', iconKey:'energieklingenwurf' },
+  macht_echo:    { name:'Macht-Echo',      desc:'Eine Geistfigur läuft deinen letzten Weg ab und trifft Gegner darauf', slot:'passive', iconKey:'macht_echo' },
 };
 const ACTIVE_IDS=['wirbel','stoss','bombe','nova','sog'];
 const MAX_ABIL_LEVEL=5;
@@ -660,14 +682,17 @@ const STUFEN={
   stoss:       { pro:'+10 % Schaden',                              sprung:'Die Welle betäubt alle Getroffenen kurz' },
   bombe:       { pro:'+10 % Schaden, kürzere Zündzeit, mehr Radius',sprung:'Du legst zwei Bomben statt einer' },
   nova:        { pro:'+10 % Schaden, etwas mehr Reichweite',       sprung:'Eine zweite Welle zündet kurz danach nach' },
-  kettenblitz: { pro:'+10 % Sprungschaden, mehr Sprungweite',      sprung:'Der Blitz springt auf zwei Gegner statt auf einen' },
-  konterstoss: { pro:'+10 % Konterschaden',                        sprung:'Der Konter schleudert doppelt so weit weg' },
-  splitter:    { pro:'+10 % Splitterschaden',                      sprung:'Ein dritter Splitter kreist mit' },
-  phaser:      { pro:'Mehr Ziele für den Machtblitz',              sprung:'5 Blitzeinschläge alle 1,9 Sekunden; Treffer betäuben kurz' },
+  kettenblitz: { pro:'+10 % Schaden, mehr Reichweite',             sprung:'Die Kette trifft mehr Ziele und zuckt öfter' },
+  konterstoss: { pro:'+10 % Schaden und Radius',                   sprung:'Größere, härtere Welle mit stärkerem Stoß — und sie kommt öfter' },
+  splitter:    { pro:'+10 % Schaden',                              sprung:'Fünf Geschosse statt drei, mehr Schaden' },
+  phaser:      { pro:'+Schaden und Reichweite',                    sprung:'Der Strahl durchschlägt mehr Gegner und trifft härter' },
   lebensregen: { pro:'+50 % Heilung pro besiegtem Gegner',         sprung:'Du regenerierst zusätzlich dauerhaft Leben' },
   sog:         { pro:'+10 % Reichweite und Zugkraft',              sprung:'Herangezogene Gegner werden kurz betäubt' },
   schneide:    { pro:'+8 % Schaden bei Volltreffern',               sprung:'Volltreffer durchschlagen jede Panzerung' },
-  nachhall:    { pro:'+12 % Schaden der Druckwelle',               sprung:'Schon jeder dritte Treffer löst sie aus' },
+  nachhall:    { pro:'+Zugkraft und Radius',                       sprung:'Größeres Zentrum, stärkerer Sog und mehr Schaden' },
+  machtgriff:  { pro:'+Schaden und Haltedauer',                    sprung:'Längerer Griff, härterer Crush, mehr gegen Elite und Boss' },
+  energieklingenwurf:{ pro:'+Schaden und Reichweite',             sprung:'Größere Klinge, härterer Rückweg, trifft mehr Gegner' },
+  macht_echo:  { pro:'+Schaden und Weglänge',                      sprung:'Breiterer Geistpfad mit deutlich mehr Schaden' },
 };
 // Text für den Schritt von `vonStufe` auf die nächste Stufe
 function stufenText(id, vonStufe){
@@ -713,8 +738,8 @@ const KARTEN_EVOLUTIONEN={
     desc:'Geopfertes und fehlendes Leben verstärkt die Klinge. Kills heilen kräftiger.'},
   splitterfaecher:{zutaten:['nachfassen','splitter'],name:'Splitterfächer',icon:'splitter',color:'#8ceaff',
     desc:'Der breite Volltreffer schleudert einen durchschlagenden Splitterfächer hinaus.'},
-  flammenorbit:{zutaten:['funkenkranz','brandspur'],name:'Plasmasturm',icon:'brandspur',color:'#70ffe3',
-    desc:'Jede Plasmabombe schleudert beim Einschlag einen Kranz aus Plasmasplittern nach außen. Die Funken kreisen weiter.'},
+  flammenorbit:{zutaten:['brandspur','energieklingenwurf'],name:'Plasmasturm',icon:'brandspur',color:'#70ffe3',
+    desc:'Jede Plasmabombe schleudert beim Einschlag Plasmasplitter nach außen. Die geworfene Energieklinge fliegt weiter.'},
 };
 const KARTEN_REZEPT_VON=Object.fromEntries(Object.entries(KARTEN_EVOLUTIONEN)
   .flatMap(([id,e])=>e.zutaten.map(z=>[z,id])));
@@ -739,13 +764,12 @@ const BOSS_KINDS=[
 ];
 // Reihum, damit jeder Boss-Kampf anders aussieht (Welle 5,10,15,20 -> 0,1,2,3)
 function bossKindFor(w){ return BOSS_KINDS[(Math.floor(w/5)-1+BOSS_KINDS.length*4) % BOSS_KINDS.length]; }
-const PASSIVE_IDS=['kettenblitz','konterstoss','splitter','phaser','lebensregen','nachhall'];
+const PASSIVE_IDS=['kettenblitz','konterstoss','splitter','phaser','lebensregen','nachhall','machtgriff','energieklingenwurf','macht_echo'];
 
 /* DER ORBITPFAD V2
    Ein einziger, acht Stufen tiefer Laufpfad mit 19 möglichen Investitionen bei
    höchstens 15 regulären Punkten. Die zwei adaptiven Module schaffen echten Verzicht,
-   ohne einen zweiten Ast oder zusätzliche Bedienung einzuführen. Slot 2 bleibt ein
-   Werkzeug und erhält keinen eigenen Baum. */
+   ohne einen zweiten Ast oder zusätzliche Bedienung einzuführen. */
 function steigereMacht(id, stufe){ runAbilities[id]=Math.max(runAbilities[id]||1, stufe); }
 function treeRang(id){ return Number(runTree[id])||0; }
 function regularInvested(){
@@ -852,10 +876,8 @@ function treeNodes(){
     (()=>{const h=gewaehlteHaltung(), e=h?h.evo:HALTUNGEN[0].evo;
       return {id:'blade_synergy',stage:5,col:6,kind:'major',name:e[0],short:e[1],desc:e[2],icon:'✦',reqAll:['power_master_1'],spine:'synergy',apply:e[3]};})(),
     {id:'evo_'+evoId,stage:6,col:2,kind:'evo',power:id,name:evo.name,short:'SUPER-MACHT',desc:evo.desc,icon:'✹',reqAll:['power_master_1',partner],spine:'evolution',evo:evoId,apply:()=>{steigereMacht(id,5);runEvolutions[id]=evoId;announce('Entwicklung!',evo.name,'#ffd257');unlockFx=1;}},
-    /* Seit dem Ein-Knopf-Umbau gibt es keine zweite Macht mehr: activeSlot2 ist
-       immer leer, also greift in doActive() ausschliesslich der Ersatzpfad mit
-       dem zeitweiligen Klingenschub (resonanzUntil, Faktor 1,25). Die Texte
-       beschreiben genau diesen Pfad — nicht die alte Kopplung zweier Maechte. */
+    /* Resonanz verstärkt nach dem Macht-Einsatz die Klinge; sie setzt keinen
+       weiteren Bedienpfad voraus. */
     {id:'orbit_resonance_1',stage:6,col:4,kind:'buff',name:'Kopplung',short:'KLINGE LÄDT',desc:'Nach jedem Macht-Einsatz schlägt deine Klinge 1,3 s lang härter zu.',icon:'◎',reqAll:['blade_synergy','evo_'+evoId],spine:'resonance',apply:()=>{treeFlags.orbitResonanz=true;}},
     {id:'orbit_resonance_2',stage:6,col:6,kind:'buff',name:'Nachklang',short:'SCHUB 3 S',desc:'Ein fokussierter Einsatz hält den Klingenschub 3 s statt 1,3 s.',icon:'◎',reqAll:['orbit_resonance_1'],apply:()=>{treeFlags.resonanzSofort=true;}},
     {id:'orbit_resonance_3',stage:7,col:2,kind:'buff',name:'Resonanzklinge',short:'ZUSATZKLINGE',desc:'Ein fokussierter Einsatz lässt 4 s eine Zusatzklinge mitkreisen.',icon:'◎',reqAll:['orbit_resonance_2'],apply:()=>{treeFlags.resonanzKlinge=true;}},
@@ -911,38 +933,74 @@ function checkMilestones(){
 
 /* TESTFASSUNG des Konzepts vom 11.8.2026 — läuft neben der stabilen Version.
    Eigener Speicherschlüssel, damit ein Testlauf den echten Spielstand nicht anfasst. */
-const SAVE_KEY='orbitblade_konzept_save', SAVE_VERSION=10;
-// opts: Bedien-Einstellungen (Seite und Anordnung der Fähigkeiten-Knöpfe)
+const SAVE_KEY='orbitblade_konzept_save', SAVE_BACKUP_KEY=SAVE_KEY+'_backup',
+      SAVE_CORRUPT_KEY=SAVE_KEY+'_beschaedigt', SAVE_VERSION=12;
+// opts: Bedien-Einstellung für die Seite des einzigen Machtknopfs
 // best ist jetzt je Hilfsstufe getrennt — sonst wäre die Bestmarke nicht vergleichbar
 const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin', muted:false, bossKills:0, stars:0, meta:{}, tutorialDone:false, tutorialVersion:0, focusTutorialSeen:false,
-  hilfe:'standard', gewonnen:false, endlosFrei:false, pruefFrei:0,
-  opts:{ seite:'rechts', anordnung:'nebeneinander' },
-  // Mit welchen aktiven Mächten jeder Lauf beginnt. Vorher war das fest verdrahtet,
-  // sodass später freigeschaltete Mächte nie am Start standen.
-  startMaechte:{ slot1:'wirbel', slot2:'stoss' },
+  hilfe:'standard', gewonnen:false, endlosFrei:false, pruefFrei:0, niederlagen:0,
+  opts:{ seite:'rechts' },
+  // Mit welcher Hauptmacht jeder Lauf beginnt. Später freigeschaltete Mächte
+  // dürfen gewählt werden; einen zweiten Werkzeugslot gibt es nicht.
+  startMaechte:{ slot1:'wirbel' },
   klingenform:'strahl', figur:'held', orbitauftrag:null, orbitauftragTauschTag:'', orbitauftragLetzterId:'',
   tage:{}, tagesLohnTag:'' };
 let save = clone(DEFAULT_SAVE);
+let saveRecoveryNotice='';
 
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function parseSaveRaw(raw){
+  const data=JSON.parse(raw);
+  if(!data || typeof data!=='object' || Array.isArray(data)) throw new Error('Ungültiger Spielstand');
+  if(Number.isFinite(Number(data.v)) && Number(data.v)>SAVE_VERSION) throw new Error('Spielstand ist neuer als diese Fassung');
+  return data;
+}
 function loadSave(){
-  try{
-    const raw = (typeof localStorage!=='undefined') && localStorage.getItem(SAVE_KEY);
-    if(raw){
-      const data=JSON.parse(raw);
-      save = migrateSave(data);
+  const speicher=(typeof localStorage!=='undefined')?localStorage:null;
+  saveRecoveryNotice='';
+  let raw=null, wiederhergestellt=false;
+  try{ raw=speicher&&speicher.getItem(SAVE_KEY); }catch(e){}
+  if(raw){
+    try{ save=migrateSave(parseSaveRaw(raw)); }
+    catch(e){
+      // Die beschädigte Fassung bleibt erhalten. Erst danach darf eine Sicherung
+      // oder ein leerer Stand den normalen Schlüssel wieder beschreiben.
+      try{ if(speicher) speicher.setItem(SAVE_CORRUPT_KEY,raw); }catch(ignore){}
+      try{
+        const backup=speicher&&speicher.getItem(SAVE_BACKUP_KEY);
+        if(!backup) throw new Error('Keine Sicherung');
+        save=migrateSave(parseSaveRaw(backup));
+        wiederhergestellt=true;
+        saveRecoveryNotice='Spielstand aus der letzten Sicherung wiederhergestellt.';
+      }catch(backupFehler){
+        save=clone(DEFAULT_SAVE);
+        saveRecoveryNotice='Spielstand war beschädigt. Die alte Fassung wurde gesichert.';
+      }
     }
-  }catch(e){ save = clone(DEFAULT_SAVE); }
+  }
   // Fehlende Felder aus den Defaults auffüllen (macht spätere Updates unkritisch)
   save = Object.assign(clone(DEFAULT_SAVE), save);
   if(!save.best || typeof save.best!=='object') save.best={};   // Sicherheitsnetz nach der Migration
+  if(!save.badges || typeof save.badges!=='object') save.badges={};
+  if(!save.unlocks || typeof save.unlocks!=='object') save.unlocks={};
+  if(!save.meta || typeof save.meta!=='object') save.meta={};
+  if(!save.opts || typeof save.opts!=='object') save.opts=clone(DEFAULT_SAVE.opts);
+  delete save.opts.anordnung;
+  if(!save.startMaechte || typeof save.startMaechte!=='object') save.startMaechte=clone(DEFAULT_SAVE.startMaechte);
+  delete save.startMaechte.slot2;
+  if(Array.isArray(save.presets)) for(const p of save.presets) if(p&&typeof p==='object') delete p.slot2;
+  save.niederlagen=Math.max(0,save.niederlagen|0);
   if(!SKINS[save.skin]) save.skin='rubin';
   if(!istGueltigerOrbitauftrag(save.orbitauftrag)) save.orbitauftrag=null;
   if(typeof save.orbitauftragTauschTag!=='string') save.orbitauftragTauschTag='';
   if(typeof save.orbitauftragLetzterId!=='string' || !Object.prototype.hasOwnProperty.call(ORBIT_AUFTRAEGE,save.orbitauftragLetzterId)) save.orbitauftragLetzterId='';
+  if(wiederhergestellt){
+    try{ if(speicher) speicher.setItem(SAVE_KEY,JSON.stringify(save)); }catch(e){}
+  }
 }
 function migrateSave(data){
   if(!data || typeof data!=='object') return clone(DEFAULT_SAVE);
+  data.v=Number.isFinite(Number(data.v))?Number(data.v):1;
   // v1 → v2: Meta-Währung (Sterne) + dauerhafte Meta-Upgrades
   if(data.v<2){
     data.stars = (data.stars|0) || 0;
@@ -1015,6 +1073,30 @@ function migrateSave(data){
     if(data.meta.slot2){ data.stars=(data.stars||0)+1000; delete data.meta.slot2; }
     if(data.startMaechte) data.startMaechte.slot2=null;
   }
+  // v10 → v11: alle nach dem Ein-Knopf-Umbau wieder erzeugten Datenreste
+  // endgültig entfernen. Die Erstattung geschah bereits in v10 und wird nicht
+  // ein zweites Mal gebucht.
+  if(data.v<11){
+    if(data.meta) delete data.meta.slot2;
+    if(data.startMaechte) delete data.startMaechte.slot2;
+    if(data.opts) delete data.opts.anordnung;
+    if(Array.isArray(data.presets)) for(const p of data.presets) if(p&&typeof p==='object') delete p.slot2;
+    // Bestehende Spieler mit einer Bestmarke sollen die bisher sichtbare
+    // Hilfsstufenwahl nicht durch das neue, stufenweise Menü verlieren.
+    if(data.niederlagen==null){
+      const hatBest=data.best&&typeof data.best==='object'&&Object.values(data.best).some(v=>(v|0)>0);
+      data.niederlagen=hatBest?2:0;
+    }
+  }
+  // v11 → v12: Neuer passiver Mächte-Pool. Funkenkranz ist als Core-Pick entfallen; Plasmasturm
+  // nutzt jetzt Plasmabombe + Energieklingen-Wurf, die drei neuen Mächte (machtgriff,
+  // energieklingenwurf, macht_echo) sind reine Lauf-Inhalte. Es gab keinen DAUERHAFTEN
+  // Funkenkranz-Kauf, daher keine Erstattung. Freischaltungen, Bestmarken und Belohnungen
+  // bleiben unangetastet; nur mögliche Reste eines nicht mehr existierenden Funkenkranz-
+  // Eintrags werden vorsorglich entfernt, damit keine entfernte Wirkung wiederkehrt.
+  if(data.v<12){
+    if(data.unlocks){ delete data.unlocks['ability:funkenkranz']; delete data.unlocks['module:funkenkranz']; }
+  }
   data.v = SAVE_VERSION;
   return data;
 }
@@ -1023,7 +1105,17 @@ function migrateSave(data){
 var messlaufSchutz=false;
 function persist(){
   if(messlaufSchutz) return;   // ein Messlauf darf den echten Spielstand nicht überschreiben
-  try{ if(typeof localStorage!=='undefined') localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }catch(e){}
+  try{
+    if(typeof localStorage==='undefined') return;
+    const alt=localStorage.getItem(SAVE_KEY);
+    if(alt){
+      try{ parseSaveRaw(alt); localStorage.setItem(SAVE_BACKUP_KEY,alt); }catch(ignore){}
+    }
+    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+  }catch(e){
+    saveRecoveryNotice='Spielstand konnte auf diesem Gerät nicht gespeichert werden.';
+    renderSaveStatus();
+  }
 }
 
 // Ist ein Inhalt aktuell nutzbar? (Start-Inhalt, oder freigeschaltet und nicht Vollversions-gesperrt)
@@ -1063,15 +1155,69 @@ function isEarned(kind, id){ const m=unlockMeta(kind, id); return !!(m&&(m.start
    für Teenager aufwärts ist dann alles da, nur eben zum richtigen Zeitpunkt. */
 function showEl(el,on){ if(el) el.style.display = on ? '' : 'none'; }
 function hasAny(o){ return o && Object.keys(o).length>0; }
+let activeModal=null, focusBeforeModal=null, overlayObserver=null;
+function syncUiAccessibility(){
+  const overlays=Array.from(document.querySelectorAll('.overlay'));
+  const sichtbar=overlays.filter(el=>!el.classList.contains('hidden'));
+  const modal=sichtbar.length?sichtbar[sichtbar.length-1]:null;
+  for(const el of overlays){
+    const verborgen=el.classList.contains('hidden');
+    el.inert=verborgen;
+    el.setAttribute('role','dialog');
+    el.setAttribute('aria-hidden',verborgen?'true':'false');
+    if(verborgen) el.removeAttribute&&el.removeAttribute('aria-modal');
+    else el.setAttribute('aria-modal','true');
+  }
+  const sperren=!!modal || (state!=='playing'&&state!=='countdown');
+  for(const id of ['game','hud','joystick-zone','special-zone','combat-resume']){
+    const el=document.getElementById(id); if(!el) continue;
+    el.inert=sperren;
+    el.setAttribute('aria-hidden',sperren?'true':'false');
+  }
+  if(modal!==activeModal){
+    if(modal){
+      if(!activeModal && document.activeElement) focusBeforeModal=document.activeElement;
+      activeModal=modal;
+      const ziel=modal.querySelector('h1,h2,button:not([disabled])');
+      if(ziel&&ziel.focus){ ziel.tabIndex=-1; ziel.focus(); }
+    } else {
+      activeModal=null;
+      if(focusBeforeModal&&focusBeforeModal.focus) focusBeforeModal.focus();
+      focusBeforeModal=null;
+    }
+  }
+}
+function setupOverlayAccessibility(){
+  if(typeof MutationObserver!=='undefined'){
+    overlayObserver=new MutationObserver(syncUiAccessibility);
+    for(const el of document.querySelectorAll('.overlay')) overlayObserver.observe(el,{attributes:true,attributeFilter:['class']});
+  }
+  syncUiAccessibility();
+}
 function codexRelevant(){
   const acts=ACTIVE_IDS.filter(id=>isAvailable('ability',id)).length;
   const pass=PASSIVE_IDS.filter(id=>isAvailable('ability',id)).length;
   return acts>2 || pass>0;      // erst sinnvoll, wenn es wirklich etwas zu tauschen gibt
 }
+function renderSaveStatus(){
+  const el=document.getElementById('save-status');
+  if(el) el.textContent=saveRecoveryNotice;
+}
 function refreshMenuVisibility(){
-  showEl(document.getElementById('hangar-btn'), true);
-  showEl(document.getElementById('codex-btn'), true);
-  showEl(document.getElementById('startmaechte-btn'), true);
+  const fortschritt=!!(save.tutorialDone||save.gewonnen||save.niederlagen||save.stars||
+    hasAny(save.meta)||hasAny(save.unlocks)||hasAny(save.badges));
+  showEl(document.getElementById('tages-btn'), fortschritt);
+  showEl(document.getElementById('hangar-btn'), fortschritt);
+  showEl(document.getElementById('startmaechte-btn'), fortschritt);
+  showEl(document.getElementById('start-orbitauftrag'), fortschritt);
+  showEl(document.getElementById('codex-btn'), fortschritt||codexRelevant());
+  const hilfeSichtbar=(save.niederlagen||0)>=2||save.gewonnen||(save.pruefFrei||0)>0;
+  showEl(document.getElementById('hilfe-tab'), hilfeSichtbar);
+  if(!hilfeSichtbar){
+    const panel=document.querySelector('[data-prepare-panel="hilfe"]');
+    if(panel&&panel.classList.contains('active')) zeigeVorbereitungTab('maechte');
+  }
+  renderSaveStatus();
 }
 
 function earnBadge(id){ if(id && !save.badges[id]){ save.badges[id]=true; persist(); pushToast('Abzeichen: '+BADGES[id].name); return true; } return false; }
@@ -1231,7 +1377,10 @@ let cdWirbel=document.getElementById('cd-wirbel');
 const joystickZone=document.getElementById('joystick-zone');   // unsichtbare Ziehfläche über dem Spielfeld
 
 loadSave();
-let state='menu', raf=0, lastTime=0;
+let state='menu', raf=0, lastTime=0, spielZeitMs=0, drawPending=true;
+// Monotone Laufuhr: Sie wächst nur um tatsächlich simulierte Kampfzeit. Damit
+// frieren alle Fristen gemeinsam in Pause, Auslese, Countdown und Hintergrund.
+function spielJetzt(){ return spielZeitMs; }
 let player, enemies=[], stars=[], particles=[], floats=[], shots=[], orbs=[];
 let swordAngle=0, spinHitTimer=0;
 // Gemeinsamer Orbitimpuls: genau ein Impuls pro vollständigem Winkelumlauf.
@@ -1243,8 +1392,8 @@ let shake=0, activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}, phaserCd=0, brand
 let machtblitze=[], plasmabomben=[], plasmaNachwurf=null;
 let dmgBoostUntil=0, shieldUntil=0, moveBoostUntil=0;
 let wiederaufBenutzt=false;      // „Entdecker": das eine Wiederaufstehen pro Lauf
-let nachhallZaehler=0, splitterSweetZaehler=0; // sichtbare Partner-Kombos
 let taktschlagZaehler=0, nachfassenBereit=false; // Auslese-Module Taktschlag/Nachfassen
+let healFx=0, healFxRegen=false, healRegenPulseCd=0; // nur bei tatsächlicher Heilung
 /* Barriere: ein Puffer, der VOR den Trefferpunkten aufgebraucht wird. Er entsteht
    nur aus Lebenskugeln, die man bei vollem Leben einsammelt — vorher waren die
    schlicht verschenkt. Anders als das Schild (zeitbasiert, blockt alles) ist die
@@ -1283,7 +1432,7 @@ const PERF_ZOOM = PERF_DEBUG ? (parseInt((location.search.match(/[?&]zoom=(\d+)/
 const PERF_GPU  = PERF_DEBUG && /(?:\?|&)gpu=1(?:&|$)/.test(location.search||'');
 // `?perf=1&bg=voll` startet mit voller Hintergrundauflösung; Shift+H schaltet live um.
 const PERF_BG   = PERF_DEBUG && /(?:\?|&)bg=voll(?:&|$)/.test(location.search||'');
-const messlauf  = PERF_WAVE>0 || PERF_PTS>0 || PERF_GOD;
+const messlauf  = PERF_DEBUG;
 messlaufSchutz  = messlauf;
 
 /* Der Ringpuffer trug bisher 5400 Bilder (~90 s), die Verteilung zählte dagegen alle.
@@ -1431,7 +1580,7 @@ function perfBericht(){
   };
 }
 function orbitSliceState(){
-  return {fokus:Math.round(fokus*100)/100,fokusBereit,lichtbundDistanz:Math.round(orbitRoundDistance),lichtbundBereit:orbitRoundLight,waechterLadung,sonnenSerie,sonnenTempoRest:Math.max(0,sonnenTempoUntil-Date.now()),praezSerie,kronenZielklinge,active1Cd:Math.round(activeCd[activeSlot1]||0),form:treeFlags.kronenform||(treeFlags.singularorbit?'praez':treeFlags.doppelorbit?'dopp':'basis'),felder:powerFields.length,eigeneSchuesse:pShots.length,stormSchuesse:pShots.filter(s=>s.stormWirbel).length,debug:{orbitPulse:treeFlags.debugOrbitPulse||0,lichtbund:treeFlags.debugLichtbund||0,praezReduktionen:treeFlags.debugPraezReduktionen||0,praezCdGesamt:Math.round(treeFlags.debugPraezCdGesamt||0),kronenEchos:treeFlags.debugKronenEchos||0,wirbelBPulse:treeFlags.debugWirbelBPulse||0,sturmSchuesse:treeFlags.debugSturmSchuesse||0}};
+  return {fokus:Math.round(fokus*100)/100,fokusBereit,lichtbundDistanz:Math.round(orbitRoundDistance),lichtbundBereit:orbitRoundLight,waechterLadung,sonnenSerie,sonnenTempoRest:Math.max(0,sonnenTempoUntil-spielJetzt()),praezSerie,kronenZielklinge,active1Cd:Math.round(activeCd[activeSlot1]||0),form:treeFlags.kronenform||(treeFlags.singularorbit?'praez':treeFlags.doppelorbit?'dopp':'basis'),felder:powerFields.length,eigeneSchuesse:pShots.length,stormSchuesse:pShots.filter(s=>s.stormWirbel).length,debug:{orbitPulse:treeFlags.debugOrbitPulse||0,lichtbund:treeFlags.debugLichtbund||0,praezReduktionen:treeFlags.debugPraezReduktionen||0,praezCdGesamt:Math.round(treeFlags.debugPraezCdGesamt||0),kronenEchos:treeFlags.debugKronenEchos||0,wirbelBPulse:treeFlags.debugWirbelBPulse||0,sturmSchuesse:treeFlags.debugSturmSchuesse||0}};
 }
 if(PERF_DEBUG && typeof window!=='undefined'){
   window.perfDump=()=>{ const b=perfBericht(); console.log(JSON.stringify(b,null,2)); return b; };
@@ -1452,9 +1601,9 @@ if(PERF_DEBUG && typeof window!=='undefined'){
   });
   window.orbitSliceDump=orbitSliceState;
 }
-let counterCd=0, counterFx=0, shards=[]; // Konterstoß-Cooldown/Effekt, kreisende Splitter
-// Nur EINE Macht am Start — der zweite Slot wird im Shop freigeschaltet und ist
-// dadurch ein echter Fortschritt statt einer Selbstverständlichkeit.
+let counterCd=0, counterFx=0, kwelleCd=0, ketteCd=0, arsenalCd=0, singCd=0, machtgriffCd=0, machtgriffAktiv=null, wurfCd=0, wurfklinge=null, echoCd=0, echoSampleT=0, spielerPfad=[], machtEcho=null, shards=[]; // Passiv-Takte + aktive Akteure + Bewegungs-Ringpuffer + Funkenkranz-Splitter
+// Genau eine Hauptmacht: activeSlot2 bleibt nur als lesbarer Kompatibilitätswert
+// für ältere Harness-Ausdrücke bestehen und wird niemals belegt oder gespeichert.
 let activeSlot1='wirbel', activeSlot2=null;
 let runEvolutions={};                            // baseId -> evoId (nur für diesen Lauf)
 let runTree={}, skillPoints=0, treeFlags={};     // ausschließlich für den aktuellen Lauf
@@ -1481,26 +1630,22 @@ function begleiterStufe(){
   for(let i=1;i<=5;i++) if(save.meta&&save.meta['begleiter'+i]) stufe=i; else break;
   return stufe;
 }
-/* Der zweite aktive Slot ist entfallen: Das Spiel hat genau einen Knopf, die
-   Hauptmacht. Die Funktion bleibt als false-Konstante stehen, weil mehrere
-   Stellen sie abfragen. */
+/* Kompatibilitätsauskunft für ältere Messskripte. */
 function hasSlot2(){ return false; }
-/* Die gespeicherte Startbelegung, gegen die Wirklichkeit geprüft: Eine Macht, die
-   (noch) nicht freigeschaltet ist oder doppelt in beiden Slots steht, würde sonst
-   einen kaputten Lauf erzeugen. Liefert immer eine gültige Belegung. */
+/* Die gespeicherte Hauptmacht gegen die Wirklichkeit prüfen. */
 function startMaechte(){
   if(!save.startMaechte || typeof save.startMaechte!=='object') save.startMaechte={};
   const v=save.startMaechte;
   const frei=ACTIVE_IDS.filter(abilUnlocked);
   if(frei.indexOf(v.slot1)<0) v.slot1 = frei[0] || 'wirbel';
-  if(frei.indexOf(v.slot2)<0 || v.slot2===v.slot1) v.slot2 = frei.find(id=>id!==v.slot1) || null;
+  delete v.slot2;
   return v;
 }
 function evolvedOf(id){ return runEvolutions[id]||null; }
 let runAbilities={};                            // getragene Fähigkeiten: id -> Stufe (1..10)
 let runModule={};                     // Auslese-Module (zweite, unabhängige Kartenquelle): id -> Rang (1..2)
 let runKartenEvos={}, kartenEvoWellen=[], glasOpfer=0; // dauerhafte Akteure, begrenzte Wellen, einmaliger Lebenspreis
-let bombs=[], pShots=[], powerFields=[], powerEchoes=[], novaFx=0; // Bomben, Projektile und sichtbare Machtfelder
+let bombs=[], pShots=[], powerFields=[], powerEchoes=[], singularities=[], novaFx=0; // Bomben, Projektile, Machtfelder, Singularitäten
 /* Boss-Gefahrenzonen: gemeinsame Infrastruktur für Raumhebel, die den Spieler aus dem
    56–72-px-Sicherheitsband zwischen Kontaktschaden und Klingenreichweite vertreiben.
    kind:'brand' = ortsfester Kreis (Rammbock-Brandspur). kind:'arm' = rotierender Balken
@@ -1531,11 +1676,11 @@ function tutorialTick(dt){
     announce(IS_TOUCH?'Zieh mit dem Finger':'Lauf mit WASD', IS_TOUCH?'irgendwo auf dem Bildschirm':'oder den Pfeiltasten', '#7cc8ff');
     tutStep=1;
   } else if(tutStep===1 && tutT>5000){
-    tutorialCircleUntil=Date.now()+3200;
+    tutorialCircleUntil=spielJetzt()+3200;
     announce('Dein ganzer Orbit trifft', 'Nahe Gegner nehmen im Kreis automatisch Schaden', '#7cc8ff');
     tutStep=2;
   } else if(tutStep===2 && tutT>12000){
-    tutorialBladeUntil=Date.now()+2800;
+    tutorialBladeUntil=spielJetzt()+2800;
     announce('VOLLTREFFER', 'Die sichtbare Klinge verursacht Extraschaden', '#ffffff');
     tutStep=3;
   } else if(tutStep===3 && tutT>16000){
@@ -1544,7 +1689,7 @@ function tutorialTick(dt){
 }
 function tutorialSweetSpotTreffer(){
   if((save.tutorialVersion||0)>=TUTORIAL_VERSION || tutStep!==2 || tutT<7200) return;
-  tutorialBladeUntil=Date.now()+2800;
+  tutorialBladeUntil=spielJetzt()+2800;
   announce('VOLLTREFFER!','Die sichtbare Klinge verursacht Extraschaden','#ffffff'); tutStep=3;
 }
 
@@ -1613,7 +1758,7 @@ function abstossenImBand(en, dt){
 }
 function effektiveKlingen(){
   const basis=treeFlags.ereignishorizont && player.hp/player.maxHp<.35 ? Math.max(3,bonuses.blades) : bonuses.blades;
-  return basis+(treeFlags.echoBladeImpulseUntil>Date.now()?1:0)+(treeFlags.resonanzKlingeUntil>Date.now()?1:0)+modulRang('klingenteilung');
+  return basis+(treeFlags.echoBladeImpulseUntil>spielJetzt()?1:0)+(treeFlags.resonanzKlingeUntil>spielJetzt()?1:0)+modulRang('klingenteilung');
 }
 // Winkel aller aktiven Klingen (Doppelklinge = zweite Klinge gegenüber)
 function bladeAngles(){
@@ -1638,7 +1783,7 @@ function sweetArcHalf(){
   const nachfassen=nachfassenBereit?2:1;
   const singular=treeFlags.singularorbit?0.68:1;
   const sync=treeFlags.sweetWeite||0;
-  const sonne=sonnenTempoUntil>Date.now() && treeFlags.sonnenorbit ? .78 : 1;
+  const sonne=sonnenTempoUntil>spielJetzt() && treeFlags.sonnenorbit ? .78 : 1;
   return CONFIG.spinArcHalf * nachfassen * singular * sonne * Math.pow(0.75+sync, Math.max(0, effektiveKlingen()-1));
 }
 
@@ -1651,7 +1796,7 @@ function sweetKlingenFaktor(){
   let f=treeFlags.singularorbit?1.45:1;
   if(modulRang('klingenteilung')>=2) f*=1.42; else if(modulRang('klingenteilung')) f*=1.22;
   if(treeFlags.doppelorbit) f*=.84;   // war .72 — machte den Kauf schwaecher als gar keinen Kauf
-  if(sonnenTempoUntil>Date.now() && treeFlags.sonnenorbit) f*=1.30;
+  if(sonnenTempoUntil>spielJetzt() && treeFlags.sonnenorbit) f*=1.30;
   return f;
 }
 function orbitSweetPulse(){
@@ -1660,7 +1805,7 @@ function orbitSweetPulse(){
   if(PERF_DEBUG) treeFlags.debugOrbitPulse=(treeFlags.debugOrbitPulse||0)+1;
   if(treeFlags.sonnenjaeger){
     sonnenSerie++;
-    if(sonnenSerie>=3){ sonnenSerie=0; sonnenTempoUntil=Date.now()+3000; pushFloat(player.x,player.y-42,'SONNENTEMPO','#ffd257',1.1); }
+    if(sonnenSerie>=3){ sonnenSerie=0; sonnenTempoUntil=spielJetzt()+3000; pushFloat(player.x,player.y-42,'SONNENTEMPO','#ffd257',1.1); }
   }
   // Orbitkrone (Präzisionsorbit): drei Serientreffer laden den Durchschlag auf, statt wie
   // vorher nur die Abklingzeit zu kürzen. Die alte Bedingung "nur während laufender
@@ -1973,7 +2118,7 @@ function zeichneKlinge(g, x0, laenge, form, farbe, kern, blur){
 // Fähigkeiten-Helfer: getragen? Stufe? Skalierung je Stufe? freigeschaltet?
 function abilIcon(id){ return ICON[ABILITIES[id].iconKey]||''; }
 function isCarried(id){
-  if(ABILITIES[id].slot==='active') return activeSlot1===id || activeSlot2===id;
+  if(ABILITIES[id].slot==='active') return activeSlot1===id;
   return passivStufe(id)>0;
 }
 function abilityLevel(id){
@@ -1991,19 +2136,19 @@ function activeCdMax(id){
   return basis*(treeFlags['powerCd_'+id]||1)*kurzschluss;
 }
 const ACTIVE_COLORS={ wirbel:['#ffb340','255,179,64'], stoss:['#6ec8ff','110,200,255'], bombe:['#ff7a5a','255,122,90'], nova:['#c77dff','199,125,255'], sog:['#4de0a0','77,224,160'] };
-// Aktiven-Buttons passend zu den gewählten Slots neu aufbauen (Icon, Name, Farbe)
-function activeBtnHTML(key,keyLabel){
-  const id = key==='a'? activeSlot1 : activeSlot2;
+// Den einzigen Machtknopf passend zur gewählten Hauptmacht neu aufbauen.
+function activeBtnHTML(){
+  const id=activeSlot1;
   const m=ABILITIES[id];
-  return `<span class="cd-sweep" id="cd-${key}"></span>
-    ${key==='a'?'<span class="focus-ring" aria-hidden="true"></span>':''}
+  return `<span class="cd-sweep" id="cd-a"></span>
+    <span class="focus-ring" aria-hidden="true"></span>
     <svg class="s-icon" viewBox="0 0 24 24" aria-hidden="true">${abilIcon(id)}</svg>
     <span class="s-label">${m.name}</span>
-    ${key==='a'?'<span class="focus-value">1 · F 0/'+fokusZiel()+'</span><span class="crown-series" aria-hidden="true"></span>':'<span class="s-key">'+keyLabel+'</span>'}`;
+    <span class="focus-value">1 · F 0/${fokusZiel()}</span><span class="crown-series" aria-hidden="true"></span>`;
 }
 function updateActiveButtons(){
   const c1=ACTIVE_COLORS[activeSlot1]||['#6ec8ff','110,200,255'];
-  btnWirbel.innerHTML=activeBtnHTML('a','1');
+  btnWirbel.innerHTML=activeBtnHTML();
   cdWirbel=document.getElementById('cd-a');
   btnWirbel.style.setProperty('--c', c1[0]); btnWirbel.style.setProperty('--cRGB', c1[1]);
   btnWirbel.setAttribute('aria-label',(ABILITIES[activeSlot1]?.name||'Hauptmacht')+' · Taste 1');
@@ -2061,7 +2206,7 @@ function kaufenTreeKnoten(id){
   if(!node || treeStatus(node,nodes).art!=='ready') return;
   if(node.endless) echoPoints--; else skillPoints--;
   const next=treeRang(id)+1; runTree[id]=next; node.apply(next);
-  treeFlags.upgradeGlowUntil=Date.now()+2200; treeFlags.lastUpgrade=node.name;
+  treeFlags.upgradeGlowUntil=spielJetzt()+2200; treeFlags.lastUpgrade=node.name;
   particles.push({ring:true,x:player.x,y:player.y,color:node.evo?'#ffd257':'#4de0a0',life:.65,max:.65});
   spawnParticles(player.x,player.y,node.evo?'#ffd257':'#4de0a0',node.evo?28:16);
   if(node.evo && sfx) sfx('unlockBig'); else if(sfx) sfx('upgrade');
@@ -2095,27 +2240,27 @@ function updateTreeButton(){
      stehen, weil sie an 19 Stellen gerufen wird; alle Aufrufe zu entfernen
      wäre mehr Risiko als Nutzen. */
 }
-let combatResumeUntil=0, combatResumeStep='';
+let combatResumeRest=0, combatResumeStep='';
 function finishCombatResume(){
   if(state!=='countdown') return;
-  state='playing'; combatResumeUntil=0; combatResumeStep='';
+  state='playing'; combatResumeRest=0; combatResumeStep='';
   if(combatResume) combatResume.classList.add('hidden');
   lastTime=performance.now(); setMusicLevel(); updateTreeButton();
 }
 function skipCombatResume(){ if(state==='countdown') finishCombatResume(); }
 function startCombatResume(name){
-  state='countdown'; combatResumeUntil=performance.now()+2000; combatResumeStep='';
+  state='countdown'; combatResumeRest=2000; combatResumeStep='';
   if(combatResume){
     const sub=combatResume.querySelector('span'); if(sub) sub.textContent=name||'Orbit stabilisiert';
     combatResume.classList.remove('hidden');
   }
   setMusicLevel(); updateTreeButton(); lastTime=performance.now();
 }
-function tickCombatResume(now){
+function tickCombatResume(dt){
   if(state!=='countdown') return;
-  const rest=combatResumeUntil-now;
-  if(rest<=0){ finishCombatResume(); return; }
-  const step=rest>1000?'2':rest>220?'1':'LOS';
+  combatResumeRest=Math.max(0,combatResumeRest-dt);
+  if(combatResumeRest<=0){ finishCombatResume(); return; }
+  const step=combatResumeRest>1000?'2':combatResumeRest>220?'1':'LOS';
   if(step!==combatResumeStep && combatResume){
     combatResumeStep=step; const n=combatResume.querySelector('strong'); if(n) n.textContent=step;
     if(step==='LOS' && sfx) sfx('pick');
@@ -2128,7 +2273,7 @@ function tickCombatResume(now){
    STUFEN reine +10 %/+20 %-Prozentkarten und in diesem Projekt unerwünscht. */
 const AUSLESE_PREISE=[50,100,200,400];   // Index = bereits bezahlte Würfe in diesem Lauf, gedeckelt bei 400
 let ausleseKarten=[], letzteAusleseWelle=0, ausleseReturnState='playing';
-let ausleseFreiwurfBenutzt=false, ausleseBezahlteWuerfe=0, ausleseOffenSeit=0;
+let ausleseFreiwurfBenutzt=false, ausleseBezahlteWuerfe=0;
 /* Eigene Karteneffekte, bewusst NICHT in
    ABILITIES — diese Tabelle speist nur die Auslese, nicht Vorbereitung, Sammlung
    oder Orbitpfad. Getragener Stand liegt in runModule (id -> Rang 1..2), getrennt
@@ -2147,9 +2292,8 @@ const AUSLESE_MODULE={
   glasklinge: { name:'Glasklinge',  icon:'glasklinge',
                 desc:'Klingenschaden ×1,45, dafür nur 60 % maximales Leben',
                 sprung:'Klingenschaden ×1,80; Barriere baut sich nicht mehr auf' },
-  funkenkranz:{ name:'Funkenkranz', icon:'funkenkranz',
-                desc:'Zwei Funken kreisen außen gegen die Klinge und verletzen bei Berührung',
-                sprung:'Vier größere Funken ziehen einen weiteren Gegenorbit' },
+  // Funkenkranz ist als normaler Core-Pick entfallen (Plasmasturm nutzt jetzt brandspur +
+  // energieklingenwurf). Kein heimlicher Pool-Eintrag mehr.
   brandspur: { name:'Plasmabombe', icon:'brandspur',
                 desc:'Alle 3,2 Sekunden fliegt eine Bombe zur dichtesten Gruppe. Starker Kern, schwächerer Explosionsrand.',
                 sprung:'Alle 2,4 Sekunden zwei Bomben kurz nacheinander auf verschiedene Ziele; größerer Explosionsradius.' },
@@ -2187,13 +2331,17 @@ function renderAusleseRezepte(istWeiche){
   const zeilen=[];
   if(!istWeiche) for(const [id,e] of Object.entries(KARTEN_EVOLUTIONEN)){
     if(runKartenEvos[id]){
-      zeilen.push('<div class="ak-rezeptkachel fertig"><strong>✦ '+e.name+'</strong><span>Verschmolzen · beide Zutaten ersetzt</span></div>');
+      zeilen.push('<div class="ak-rezeptkachel fertig"><strong>✦ '+e.name+'</strong><span>Zutaten: '+e.zutaten.map(z=>kartenName(z)+' II').join(' + ')+' · verschmolzen</span></div>');
       continue;
     }
-    const reife=e.zutaten.filter(z=>kartenRang(z)>=2);
-    if(!reife.length) continue;
-    zeilen.push('<div class="ak-rezeptkachel"><strong>'+reife.map(z=>kartenName(z)+' II').join(' + ')
-      +'</strong><span>'+kartenRezeptText(reife[0])+'</span></div>');
+    const ränge=e.zutaten.map(z=>kartenRang(z));
+    if(!ränge.some(Boolean)) continue;
+    const ausgeschlossen=e.zutaten.includes(ausleseAusschluss());
+    const reif=ränge.every(r=>r>=1) && ränge.some(r=>r>=2);
+    const zutaten=e.zutaten.map((z,i)=>kartenName(z)+' '+(ränge[i]?'I'+(ränge[i]>=2?'I':''):'—')).join(' + ');
+    const status=ausgeschlossen ? 'Nicht verfügbar: '+ABILITIES[activeSlot1].name+' gibt den Partner bereits.'
+      : reif ? 'Bereit · nächste Auslese kann die Fusion anbieten.' : 'Fehlt noch eine Zutat oder Rang II.';
+    zeilen.push('<div class="ak-rezeptkachel'+(reif&&!ausgeschlossen?' bereit':'')+'"><strong>✦ '+e.name+'</strong><span>Zutaten: '+zutaten+' · '+status+'</span></div>');
   }
   ausleseRezeptAnzeige.innerHTML=zeilen.join('');
   ausleseRezeptAnzeige.hidden=!zeilen.length;
@@ -2350,7 +2498,7 @@ function oeffneAuslese(){
   if(state!=='playing') return false;
   ausleseKarten=ausleseZiehen();
   if(!ausleseKarten.length) return false;   // gar nichts wählbar -> Auslese komplett überspringen
-  ausleseReturnState=state; state='auslese'; ausleseOffenSeit=Date.now(); setMusicLevel();
+  ausleseReturnState=state; state='auslese'; setMusicLevel();
   overlayAuslese.classList.remove('hidden'); renderAuslese(); updateTreeButton();
   return true;
 }
@@ -2359,7 +2507,7 @@ function oeffneWeichenAuslese(){
   const w=offeneWeiche();
   if(!w.length) return false;
   ausleseKarten=w.map(n=>({weiche:true,id:n.id,name:n.name,desc:n.desc,icon:n.icon}));
-  ausleseReturnState=state; state='auslese'; ausleseOffenSeit=Date.now(); setMusicLevel();
+  ausleseReturnState=state; state='auslese'; setMusicLevel();
   overlayAuslese.classList.remove('hidden'); renderAuslese(); updateTreeButton();
   return true;
 }
@@ -2422,11 +2570,6 @@ function wuerfleAusleseNeu(){
 function schliesseAuslese(name){
   if(state!=='auslese') return;
   overlayAuslese.classList.add('hidden');
-  /* Bei Welle 15 spawnt der Boss im selben startWave()-Aufruf und startet die
-     10 s Begleiter-Überladung über Date.now(). Die reale Uhr läuft weiter, während
-     der Spieler Karten liest — deshalb wird die Restzeit um die Lesedauer verschoben. */
-  const pause=Date.now()-ausleseOffenSeit;
-  if(helferOverdriveUntil>Date.now()) helferOverdriveUntil+=pause;
   state=ausleseReturnState||'playing'; ausleseReturnState='playing'; setMusicLevel();
   // Gleiche Begründung wie nach dem Orbitpfad: neue Mechanik plus verlorener
   // Überblick über Gegner und Klingenbahn brauchen einen kurzen Wiedereinstieg.
@@ -2472,6 +2615,7 @@ function resize(){
   canvas.width=Math.round(w*renderDpr); canvas.height=Math.round(h*renderDpr);
   canvas.style.width=w+'px'; canvas.style.height=h+'px';
   ctx.setTransform(renderDpr,0,0,renderDpr,0,0);
+  drawPending=true;
 }
 window.addEventListener('resize',resize);
 if(window.visualViewport) window.visualViewport.addEventListener('resize',resize);
@@ -2514,33 +2658,35 @@ window.addEventListener('load',()=>{ player = newPlayer(); window.playerRef = pl
 function resetGame(){
   // Erst jetzt, vor dem nächsten Lauf, folgt auf einen erledigten Auftrag ein neuer.
   sorgeOrbitauftrag();
+  spielZeitMs=0;
   player=newPlayer(); window.playerRef = player; enemies=[]; stars=[]; particles=[]; floats=[]; shots=[]; orbs=[]; killCount=0; hpKillCount=0;
   wave=1; waveEnemiesToSpawn=0; waveSpawned=0; spawnTimer=0;
   activeCd={wirbel:0,stoss:0,bombe:0,nova:0,sog:0}; phaserCd=0; brandspurCd=0; dmgBoostUntil=0; shieldUntil=0; moveBoostUntil=0; stossWaveT=0; wirbelT=0; spinHitTimer=0;
   machtblitze=[]; plasmabomben=[]; plasmaNachwurf=null;
   bonuses={dmg:0, speed:0, range:0, fireRate:0, maxHp:0, blades:1, regen:0};
-  counterCd=0; shards=[]; bossActive=false; bossHitClean=true; flashUntil=0; helferOverdriveUntil=0;
-  const vw = laufVorgabe ? { slot1:laufVorgabe.slot1, slot2:laufVorgabe.slot2 } : startMaechte();
-  activeSlot1=vw.slot1; activeSlot2 = hasSlot2()? (vw.slot2||null) : null;
+  counterCd=0; kwelleCd=0; ketteCd=0; arsenalCd=0; singCd=0; machtgriffCd=0; machtgriffAktiv=null; wurfCd=0; wurfklinge=null; echoCd=0; echoSampleT=0; spielerPfad=[]; machtEcho=null; shards=[]; bossActive=false; bossHitClean=true; flashUntil=0; helferOverdriveUntil=0;
+  const vw = laufVorgabe ? { slot1:laufVorgabe.slot1 } : startMaechte();
+  activeSlot1=vw.slot1; activeSlot2=null;
   runAbilities={}; runEvolutions={}; runTree={}; skillPoints=0; treeFlags={}; treeUndo=null; runModule={};
   runKartenEvos={}; kartenEvoWellen=[]; glasOpfer=0;
   regularPointsEarned=0; regularTreeFrozen=false; echoPoints=0; echoMilestones=0; treeReturnState='playing';
-  bombs=[]; pShots=[]; powerFields=[]; powerEchoes=[]; novaFx=0; novaEcho=0; barriere=0; bossHazards=[];
+  bombs=[]; pShots=[]; powerFields=[]; powerEchoes=[]; singularities=[]; novaFx=0; novaEcho=0; barriere=0; bossHazards=[];
   updateActiveButtons();   // ohne das behalten die Knöpfe die Beschriftung des letzten Laufs
-  wiederaufBenutzt=false; nachhallZaehler=0; splitterSweetZaehler=0; fokus=0; fokusBereit=false; endlosLauf=false;
-  taktschlagZaehler=0; nachfassenBereit=false;
+  wiederaufBenutzt=false; fokus=0; fokusBereit=false; endlosLauf=false;
+  taktschlagZaehler=0; nachfassenBereit=false; healFx=0; healFxRegen=false; healRegenPulseCd=0;
   // Tageslauf und Ereigniswellen: Zustand gehört immer zum Lauf, nie zum letzten.
   setzeLaufSeed(laufVorgabe ? laufVorgabe.seed : (Math.random()*4294967296));
   baueTagesFaktoren();
   laufEreignis=null; letztesEreignisId=''; hitstopMs=0; kettenZahl=0; kettenBis=0;
   // Auslese ist laufgebunden: sonst wirkt der Freiwurf, die Preissteigerung oder eine
   // schon "verbrauchte" Welle aus dem vorigen Lauf im neuen Lauf nach.
-  ausleseKarten=[]; letzteAusleseWelle=0; ausleseReturnState='playing'; ausleseFreiwurfBenutzt=false; ausleseBezahlteWuerfe=0; ausleseOffenSeit=0;
+  ausleseKarten=[]; letzteAusleseWelle=0; ausleseReturnState='playing'; ausleseFreiwurfBenutzt=false; ausleseBezahlteWuerfe=0;
   ausleseZiehungen=0;
   swordAngle=0; orbitRoundSweet=false; orbitRoundLight=false; orbitRoundDistance=0; orbitLastX=player.x; orbitLastY=player.y;
   waechterLadung=false; sonnenSerie=0; sonnenTempoUntil=0; praezSerie=0; kronenMachtId=''; kronenMachtUntil=0; kronenZielklinge=0;
   toasts=[]; banner=null;
-  tutStep=0; tutT=0; tutorialCircleUntil=0; tutorialBladeUntil=0; unlockFx=0; combatResumeUntil=0; combatResumeStep=''; setzeHelfer();
+  tutStep=0; tutT=0; tutorialCircleUntil=0; tutorialBladeUntil=0; unlockFx=0; combatResumeRest=0; combatResumeStep='';
+  pauseReturnState='playing'; setzeHelfer();
   if(metaLevel('startimpuls')>0) skillPoints=1;
   // Tages-Twist „Fliegender Start": zwei zusätzliche Punkte, wie beim Startimpuls
   // außerhalb der regulären Ökonomie — ein guter Tag darf mächtig beginnen.
@@ -2563,6 +2709,7 @@ function hideAll(){
   document.getElementById('overlay-hangar').classList.add('hidden');
   overlayAuslese.classList.add('hidden');
   if(combatResume) combatResume.classList.add('hidden');
+  syncUiAccessibility();
 }
 function startWave(){
   const d=curDiff();
@@ -2616,7 +2763,7 @@ function spawnBoss(){
     spawnParticles(player.x,player.y,'#ffd257',10); updateHUD(true);
   }
   if(begleiterStufe()>=5){
-    helferOverdriveUntil=Date.now()+10000;
+    helferOverdriveUntil=spielJetzt()+10000;
     const hf=helfer[0]; if(hf) pushFloat(hf.x||player.x,(hf.y||player.y)-24,'ÜBERLADUNG','#ffd257',1.25);
   }
   if(sfx) sfx('boss');
@@ -2795,7 +2942,7 @@ function makeEnemy(type){
     if(laufEreignis.hpMult) hp=Math.max(1,Math.round(hp*laufEreignis.hpMult));
     if(laufEreignis.speedMult) spd*=laufEreignis.speedMult;
   }
-  return { type, x,y, hp, maxHp:hp, dmg:Math.round(t.dmg*dScale*diff.enemyDmg), speed:spd, radius:t.radius, color:t.color, panzer:!!t.panzer, hitCd:0, bossTimer:0, shootRange:t.shootRange||0, chargeT:0, shootCd:0, jagdPhase:'an', bossPhase:'', ability:'', ramT:0, ramRecoverT:0, shockFx:0, warnT:0,
+  return { type, x,y, hp, maxHp:hp, dmg:Math.round(t.dmg*dScale*diff.enemyDmg), speed:spd, radius:t.radius, color:t.color, panzer:!!t.panzer, hitCd:0, bossTimer:0, shootRange:t.shootRange||0, chargeT:0, shootCd:0, aimX:0, aimY:0, jaegerErholT:0, jagdPhase:'an', bossPhase:'', ability:'', ramT:0, ramRecoverT:0, shockFx:0, warnT:0,
            phase2:false, phaseT:0, hpDavor:0, schildT:0, schildDir:0, schildHitCd:0, brandTick:0 };
 }
 function randomEnemyType(){
@@ -2900,14 +3047,23 @@ joystickZone.addEventListener('mousedown',e=>{
 });
 window.addEventListener('mousemove',e=>{ if(mouseDown) stickMoveTo(e.clientX,e.clientY); });
 window.addEventListener('mouseup',()=>{ if(mouseDown){ mouseDown=false; stickEnd(); } });
-window.addEventListener('keydown',e=>{
-  keys[e.key.toLowerCase()]=true;
-  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) skipCombatResume();
-  if(e.key==='1') doActive(1);
-  if(e.key==='Escape' && state==='playing') pauseGame();
-  if(e.key==='Escape' && state==='paused') resumeGame();
-});
-window.addEventListener('keyup',e=> keys[e.key.toLowerCase()]=false);
+function resetInputState(){ keys={}; mouseDown=false; stickEnd(); }
+function handleKeyDown(e){
+  const key=String(e.key||'').toLowerCase();
+  if(key==='escape'){
+    if(e.repeat) return;
+    if(e.preventDefault) e.preventDefault();
+    if(state==='playing'||state==='countdown') pauseGame();
+    else if(state==='paused') resumeGame();
+    return;
+  }
+  keys[key]=true;
+  if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(key)) skipCombatResume();
+  if(key==='1') doActive(1);
+}
+function handleKeyUp(e){ keys[String(e.key||'').toLowerCase()]=false; }
+window.addEventListener('keydown',handleKeyDown);
+window.addEventListener('keyup',handleKeyUp);
 canvas.addEventListener('touchstart',e=>{
   // prevent scroll, but allow buttons: only prevent if not on button
   if(e.target.closest('button')) return;
@@ -2939,8 +3095,29 @@ function renderOrbitauftrag(){
   hud.classList.toggle('hidden',!def||fertig||state!=='playing');
   hud.textContent=def&&!fertig?'Auftrag: '+def.kurz+' '+auftrag.wert+'/'+def.ziel:'';
 }
-function pauseGame(){ if(state!=='playing') return; state='paused'; setMusicLevel(); updateTreeButton(); refreshMenuVisibility(); renderOrbitauftrag(); overlayPause.classList.remove('hidden'); }
-function resumeGame(){ if(state!=='paused') return; state='playing'; setMusicLevel(); overlayPause.classList.add('hidden'); lastTime=performance.now(); updateTreeButton(); renderOrbitauftrag(); }
+let pauseReturnState='playing';
+function pauseGame(){
+  if(state!=='playing'&&state!=='countdown') return;
+  pauseReturnState=state;
+  state='paused'; resetInputState(); setMusicLevel(); updateTreeButton(); refreshMenuVisibility(); renderOrbitauftrag();
+  overlayPause.classList.remove('hidden'); syncUiAccessibility();
+}
+function resumeGame(){
+  if(state!=='paused') return;
+  overlayPause.classList.add('hidden');
+  if(pauseReturnState==='countdown'){
+    state='countdown';
+    if(combatResume) combatResume.classList.remove('hidden');
+  } else state='playing';
+  pauseReturnState='playing';
+  setMusicLevel(); lastTime=performance.now(); updateTreeButton(); renderOrbitauftrag(); syncUiAccessibility();
+}
+function pauseOnBackground(){
+  resetInputState();
+  if(state==='playing'||state==='countdown') pauseGame();
+}
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) pauseOnBackground(); });
+window.addEventListener('blur',pauseOnBackground);
 document.getElementById('pause-btn').addEventListener('click',pauseGame);
 document.getElementById('resume-btn').addEventListener('click',resumeGame);
 /* Lauf aufgeben — nach Genre-Konvention (Vampire Survivors, Hades, Brotato):
@@ -2986,25 +3163,24 @@ function closeCodex(){
   document.getElementById('overlay-codex').classList.add('hidden');
   overlayPause.classList.remove('hidden');
 }
-function openPick(art, slotNr){
+function openPick(){
   const liste=document.getElementById('pick-liste'), titel=document.getElementById('pick-titel');
   const hinweis=document.getElementById('pick-hinweis');
-  liste.innerHTML=''; titel.textContent='Slot '+slotNr+' belegen';
+  liste.innerHTML=''; titel.textContent='Hauptmacht wählen';
   hinweis.textContent='Mit dieser Macht startest du künftig jeden Lauf.';
-  const vw=startMaechte(), belegt=slotNr===1?vw.slot2:vw.slot1;
   for(const id of ACTIVE_IDS.filter(id=>abilUnlocked(id))){
-    const a=ABILITIES[id], gesperrt=id===belegt, b=document.createElement('button');
-    b.className='pick-karte'+(gesperrt?' locked':'');
+    const a=ABILITIES[id], b=document.createElement('button');
+    b.className='pick-karte';
     b.innerHTML=`${svg(abilIcon(id))}<div class="pick-info"><h3>${a.name}</h3><p>${a.desc}</p>
-      <div class="pick-lv">Startet auf Stufe 1</div></div>${gesperrt?'<span class="slot-badge">im anderen Slot</span>':''}`;
-    if(!gesperrt) b.onclick=()=>waehlePick(slotNr,id);
+      <div class="pick-lv">Startet auf Stufe 1</div></div>`;
+    b.onclick=()=>waehlePick(id);
     liste.appendChild(b);
   }
   document.getElementById('overlay-startmaechte').classList.add('hidden');
   document.getElementById('overlay-pick').classList.remove('hidden');
 }
-function waehlePick(slotNr,id){
-  const vw=startMaechte(); if(slotNr===1) vw.slot1=id; else vw.slot2=id;
+function waehlePick(id){
+  const vw=startMaechte(); vw.slot1=id;
   startMaechte(); persist(); if(sfx) sfx('pick'); schliessePick();
 }
 function schliessePick(){
@@ -3022,13 +3198,13 @@ function unlockText(id){
   return w? `Freischaltung: Welle ${w}` : 'Noch nicht verfügbar';
 }
 function renderCodex(){
-  // Aktive Slots als anklickbare Kacheln
+  // Hauptmacht als reine Laufanzeige.
   const slotBox=document.getElementById('codex-slots');
   slotBox.innerHTML='';
-  for(const n of [1]){
-    const id=n===1?activeSlot1:activeSlot2;
-    const kachel=document.createElement('button');
-    const a=ABILITIES[id]; if(!a) continue;
+  {
+    const id=activeSlot1, kachel=document.createElement('button');
+    const a=ABILITIES[id];
+    if(!a) return;
     const lv=runAbilities[id]||1, evo=evolvedOf(id);
     kachel.className='slot-kachel'+(evo?' is-evo':'');
     kachel.innerHTML=`<span class="slot-nr">Hauptmacht</span>${svg(abilIcon(id))}
@@ -3036,7 +3212,7 @@ function renderCodex(){
       <span class="slot-sub">${evo? 'Entwickelt' : 'Stufe '+lv+' von '+MAX_ABIL_LEVEL}</span>
       ${pipsHTML(lv)}
       ${evo? '' : '<span class="slot-next">'+naechsteStufeText(id, lv)+'</span>'}`;
-    // Im Lauf nicht mehr tauschbar — die Wahl fällt vor dem Start unter „Startmächte".
+    // Im Lauf nicht mehr tauschbar — die Wahl fällt vor dem Start unter „Hauptmacht".
     // Die Kachel bleibt als Anzeige (Stufe, Entwicklung, nächster Schritt) erhalten.
     kachel.classList.add('nurAnzeige');
     slotBox.appendChild(kachel);
@@ -3080,10 +3256,8 @@ function closeInfo(){
   document.getElementById('overlay-info').classList.add('hidden');
   (infoReturn==='pause'? overlayPause : overlayStart).classList.remove('hidden');
 }
-/* STARTMÄCHTE. Bis hierher begann jeder Lauf zwangsweise mit Wirbel (und Schock im
-   zweiten Slot) — später freigeschaltete Mächte wie Bombe oder Nova standen nie am
-   Start, was ihre Freischaltung entwertete. Die Wahl hier gilt dauerhaft, bis sie
-   jemand ändert; passive Mächte bleiben bewusst außen vor, sie sind der Aufbau IM Lauf. */
+/* HAUPTMACHT. Die Wahl gilt dauerhaft, bis sie jemand ändert; passive Mächte
+   bleiben bewusst außen vor, sie sind der Aufbau im Lauf. */
 // Charakterwahl: zeigt Werteschnitt und Besonderheit, damit die Wahl beurteilbar ist
 function renderCharakterWahl(){
   const box=document.getElementById('charakter-wahl');
@@ -3176,8 +3350,8 @@ function renderStartMaechte(){
   if(!box) return;
   const vw=startMaechte();
   box.innerHTML='';
-  for(const n of [1]){
-    const id = n===1? vw.slot1 : vw.slot2;
+  {
+    const id=vw.slot1;
     const kachel=document.createElement('div');
     if(!id){
       kachel.className='slot-kachel leer';
@@ -3189,7 +3363,7 @@ function renderStartMaechte(){
       kachel.innerHTML=`<span class="slot-nr">Hauptmacht</span>${svg(abilIcon(id))}
         <span class="slot-name">${a.name}</span>
         <span class="slot-sub">${a.desc}</span>`;
-      kachel.onclick=()=>openPick('vorwahl', n);
+      kachel.onclick=openPick;
     }
     box.appendChild(kachel);
   }
@@ -3201,14 +3375,14 @@ function renderOrbitPresets(){
   if(!Array.isArray(save.presets)) save.presets=[null,null];
   for(let i=0;i<2;i++){
     const p=save.presets[i], card=document.createElement('div'); card.className='preset-card';
-    const text=p?`${(FIGUREN[p.figur]||FIGUREN.held).name} · ${(ABILITIES[p.slot1]||ABILITIES.wirbel).name}${p.slot2?' + '+(ABILITIES[p.slot2]||{}).name:''}`:'Noch nicht belegt';
+    const text=p?`${(FIGUREN[p.figur]||FIGUREN.held).name} · ${(ABILITIES[p.slot1]||ABILITIES.wirbel).name}`:'Noch nicht belegt';
     card.innerHTML=`<span><b>Konfiguration ${i+1}</b><small>${text}</small></span><button class="preset-load" ${p?'':'disabled'}>Laden</button><button class="preset-save">Aktuelles Set speichern</button>`;
     card.querySelector('.preset-load').onclick=()=>{
       if(!p) return; save.figur=isAvailable('figur',p.figur)?p.figur:'held';
-      passeOrbitauftragAnFigurwahl(); save.startMaechte={slot1:p.slot1,slot2:p.slot2}; startMaechte(); persist(); renderOrbitauftrag(); renderStartMaechte(); if(sfx)sfx('pick');
+      passeOrbitauftragAnFigurwahl(); save.startMaechte={slot1:p.slot1}; startMaechte(); persist(); renderOrbitauftrag(); renderStartMaechte(); if(sfx)sfx('pick');
     };
     card.querySelector('.preset-save').onclick=()=>{
-      const vw=startMaechte(); save.presets[i]={figur:save.figur,slot1:vw.slot1,slot2:vw.slot2}; persist(); renderOrbitPresets(); if(sfx)sfx('pick');
+      const vw=startMaechte(); save.presets[i]={figur:save.figur,slot1:vw.slot1}; persist(); renderOrbitPresets(); if(sfx)sfx('pick');
     };
     box.appendChild(card);
   }
@@ -3235,21 +3409,18 @@ document.getElementById('info-btn').addEventListener('click',()=>openInfo('start
 document.getElementById('info-btn-pause').addEventListener('click',()=>openInfo('pause'));
 document.getElementById('info-back').addEventListener('click',closeInfo);
 
-/* EINSTELLUNGEN. Bisher gab es nur den Ton-Knopf im HUD. Wer links greift, hatte die
-   Fähigkeiten-Knöpfe auf der falschen Seite und verdeckte sie beim Zielen — das ist
+/* EINSTELLUNGEN. Wer links greift, hatte den Machtknopf auf der falschen Seite
+   und verdeckte ihn beim Zielen — das ist
    nichts, was man erraten sollte, also ist es jetzt einstellbar und wird gespeichert. */
 const OPT_GRUPPEN=[
-  { key:'seite', titel:'Seite der Fähigkeiten-Knöpfe',
+  { key:'seite', titel:'Seite des Machtknopfs',
     hinweis:'Leg sie auf die Hand, mit der du nicht ziehst.',
     werte:[ {v:'links', t:'Unten links'}, {v:'rechts', t:'Unten rechts'} ] },
-  { key:'anordnung', titel:'Anordnung',
-    hinweis:'Übereinander braucht weniger Breite und verdeckt weniger Spielfeld.',
-    werte:[ {v:'nebeneinander', t:'Nebeneinander'}, {v:'uebereinander', t:'Übereinander'} ] },
 ];
 function opts(){
   if(!save.opts || typeof save.opts!=='object') save.opts={};
   if(save.opts.seite!=='links') save.opts.seite='rechts';
-  if(save.opts.anordnung!=='uebereinander') save.opts.anordnung='nebeneinander';
+  delete save.opts.anordnung;
   return save.opts;
 }
 // Überträgt die Einstellungen auf die Bedienelemente. Wird beim Start und nach
@@ -3258,7 +3429,7 @@ function wendeBedienungAn(){
   const o=opts(), zone=document.getElementById('special-zone');
   if(!zone || !zone.classList) return;
   zone.classList.toggle('links', o.seite==='links');
-  zone.classList.toggle('gestapelt', o.anordnung==='uebereinander');
+  zone.classList.remove('gestapelt');
 }
 function renderSettings(){
   const box=document.getElementById('settings-liste');
@@ -3305,7 +3476,7 @@ document.getElementById('settings-back').addEventListener('click',closeSettings)
 wendeBedienungAn();
 /* Nach dem Tod drei getrennte Wege. Vorher hieß der einzige Knopf „Neustart", führte
    aber ins Hauptmenü — ein echter Sofort-Neustart fehlte ganz, und wer ins Hauptmenü
-   wollte, fand ihn hinter der falschen Beschriftung nicht. Seit die Startmächte dort
+   wollte, fand ihn hinter der falschen Beschriftung nicht. Seit die Hauptmacht dort
    festgelegt werden, muss der Weg dorthin außerdem offensichtlich sein. */
 function zumHauptmenue(){
   overlayOver.classList.add('hidden');
@@ -3333,7 +3504,7 @@ function closeHangar(){
   document.getElementById('overlay-hangar').classList.add('hidden');
   overlayStart.classList.remove('hidden');
 }
-document.getElementById('hangar-btn').addEventListener('click',openHangar);
+document.getElementById('hangar-btn').addEventListener('click',()=>openProgress('start'));
 document.getElementById('hangar-back').addEventListener('click',closeHangar);
 // Fortschritts-Screen (Bestmarken, Skins, Abzeichen)
 function skinReqWave(id, kind){
@@ -3458,20 +3629,25 @@ document.getElementById('collection-workshop-tab').addEventListener('click',()=>
 const muteBtn=document.getElementById('mute-btn'); if(muteBtn) muteBtn.addEventListener('click',toggleMute);
 updateMuteBtn();
 refreshMenuVisibility();   // beim allerersten Start bleiben Meta-Shop, Sammlung und Codex verborgen
+setupOverlayAccessibility();
 
+/* Phaser-Strahl (ID phaser): das nächste gültige Ziel legt die Strahlrichtung fest,
+   die beim Auslösen GESPERRT wird. Der Strahl ist ein kurzlebiges Segment (P.life) vom
+   Spieler nach außen; er durchschlägt bis zu P.pierce Gegner auf seiner Linie. Weil das
+   Segment ein Fenster lang bestehen bleibt und jeden Frame prüft, laufen schnelle Ziele
+   nicht hindurch. Kompakte violett-blaue Optik (bewusst zurückgenommene Hierarchie). */
 function starteMachtblitz(){
   const P=CONFIG.phaser, rang=hatSprung('phaser')?1:0;
-  const ziele=enemies.filter(en=>en.hp>0 && Math.hypot(en.x-player.x,en.y-player.y)<=P.range)
-    .sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y)).slice(0,P.targets[rang]);
-  for(const target of ziele) machtblitze.push({target,x:target.x,y:target.y,age:0,hit:false,
-    dmg:Math.round(P.dmg[rang]*(1+bonuses.dmg))});
-  return ziele.length>0;
-}
-function machtblitzEinschlag(b){
-  b.hit=true; b.target.hp-=b.dmg; b.target.flashT=1;
-  b.target.stunT=Math.max(b.target.stunT||0,CONFIG.phaser.stun);
-  shake=Math.max(shake,7);
-  kartenEvoWelle('drucksalve',b.x,b.y,CONFIG.nachhall.radius,b.dmg*.4);
+  let ziel=null, zd=P.range;
+  for(const en of enemies){ if(en.hp<=0) continue; const d=Math.hypot(en.x-player.x,en.y-player.y); if(d<=zd){ zd=d; ziel=en; } }
+  if(!ziel) return false;
+  const a=Math.atan2(ziel.y-player.y, ziel.x-player.x);
+  machtblitze.push({ x0:player.x, y0:player.y, dirX:Math.cos(a), dirY:Math.sin(a), len:P.range,
+    width:P.width*(rang?1.3:1), dmg:Math.round(P.dmg[rang]*(1+bonuses.dmg)), pierceLeft:P.pierce[rang],
+    hitIds:[], age:0, reach:zd, lastHit:null, druckDone:false });
+  shake=Math.max(shake,2);
+  if(sfx) sfx('machtblitz');
+  return true;
 }
 // Voller Schaden im kleinen Kern, außerhalb fällt die Plasmaenergie steil ab.
 // Die Gegnergröße zählt mit: nahe beieinander stehende Körper teilen den Kern.
@@ -3530,27 +3706,37 @@ function plasmaEinschlag(b){
   const evo=runKartenEvos.flammenorbit;
   if(evo){
     evo.puls=1; evo.treffer++;
-    // Kopien der Funken fliegen heraus; der gegenläufige Grundorbit bleibt intakt.
+    // Plasmasturm: der Einschlag schleudert begrenzte Plasmasplitter nach außen (kein Dauerorbit
+    // mehr). Der Splitterschaden hängt jetzt an der Bombe selbst, nicht am entfernten Funkenkranz.
     for(let i=0;i<8;i++) moduleShot(b.tx,b.ty,evo.phase+i*Math.PI/4,
-      CONFIG.funkenkranz.dmg[1]*3*(1+bonuses.dmg),2,
+      Math.round(b.dmg*0.35*(1+bonuses.dmg)),2,
       {kind:'plasma',moduleColor:'#70ffe3',life:.65});
   }
 }
 function updateBangers(dt){
   if(dt<=0) return;
   const P=CONFIG.phaser,B=CONFIG.brandspur;
-  let blitzTon=false;
   for(let i=machtblitze.length-1;i>=0;i--){
     const b=machtblitze[i]; b.age+=dt;
-    if(!b.hit){
-      // Kein heimlicher Zielwechsel nach der Warnung, falls eine Klinge schneller war.
-      if(b.target.hp<=0 || !enemies.includes(b.target)){machtblitze.splice(i,1);continue;}
-      b.x=b.target.x; b.y=b.target.y;
-      if(b.age+1e-6>=P.warn){machtblitzEinschlag(b);blitzTon=true;}
+    // Swept-Segment: jeden Frame die noch nicht getroffenen Gegner auf der gesperrten
+    // Linie prüfen, bis die Durchschläge (pierceLeft) verbraucht sind.
+    if(b.pierceLeft>0){
+      for(const en of enemies){
+        if(en.hp<=0 || b.hitIds.includes(en)) continue;
+        const proj=(en.x-b.x0)*b.dirX+(en.y-b.y0)*b.dirY;      // Projektion auf die Strahlachse
+        if(proj<0 || proj>b.len) continue;
+        const px=b.x0+b.dirX*proj, py=b.y0+b.dirY*proj;
+        if(Math.hypot(en.x-px,en.y-py) < b.width+en.radius){
+          en.hp-=b.dmg; en.flashT=1; pushFloat(en.x,en.y-14,'-'+b.dmg,'#a996ff');
+          b.hitIds.push(en); b.pierceLeft--; b.lastHit=en; b.reach=Math.max(b.reach,proj);
+          if(b.pierceLeft<=0) break;
+        }
+      }
+      // Drucksalve-Fusion: einmalig am zuletzt getroffenen Gegner (Strahl selbst bleibt).
+      if(!b.druckDone && b.lastHit){ kartenEvoWelle('drucksalve',b.lastHit.x,b.lastHit.y,CONFIG.nachhall.radius,b.dmg*.4); b.druckDone=true; }
     }
-    if(b.age+1e-6>=P.warn+P.bolt+P.scorch) machtblitze.splice(i,1);
+    if(b.age+1e-6>=P.life) machtblitze.splice(i,1);
   }
-  if(blitzTon) sfx('machtblitz');
   for(let i=plasmabomben.length-1;i>=0;i--){
     const b=plasmabomben[i]; b.age+=dt;
     if(!b.hit && b.age+1e-6>=B.flight) plasmaEinschlag(b);
@@ -3562,7 +3748,109 @@ function updateBangers(dt){
   }
   if(isCarried('phaser')){
     phaserCd-=dt;
-    if(phaserCd<=1e-6 && starteMachtblitz()) phaserCd=CONFIG.phaser.cooldown[hatSprung('phaser')?1:0];
+    // Ohne gültiges Ziel in Reichweite bald erneut prüfen statt jeden Frame — konsistent
+    // mit den übrigen getakteten Passiven und ehrlicher für die Ereignisrate.
+    if(phaserCd<=1e-6) phaserCd = starteMachtblitz() ? CONFIG.phaser.cooldown[hatSprung('phaser')?1:0] : 200;
+  }
+  // Kinetische Welle (ID konterstoss): zeitgesteuerte 360°-Druckwelle statt On-Hit-Reaktion.
+  // Der Sprung (Verstärkt/Fusion) verkürzt den Takt; die Gewitterherz-Fusion behält
+  // zusätzlich ihren erlittener-Treffer-Auslöser in hurtPlayer().
+  if(isCarried('konterstoss')){
+    kwelleCd-=dt;
+    if(kwelleCd<=1e-6){ kinetischeWelle(); kwelleCd=CONFIG.abil.kwelleInterval[hatSprung('konterstoss')?1:0]; }
+  }
+  // Ketten-Machtblitz (ID kettenblitz): zeitgesteuerte Kette statt On-Hit; ohne gültiges
+  // Ziel bald erneut prüfen, damit sie beim nächsten Gegner sofort zuckt.
+  if(isCarried('kettenblitz')){
+    ketteCd-=dt;
+    if(ketteCd<=1e-6) ketteCd = ketteMachtblitz() ? CONFIG.abil.ketteInterval[hatSprung('kettenblitz')?1:0] : 200;
+  }
+  // Telekinetisches Arsenal (ID splitter): getaktete Homing-Salve; ohne Ziel bald erneut prüfen.
+  if(isCarried('splitter')){
+    arsenalCd-=dt;
+    if(arsenalCd<=1e-6) arsenalCd = telekinetischesArsenal() ? CONFIG.abil.arsenalInterval[hatSprung('splitter')?1:0] : 250;
+  }
+  // Singularität (ID nachhall): zeitgesteuertes Kraftzentrum; ohne Gruppe bald erneut prüfen.
+  if(isCarried('nachhall')){
+    singCd-=dt;
+    if(singCd<=1e-6) singCd = starteSingularitaet() ? CONFIG.nachhall.singInterval[hatSprung('nachhall')?1:0] : 300;
+  }
+  // Machtgriff (ID machtgriff): getakteter fokussierter Griff auf ein Einzelziel.
+  if(isCarried('machtgriff')){
+    machtgriffCd-=dt;
+    if(machtgriffCd<=1e-6) machtgriffCd = starteMachtgriff() ? CONFIG.machtgriff.interval[hatSprung('machtgriff')?1:0] : 300;
+  }
+  if(machtgriffAktiv){
+    const g=machtgriffAktiv, e=g.target;
+    if(!e || e.hp<=0 || !enemies.includes(e)) machtgriffAktiv=null;
+    else {
+      g.t-=dt;
+      if(!g.boss) e.stunT=Math.max(e.stunT||0, 60);          // weiter festhalten
+      if(g.t<=0){
+        const lvl=abilityLevel('machtgriff')||1;
+        const elite=e.type==='schwer'||e.type==='panzer';
+        const mult=g.boss?CONFIG.machtgriff.bossMult:(elite?CONFIG.machtgriff.eliteMult:1);
+        const dmg=Math.round(CONFIG.machtgriff.dmg*abilScale(lvl)*mult*(1+bonuses.dmg));
+        e.hp-=dmg; e.flashT=1;
+        pushFloat(e.x,e.y-22,'CRUSH '+dmg,'#ffd257',1.25);
+        particles.push({ring:true,x:e.x,y:e.y,color:'#ffe08a',life:.34,max:.34});
+        spawnParticles(e.x,e.y,'#ffe08a',12);
+        if(!g.boss) e.stunT=Math.max(e.stunT||0,200);        // kurz benommen nach dem Crush
+        shake=Math.max(shake,3);
+        if(sfx) sfx('counter');
+        machtgriffAktiv=null;
+      }
+    }
+  }
+  // Energieklingen-Wurf (ID energieklingenwurf): getaktete Rückkehrklinge.
+  if(isCarried('energieklingenwurf')){
+    wurfCd-=dt;
+    if(wurfCd<=1e-6) wurfCd = starteWurf() ? CONFIG.wurf.interval[hatSprung('energieklingenwurf')?1:0] : 300;
+  }
+  if(wurfklinge){
+    const w=wurfklinge; w.life-=dt; const sp=CONFIG.wurf.speed*dt/1000;
+    if(w.phase==='hin'){
+      w.x+=w.dirX*sp; w.y+=w.dirY*sp; w.dist+=sp;
+      if(w.dist>=w.reach || w.life<=0) w.phase='zurueck';    // Umkehr bei Reichweite oder Sicherheitszeit
+    } else {
+      const dx=player.x-w.x, dy=player.y-w.y, d=Math.hypot(dx,dy)||1;   // verfolgt den bewegten Spieler
+      w.x+=dx/d*sp; w.y+=dy/d*sp;
+      if(d<=sp+18){ wurfklinge=null; }                       // sauberes, harmloses Andocken
+    }
+    if(wurfklinge){
+      const liste = w.phase==='hin'? w.hin : w.zurueck, mult = w.phase==='hin'? 1 : CONFIG.wurf.rueckMult;
+      for(const en of enemies){
+        if(en.hp<=0 || liste.includes(en)) continue;
+        if(Math.hypot(en.x-w.x,en.y-w.y) < w.radius+en.radius){
+          const dd=Math.round(w.dmg*mult); en.hp-=dd; en.flashT=1; pushFloat(en.x,en.y-14,'-'+dd,'#8cffe3'); liste.push(en);
+        }
+      }
+      if(w.life<=-2000) wurfklinge=null;                     // harte Obergrenze
+    }
+  }
+  // Macht-Echo (ID macht_echo): Bewegungs-Ringpuffer führen + getaktetes Geist-Echo.
+  if(isCarried('macht_echo')){
+    echoSampleT-=dt;
+    if(echoSampleT<=0){ echoSampleT=CONFIG.echo.sampleMs; spielerPfad.push({x:player.x,y:player.y}); if(spielerPfad.length>CONFIG.echo.maxPunkte) spielerPfad.shift(); }
+    echoCd-=dt;
+    if(echoCd<=1e-6) echoCd = starteMachtEcho() ? CONFIG.echo.interval[hatSprung('macht_echo')?1:0] : 300;
+  }
+  if(machtEcho){
+    const m=machtEcho;
+    if(m.phase==='mark'){ m.t-=dt; if(m.t<=0) m.phase='lauf'; }
+    else {
+      const step=Math.max(1, m.pfad.length/CONFIG.echo.laufFrames);
+      const from=Math.floor(m.idx), to=Math.min(m.pfad.length-1, Math.floor(m.idx+step));
+      for(let i=from;i<=to;i++){
+        const gx=m.pfad[i].x, gy=m.pfad[i].y;
+        for(const en of enemies){
+          if(en.hp<=0 || m.hit.includes(en)) continue;
+          if(Math.hypot(en.x-gx,en.y-gy) < m.breite+en.radius){ en.hp-=m.dmg; en.flashT=1; pushFloat(en.x,en.y-14,'-'+m.dmg,'#9fb8ff'); m.hit.push(en); }
+        }
+      }
+      m.idx+=step;
+      if(m.idx>=m.pfad.length-1) machtEcho=null;             // Ende — bewusst OHNE Endknall
+    }
   }
   if(modulRang('brandspur')){
     brandspurCd-=dt;
@@ -3576,25 +3864,18 @@ function zeichneBangers(){
   const P=CONFIG.phaser,B=CONFIG.brandspur;
   ctx.save(); ctx.lineCap='round';
   for(const b of machtblitze){
-    if(!sichtbar(b.x,b.y-75,170)) continue;
-    const h=150,alter=b.age-P.warn;
-    ctx.save(); ctx.translate(b.x,b.y); ctx.globalCompositeOperation='lighter';
-    if(!b.hit){
-      const p=b.age/P.warn;
-      ctx.fillStyle='#f5fbff'; sbc('#8dcfff',18); ctx.beginPath(); ctx.arc(0,-h,3+4*p,0,Math.PI*2); ctx.fill();
-      ctx.strokeStyle='#a9dcff'; ctx.globalAlpha=.35+.5*p; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.ellipse(0,5,13,6,0,0,Math.PI*2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-10-6*(1-p),-h); ctx.lineTo(10+6*(1-p),-h); ctx.stroke();
-    } else if(alter<P.bolt){
-      ctx.globalAlpha=Math.pow(1-alter/P.bolt,.55); ctx.strokeStyle='#65bfff'; sbc('#5faaff',22);
-      const pfad=()=>{ctx.beginPath();ctx.moveTo(0,-h);ctx.lineTo(-7,-112);ctx.lineTo(6,-88);ctx.lineTo(-5,-48);ctx.lineTo(5,-30);ctx.lineTo(0,2);};
-      ctx.lineWidth=8;pfad();ctx.stroke();ctx.strokeStyle='#fff';ctx.lineWidth=3;pfad();ctx.stroke();
-      ctx.fillStyle='#e8f8ff';ctx.beginPath();ctx.ellipse(0,5,19,8,0,0,Math.PI*2);ctx.fill();
-    } else {
-      ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1-(alter-P.bolt)/P.scorch;sb(0);
-      ctx.fillStyle='rgba(14,20,35,.7)';ctx.beginPath();ctx.ellipse(0,5,17,7,0,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='#6590b7';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(-10,5);ctx.lineTo(-2,2);ctx.lineTo(3,7);ctx.lineTo(10,4);ctx.stroke();
-    }
+    const rest=Math.max(0,1-b.age/P.life); if(rest<=0) continue;
+    const ex=b.x0+b.dirX*b.reach, ey=b.y0+b.dirY*b.reach;
+    if(!sichtbar((b.x0+ex)/2,(b.y0+ey)/2,b.reach*0.5+40)) continue;
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    // äußerer weicher Strahl (kompakt, violett-blau)
+    ctx.globalAlpha=.45*rest; ctx.strokeStyle='#8d82e8'; sbc('#8d82e8',10); ctx.lineWidth=b.width*1.5;
+    ctx.beginPath(); ctx.moveTo(b.x0,b.y0); ctx.lineTo(ex,ey); ctx.stroke();
+    // heller schmaler Kern
+    ctx.globalAlpha=.85*rest; ctx.strokeStyle='#cfe6ff'; sb(0); ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(b.x0,b.y0); ctx.lineTo(ex,ey); ctx.stroke();
+    // kompakter Mündungspunkt am Spieler
+    ctx.fillStyle='#d8d4ff'; ctx.beginPath(); ctx.arc(b.x0,b.y0,3*rest+1,0,Math.PI*2); ctx.fill();
     ctx.restore();
   }
   for(const b of plasmabomben){
@@ -3772,7 +4053,7 @@ function modulePulse(x,y,r,dmg,color,stun=0){
   return hits;
 }
 function armBladeModule(id){
-  const rank=treeFlags.bladeModule||0, now=Date.now(); if(!rank) return;
+  const rank=treeFlags.bladeModule||0, now=spielJetzt(); if(!rank) return;
   if(id==='wirbel'&&rank>=2){treeFlags.wirbelBladeCharges=treeRang('blade_multi')?2:1;treeFlags.wirbelBladeUntil=now+4200;}
   if(id==='bombe'&&rank>=2) treeFlags.bombPassUntil=now+4200;
   if(id==='nova'){treeFlags.novaBladeCharges=2;treeFlags.novaBladeUntil=now+4200;}
@@ -3782,7 +4063,7 @@ function armBladeModule(id){
   }
 }
 function handleBladeModuleSweet(en,toEnemy,dmg){
-  const rank=treeFlags.bladeModule||0, id=activeSlot1, now=Date.now(); if(!rank) return;
+  const rank=treeFlags.bladeModule||0, id=activeSlot1, now=spielJetzt(); if(!rank) return;
   if(id==='wirbel'){
     treeFlags.wirbelKerben=(treeFlags.wirbelKerben||0)+1;
     if(treeFlags.wirbelKerben>=4&&!(treeFlags.bladeModuleLockUntil>now)){
@@ -3842,7 +4123,7 @@ function handleBladeModuleSweet(en,toEnemy,dmg){
   }
 }
 function handleBladeEchoSweet(en,toEnemy,dmg){
-  const rank=treeRang('echo_blade'),now=Date.now();if(!rank||treeFlags.echoBladeLockUntil>now)return;
+  const rank=treeRang('echo_blade'),now=spielJetzt();if(!rank||treeFlags.echoBladeLockUntil>now)return;
   treeFlags.echoBladeHits=(treeFlags.echoBladeHits||0)+1;
   const takt=rank>=2?4:5;
   if(treeFlags.echoBladeHits>=takt){
@@ -3859,7 +4140,7 @@ function handleBladeEchoSweet(en,toEnemy,dmg){
   }
 }
 function handleOrbitCrownSweet(en,toEnemy,bladeIndex){
-  if(treeFlags.kronenform!=='dopp' || !kronenMachtId || Date.now()>kronenMachtUntil || bladeIndex!==kronenZielklinge) return;
+  if(treeFlags.kronenform!=='dopp' || !kronenMachtId || spielJetzt()>kronenMachtUntil || bladeIndex!==kronenZielklinge) return;
   powerEchoes.push({id:kronenMachtId,x:en.x,y:en.y,t:0,rank:1,crown:true});
   if(powerEchoes.length>4) powerEchoes.splice(0,powerEchoes.length-4);
   kronenZielklinge=1-kronenZielklinge; kronenMachtId=''; kronenMachtUntil=0;
@@ -3959,18 +4240,18 @@ function resolvePowerEcho(e){
   pushFloat(e.x,e.y-34,'MACHTECHO',color,1.05);if(sfx)sfx(id==='bombe'?'bombe':'nova');
 }
 
-// Specials — 2 frei belegbare Slots; doActive löst die im Slot gewählte Fähigkeit aus
-function doActive(slot){
-  const id = slot===1? activeSlot1 : activeSlot2;
+// Ein Machtknopf; der Parameter bleibt für bestehende Harness-Aufrufe erhalten.
+function doActive(slot=1){
+  if(slot!==1) return;
+  const id=activeSlot1;
   if(state==='playing' && id==='bombe' && treeFlags.mod_bombe==='b' && bombs.length){
     bombs.forEach(b=>b.t=0); return;
   }
   if(state!=='playing' || !id || activeCd[id]>0) return;
   activeCd[id]=activeCdMax(id);
-  // Fokus gehört zur Hauptmacht: Das Werkzeug auf Taste 2 kann die Ladung nicht stehlen.
-  const natuerlicherFokus=slot===1&&fokusBereit;
-  const echoLadung=slot===1&&treeFlags.echoPowerCharge>0&&treeFlags.echoPowerChargeUntil>Date.now();
-  if(slot===1&&treeFlags.echoPowerCharge&& !echoLadung) treeFlags.echoPowerCharge=0;
+  const natuerlicherFokus=fokusBereit;
+  const echoLadung=treeFlags.echoPowerCharge>0&&treeFlags.echoPowerChargeUntil>spielJetzt();
+  if(treeFlags.echoPowerCharge&&!echoLadung) treeFlags.echoPowerCharge=0;
   fokusAktiv = natuerlicherFokus||echoLadung;
   // Auslese-Modul Kurzschluss: Tempo gegen Leben. Rang 2 verschont nur den echten
   // Vollfokus-Einsatz (natuerlicherFokus) — Echo-Ladung zählt nicht als "voller Fokus".
@@ -4000,27 +4281,21 @@ function doActive(slot){
     spawnParticles(player.x,player.y,'#c77dff',16);
     pushFloat(player.x,player.y-34,'ECHO-FOKUS','#c77dff',1.05);
   }
-  if(treeFlags.nachsetzen) moveBoostUntil=Date.now()+1200;
+  if(treeFlags.nachsetzen) moveBoostUntil=spielJetzt()+1200;
   if(id==='wirbel') executeWirbel();
   else if(id==='stoss') executeStoss();
   else if(id==='bombe') executeBombe();
   else if(id==='nova') executeNova();
   else if(id==='sog') executeSog();
-  if(slot===1){
-    armBladeModule(id);
-    handlePowerModule(id);
-    queueEndlessPowerEcho(id,fokusAktiv);
-    if(treeRang('echo_blade')>=3) treeFlags.echoBladeBurst=3;
-  }
-  if(treeFlags.kronenform==='dopp'){ kronenMachtId=id; kronenMachtUntil=Date.now()+4000; }
+  armBladeModule(id);
+  handlePowerModule(id);
+  queueEndlessPowerEcho(id,fokusAktiv);
+  if(treeRang('echo_blade')>=3) treeFlags.echoBladeBurst=3;
+  if(treeFlags.kronenform==='dopp'){ kronenMachtId=id; kronenMachtUntil=spielJetzt()+4000; }
   if(treeFlags.orbitResonanz){
     const sofort=treeFlags.resonanzSofort && fokusAktiv;
-    const anderes=slot===1?activeSlot2:activeSlot1;
-    if(anderes){
-      if(sofort) activeCd[anderes]=0;
-      else activeCd[anderes]=Math.max(0,(activeCd[anderes]||0)*.78);
-    } else treeFlags.resonanzUntil=Date.now()+(sofort?3000:1300);
-    if(treeFlags.resonanzKlinge && fokusAktiv) treeFlags.resonanzKlingeUntil=Date.now()+4000;
+    treeFlags.resonanzUntil=spielJetzt()+(sofort?3000:1300);
+    if(treeFlags.resonanzKlinge && fokusAktiv) treeFlags.resonanzKlingeUntil=spielJetzt()+4000;
   }
   fokusAktiv=false;
 }
@@ -4028,7 +4303,7 @@ function executeWirbel(){
   const lv=abilityLevel('wirbel');
   const master=activeSlot1==='wirbel'?(treeFlags.powerMaster||0):0;
   const evo=evolvedOf('wirbel')==='sturmwirbel';
-  let dmg=Math.round(CONFIG.baseDamage*(1+bonuses.dmg)*CONFIG.wirbelDamageMult*abilScale(lv)*machtFaktor('wirbel') * (dmgBoostUntil>Date.now()?2:1) * fokusFaktor());
+  let dmg=Math.round(CONFIG.baseDamage*(1+bonuses.dmg)*CONFIG.wirbelDamageMult*abilScale(lv)*machtFaktor('wirbel') * (dmgBoostUntil>spielJetzt()?2:1) * fokusFaktor());
   let r=CONFIG.wirbelRadius*(1+bonuses.range*0.5)*(master>=1?1.14:1);
   if(evo){ r*=1.55; dmg=Math.round(dmg*1.5); }     // Sturmwirbel: größer und härter
   for(const en of enemies){
@@ -4074,7 +4349,7 @@ function executeWirbel(){
 function executeStoss(){
   const lv=abilityLevel('stoss');
   const master=activeSlot1==='stoss'?(treeFlags.powerMaster||0):0;
-  const dmg=Math.round(CONFIG.stossDamage*(1+bonuses.dmg)*abilScale(lv)*machtFaktor('stoss')*(dmgBoostUntil>Date.now()?2:1)*fokusFaktor());
+  const dmg=Math.round(CONFIG.stossDamage*(1+bonuses.dmg)*abilScale(lv)*machtFaktor('stoss')*(dmgBoostUntil>spielJetzt()?2:1)*fokusFaktor());
   const range=CONFIG.stossRange*(1+bonuses.range*0.3);
   const getroffen=[];
   // 360°-Schubwelle: stößt alle Gegner im Umkreis radial nach außen
@@ -4091,8 +4366,8 @@ function executeStoss(){
         if(ziel){ const koll=Math.round(dmg*0.35);ziel.hp-=koll;en.hp-=koll; }
       }
       if(treeFlags.mod_stoss==='b') en.slowT=Math.max(en.slowT||0,1200);
-      if(activeSlot1==='stoss'&&(treeFlags.powerModule||0)>0) en.moduleStossUntil=Date.now()+850;
-      if(master>=1) en.shockMarkUntil=Date.now()+3200;
+      if(activeSlot1==='stoss'&&(treeFlags.powerModule||0)>0) en.moduleStossUntil=spielJetzt()+850;
+      if(master>=1) en.shockMarkUntil=spielJetzt()+3200;
       // Sprung ab Stufe 4: die Welle betäubt zusätzlich — aus Wegstoßen wird Kontrolle
       if(lv>=SPRUNG_STUFE) en.stunT=Math.max(en.stunT||0, 600);
       spawnParticles(en.x,en.y,'#6ec8ff',6);
@@ -4161,11 +4436,11 @@ function executeSog(){
     en.x += dx/d*ziel; en.y += dy/d*ziel;
     en.hp -= dmg;
     if(master>=1 && d<kernDist){kern=en;kernDist=d;}
-    if(activeSlot1==='sog'&&(treeFlags.bladeModule||0)>0) en.sogModuleUntil=Date.now()+4300;
+    if(activeSlot1==='sog'&&(treeFlags.bladeModule||0)>0) en.sogModuleUntil=spielJetzt()+4300;
     // Festhalten ist jetzt Grundverhalten: Ohne Halten ist das Trefferband gegen
     // bewegte Gegner nur 116 ms breit. Das Machtmodul verlängert nur noch.
     const halteMs=(activeSlot1==='sog'&&(treeFlags.powerModule||0)>0)?1200:900;
-    en.moduleOrbitUntil=Date.now()+halteMs;
+    en.moduleOrbitUntil=spielJetzt()+halteMs;
     en.moduleOrbitAngle=Math.atan2(en.y-player.y,en.x-player.x);
     en.moduleOrbitDir=treeFlags.mod_sog==='b'?1:-1;
     if(treeFlags.mod_sog==='a') en.stunT=Math.max(en.stunT||0,900);
@@ -4177,7 +4452,7 @@ function executeSog(){
     if(lv>=SPRUNG_STUFE) en.stunT=Math.max(en.stunT||0, CONFIG.sog.stun);
     spawnParticles(en.x,en.y,'#4de0a0',4);
   }
-  if(kern){kern.gravKernUntil=Date.now()+3600;pushFloat(kern.x,kern.y-28,'KERN','#4de0a0',1.1);}
+  if(kern){kern.gravKernUntil=spielJetzt()+3600;pushFloat(kern.x,kern.y-28,'KERN','#4de0a0',1.1);}
   if(activeSlot1==='sog'&&(treeFlags.powerModule||0)>=2)
     powerFields.push({kind:'module_sog_end',x:player.x,y:player.y,r:R*.72,dmg:Math.round(dmg*.36),delay:1200,t:260,tick:0,color:'#4de0a0',mode:treeFlags.mod_sog});
   if(evolvedOf('sog')==='gravitationsbruch'){
@@ -4280,21 +4555,23 @@ function hurtPlayer(dmg){
      eingesteckt hat. Vorher hing es an einem Umlauf ohne Treffer — im Gedränge verfehlt
      man nie, die Karte feuerte gemessen in 0,0 % der Fälle. */
   if(modulRang('nachfassen')) nachfassenBereit=true;
-  if(Date.now()<=shieldUntil) return false;      // Schild absorbiert
+  if(spielJetzt()<=shieldUntil) return false;      // Schild absorbiert
   dmg *= hilfe().schaden;                        // Rückenwind der gewählten Hilfsstufe
   // Barriere zuerst: hält sie den Schlag komplett auf, bleibt die Lebensleiste unberührt
   if(barriere>0){
     const weg=Math.min(barriere, dmg);
     barriere-=weg; dmg-=weg;
     spawnParticles(player.x,player.y,'#7cc8ff',5);
-    shake=Math.max(shake,4); flashUntil=Date.now()+90;
+    shake=Math.max(shake,4); flashUntil=spielJetzt()+90;
     if(dmg<=0.5){ updateHUD(); return false; }
   }
-  player.hp-=dmg; shake=Math.max(shake,6); flashUntil=Date.now()+140;
+  player.hp-=dmg; shake=Math.max(shake,6); flashUntil=spielJetzt()+140;
   spawnParticles(player.x,player.y,'#ff4d4d',6);
   if(bossActive) bossHitClean=false;             // "Makellos" verwirkt
   if(sfx) sfx('hurt');
-  if(isCarried('konterstoss') && counterCd<=0) doCounter();
+  // Kinetische Welle ist jetzt zeitgesteuert; auf einen Treffer reagiert nur noch die
+  // Gewitterherz-Fusion mit ihrer Blitzkette (bewusster On-Hit-Auslöser laut Plan).
+  if(kartenVerschmolzen('konterstoss') && counterCd<=0){ counterCd=CONFIG.abil.counterCd; entladeGewitterherz(); }
   if(player.hp<=0){
     // Wiederaufstehen (nur „Entdecker", einmal pro Lauf): der Lauf endet nicht am
     // ersten Fehler. Für ein Kind ist das der Unterschied zwischen Weiterspielen
@@ -4302,7 +4579,7 @@ function hurtPlayer(dmg){
     if(hilfe().wiederauf && !wiederaufBenutzt){
       wiederaufBenutzt=true;
       player.hp=player.maxHp*0.6;
-      shieldUntil=Date.now()+2500;
+      shieldUntil=spielJetzt()+2500;
       barriere=Math.min(barriereMax(), barriere+player.maxHp*0.15);
       announce('Wieder auf den Beinen!', 'Einmal pro Lauf · kurz unverwundbar', '#4de0a0');
       spawnParticles(player.x,player.y,'#4de0a0',20);
@@ -4314,14 +4591,16 @@ function hurtPlayer(dmg){
   }
   return false;
 }
-// Konterstoß: automatische Mini-Schockwelle, wenn man getroffen wird
-function doCounter(){
-  counterCd=CONFIG.abil.counterCd; counterFx=1;
+/* Kinetische Welle (ID konterstoss): kurze 360°-Druckwelle rund um den Spieler, jetzt
+   zeitgesteuert ausgelöst (siehe Update-Schleife). Passive springen 1→4, daher ist lv
+   entweder 1 (Neu) oder 4 (Verstärkt/Fusion): der verstärkte Stand vergrößert Radius,
+   Schaden und Stoß und zündet einen sichtbaren Nachdruckring. Der Stoß bleibt bewusst
+   klein, damit Gegner in der Klingenbahn bleiben (kein Orbit-Wegschieben). Die
+   Gewitterherz-Fusion nutzt weiterhin ihren eigenen On-Hit-Pfad in hurtPlayer(). */
+function kinetischeWelle(){
+  counterFx=1;
   const lv=abilityLevel('konterstoss')||1;
-  entladeGewitterherz();
-  if(lv>=3) counterCd*=.62;
   const R=CONFIG.abil.counterRadius*(lv>=3?1.32:1), dmg=Math.round(CONFIG.abil.counterDamage*abilScale(lv)*(lv>=3?1.35:1));
-  // Sprung ab Stufe 4: der Konter schleudert doppelt so weit — er schafft echten Freiraum
   const push=CONFIG.abil.counterPush*(lv>=2?1.65:1);
   for(const en of enemies){
     const dx=en.x-player.x, dy=en.y-player.y, d=Math.hypot(dx,dy);
@@ -4334,6 +4613,119 @@ function doCounter(){
   spawnParticles(player.x,player.y,'#ff9a6b',lv>=3?22:12);
   if(lv>=3) particles.push({ring:true,x:player.x,y:player.y,color:'#ff9a6b',life:.38,max:.38});
   if(sfx) sfx('counter');
+}
+/* Ketten-Machtblitz (ID kettenblitz): zeitgesteuerte elektrische Kette statt On-Hit.
+   Wählt automatisch das nächste gültige Ziel und springt von dort auf nahe weitere
+   Ziele. Die ganze Kette ist EIN Auslöseereignis mit fest begrenzter Zielzahl (Neu 2,
+   Verstärkt 4) — keine Rekursion. Reine Blitz-/Kettenoptik über addBolt(), kein Strahl. */
+function ketteMachtblitz(){
+  let start=null, sd=1e9;
+  for(const en of enemies){ if(en.hp<=0) continue; const d=Math.hypot(en.x-player.x,en.y-player.y); if(d<sd){ sd=d; start=en; } }
+  if(!start) return false;
+  const clv=abilityLevel('kettenblitz')||1;
+  const cDmg=Math.round(CONFIG.abil.chainDamage*abilScale(clv));
+  const cR=CONFIG.abil.chainRange*(1+0.05*(clv-1));
+  const ziele=clv>=SPRUNG_STUFE?4:2;
+  const getroffen=[start]; let quelle=start;
+  start.hp-=cDmg; start.flashT=1; addBolt(player.x,player.y,start.x,start.y); pushFloat(start.x,start.y-14,'-'+cDmg,'#9ad0ff');
+  for(let z=1; z<ziele; z++){
+    let best=null, bd=cR;
+    for(const o of enemies){ if(o.hp<=0||getroffen.includes(o)) continue; const d=Math.hypot(o.x-quelle.x,o.y-quelle.y); if(d<bd){ bd=d; best=o; } }
+    if(!best) break;
+    best.hp-=cDmg; best.flashT=1; addBolt(quelle.x,quelle.y,best.x,best.y); pushFloat(best.x,best.y-14,'-'+cDmg,'#9ad0ff');
+    getroffen.push(best); quelle=best;
+  }
+  if(sfx) sfx('laserPlayer');
+  return true;
+}
+/* Telekinetisches Arsenal (ID splitter): schleudert zeitgesteuert 3 (Neu) bzw. 5
+   (Verstärkt) Homing-Geschosse auf VERSCHIEDENE, um den Spieler verteilte lebende
+   Ziele. Höchstens ~6 gleichzeitig; keine dauerhaft kreisenden Objekte. Eigene
+   violette Farbe unterscheidet sie sichtbar von blauen Klingen-Splittern. */
+function telekinetischesArsenal(){
+  const lebend=enemies.filter(e=>e.hp>0);
+  if(!lebend.length) return false;
+  const slv=abilityLevel('splitter')||1;
+  const anzahl=slv>=SPRUNG_STUFE?5:3;
+  const frei=Math.max(0, 6 - pShots.filter(s=>s.homing).length);   // Dichte begrenzen
+  const spawn=Math.min(anzahl, frei);
+  if(spawn<=0) return false;
+  lebend.sort((a,b)=>Math.atan2(a.y-player.y,a.x-player.x)-Math.atan2(b.y-player.y,b.x-player.x));
+  const dmg=Math.round(CONFIG.abil.splitterDamage*abilScale(slv)*1.6);
+  for(let i=0;i<spawn;i++){
+    const ziel=lebend[Math.floor(i*lebend.length/spawn)];          // gleichmäßig gestreute Ziele
+    const a=Math.atan2(ziel.y-player.y,ziel.x-player.x)+(Math.random()-0.5)*0.5;
+    pShots.push({ x:player.x+Math.cos(a)*22, y:player.y+Math.sin(a)*22,
+      vx:Math.cos(a)*320, vy:Math.sin(a)*320, dmg, life:1.6, hitsLeft:1,
+      homing:true, zielRef:ziel, moduleColor:'#c9a3ff', knock:8 });
+  }
+  if(sfx) sfx('laserPlayer');
+  return true;
+}
+/* Singularität (ID nachhall): zeitgesteuertes Kraftzentrum. Wählt bei Auslösung das
+   dichteste gültige Ziel als FESTES Zentrum, zieht Gegner im Umkreis zusammen und hält
+   sie, danach eine leichte Implosion mit wenig Schaden — die Rolle ist Gruppieren, nicht
+   Töten. Bosse und Knoten werden nicht gezogen. */
+function starteSingularitaet(){
+  const lebend=enemies.filter(e=>e.hp>0 && e.type!=='boss' && e.type!=='knoten');
+  if(!lebend.length) return false;
+  const pr=CONFIG.nachhall.pullR;
+  let bestE=null, bestN=-1;
+  for(const c of lebend){ let n=0; for(const o of lebend){ if(Math.hypot(o.x-c.x,o.y-c.y)<pr) n++; } if(n>bestN){ bestN=n; bestE=c; } }
+  if(!bestE) return false;
+  singularities.push({ x:bestE.x, y:bestE.y, t:CONFIG.nachhall.holdMs, life:CONFIG.nachhall.holdMs, lvl:abilityLevel('nachhall')||1 });
+  if(sfx) sfx('laserPlayer');
+  return true;
+}
+/* Machtgriff (ID machtgriff): Zielpriorität Elite (schwer/Panzer) > gefährlicher Schütze
+   (Jäger) > höchste HP (schließt den Boss ein). Normale Ziele werden per Stun kurz an Ort
+   festgehalten und dann zerquetscht; Bosse bekommen nur den fokussierten Crush ohne Lift
+   und ohne AoE. Immer nur EIN Griff gleichzeitig. */
+function machtgriffZiel(){
+  const l=enemies.filter(e=>e.hp>0);
+  if(!l.length) return null;
+  const elite=l.filter(e=>e.type==='schwer'||e.type==='panzer');
+  if(elite.length) return elite.sort((a,b)=>b.hp-a.hp)[0];
+  const schuetze=l.filter(e=>e.type==='jaeger');
+  if(schuetze.length) return schuetze.sort((a,b)=>Math.hypot(a.x-player.x,a.y-player.y)-Math.hypot(b.x-player.x,b.y-player.y))[0];
+  return l.sort((a,b)=>b.hp-a.hp)[0];
+}
+function starteMachtgriff(){
+  if(machtgriffAktiv) return false;
+  const ziel=machtgriffZiel(); if(!ziel) return false;
+  const boss=ziel.type==='boss';
+  const hold=CONFIG.machtgriff.hold[hatSprung('machtgriff')?1:0];
+  machtgriffAktiv={ target:ziel, t:hold, hold, boss };
+  if(!boss) ziel.stunT=Math.max(ziel.stunT||0, hold+150);   // festhalten, ohne den Körper zu versetzen
+  if(sfx) sfx('laserPlayer');
+  return true;
+}
+/* Energieklingen-Wurf (ID energieklingenwurf): wirft eine Klinge zum nächsten Ziel; sie fliegt
+   bis reach hinaus und kehrt dann zum LIVE-Spielerpunkt zurück (Spielerbewegung verändert die
+   Rückfluglinie). Getroffen wird je Flugrichtung höchstens einmal (getrennte Listen), der
+   Rückweg härter. Feste Lebenszeit als Sicherheits-Rückkehr — keine endlose Verfolgung. */
+function starteWurf(){
+  if(wurfklinge) return false;
+  let ziel=null, zd=1e9;
+  for(const en of enemies){ if(en.hp<=0) continue; const d=Math.hypot(en.x-player.x,en.y-player.y); if(d<zd){ zd=d; ziel=en; } }
+  if(!ziel) return false;
+  const a=Math.atan2(ziel.y-player.y, ziel.x-player.x), rang=hatSprung('energieklingenwurf')?1:0;
+  wurfklinge={ x:player.x, y:player.y, dirX:Math.cos(a), dirY:Math.sin(a), phase:'hin', dist:0,
+    reach:CONFIG.wurf.reach*(rang?1.15:1), radius:CONFIG.wurf.radius*(rang?1.25:1),
+    dmg:Math.round(CONFIG.wurf.dmg[rang]*(1+bonuses.dmg)), life:2600, hin:[], zurueck:[] };
+  if(sfx) sfx('laserPlayer');
+  return true;
+}
+/* Macht-Echo (ID macht_echo): kopiert bei Auslösung den Bewegungs-Ringpuffer UNVERÄNDERLICH.
+   Erst eine kurze Vormarkierung des Wegs (mark), dann läuft eine Geistfigur ihn vom älteren
+   zum neueren Punkt ab und trifft jedes Ziel höchstens einmal. Kein Endknall. Nur EIN Echo. */
+function starteMachtEcho(){
+  if(machtEcho || spielerPfad.length<2) return false;
+  const rang=hatSprung('macht_echo')?1:0;
+  machtEcho={ pfad:spielerPfad.map(p=>({x:p.x,y:p.y})), idx:0, phase:'mark', t:CONFIG.echo.markMs,
+    dmg:Math.round(CONFIG.echo.dmg[rang]*(1+bonuses.dmg)), breite:CONFIG.echo.breite[rang], hit:[] };
+  if(sfx) sfx('laserPlayer');
+  return true;
 }
 // Kettenblitz zwischen zwei Punkten (nur Optik)
 function addBolt(x1,y1,x2,y2){ particles.push({bolt:true, x:x1,y:y1, x2, y2, life:0.16, max:0.16}); }
@@ -4375,19 +4767,21 @@ function killEnemy(en,i){
   if(treeFlags.leerenHeilung && player.hp<player.maxHp){
     const verwundet=1-player.hp/player.maxHp;
     const heilung=player.maxHp*treeFlags.leerenHeilung*(treeFlags.satterAbgrund && verwundet>.45?1.8:1);
+    const hpVorher=player.hp;
     player.hp=Math.min(player.maxHp,player.hp+heilung);
+    if(player.hp>hpVorher+0.001){ healFx=1; healFxRegen=false; }
     pushFloat(player.x,player.y-24,'+'+Math.round(heilung)+' HP','#c77dff');
   }
   // Lebensregen (passiv): heilt pro Kill, höhere Stufe = mehr
   if(isCarried('lebensregen')){
     const heal=CONFIG.healPerKill*(1+0.5*(abilityLevel('lebensregen')-1))*(runKartenEvos.blutkristall?2:1);
     if(runKartenEvos.blutkristall) runKartenEvos.blutkristall.puls=1;
-    if(player.hp<player.maxHp){ player.hp=Math.min(player.maxHp, player.hp+heal); pushFloat(player.x,player.y-26,'+'+Math.round(heal)+' HP','#4de0a0'); }
+    if(player.hp<player.maxHp){ const hpVorher=player.hp; player.hp=Math.min(player.maxHp, player.hp+heal); if(player.hp>hpVorher+0.001){ healFx=1; healFxRegen=false; pushFloat(player.x,player.y-26,'+'+Math.round(heal)+' HP','#4de0a0'); } }
   }
   killCount++;
   // Killkette: Serien innerhalb von zwei Sekunden. Alle 15 ein kleiner Moment —
   // kurze Zeitlupe, Fokus, Float — damit Serien sich anfühlen statt nur zu zählen.
-  const jetztMs=Date.now();
+  const jetztMs=spielJetzt();
   kettenZahl = jetztMs<kettenBis ? kettenZahl+1 : 1;
   kettenBis=jetztMs+2000;
   if(kettenZahl%15===0){
@@ -4456,13 +4850,16 @@ const ICON={
   farbe:'<path d="M12 3a9 9 0 0 0 0 18c1.4 0 2-.8 2-1.8 0-.6-.4-1-.4-1.6 0-.9.7-1.5 1.6-1.5H17a4.4 4.4 0 0 0 4-4.4C21 6.6 17 3 12 3z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/><circle cx="7.6" cy="11" r="1.3" fill="currentColor"/><circle cx="11" cy="7.4" r="1.3" fill="currentColor"/><circle cx="15.4" cy="8.6" r="1.3" fill="currentColor"/>',
   nachhall:'<circle cx="6" cy="12" r="2.4" fill="currentColor"/><path d="M10.2 7.6a6.2 6.2 0 0 1 0 8.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M14.2 5a9.9 9.9 0 0 1 0 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".62"/><path d="M18.2 2.6a13.6 13.6 0 0 1 0 18.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".34"/>',
   // Auslese-Module: Jede Karte trägt ein eigenes Symbol.
-  funkenkranz:'<path d="M5 6a8 8 0 0 1 14 2M19 18a8 8 0 0 1-14-2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m4 4 3 3-3 3-3-3zm16 10 3 3-3 3-3-3z" fill="currentColor"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.5" opacity=".5"/>',
   brandspur:'<path d="M3 15Q7-1 17 7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="16" cy="11" r="5" fill="currentColor"/><ellipse cx="16" cy="21" rx="6" ry="1.5" fill="currentColor" opacity=".4"/><path d="M16 18v-2M8 21l2-3M22 21l-2-3" stroke="currentColor" stroke-width="1.5"/>',
   klingenteilung:'<path d="M12 4a8 8 0 1 1-6.93 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4.2 4.6v4.2h4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 20a8 8 0 0 0 6.93-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"/><path d="M19.8 19.4v-4.2h-4.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>',
   taktschlag:'<circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="6.4" fill="none" stroke="currentColor" stroke-width="1.8" opacity=".75"/><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"/>',
   nachfassen:'<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 3" opacity=".5"/><path d="M12 3a9 9 0 0 1 6.36 15.36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>',
   glasklinge:'<path d="M12 2 19 9 12 22 5 9z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 2v20M5 9h14M9 9 12 2M15 9 12 2" stroke="currentColor" stroke-width="1" opacity=".55"/>',
-  kurzschluss:'<path d="M12 19.2s-6.4-4.1-6.4-8.6A3.7 3.7 0 0 1 12 7.7a3.7 3.7 0 0 1 6.4 2.9c0 1-.3 2-.9 2.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.4 7.6 9 14h3l-1 4.6 5.6-7.6H13z" fill="currentColor"/>'
+  kurzschluss:'<path d="M12 19.2s-6.4-4.1-6.4-8.6A3.7 3.7 0 0 1 12 7.7a3.7 3.7 0 0 1 6.4 2.9c0 1-.3 2-.9 2.9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.4 7.6 9 14h3l-1 4.6 5.6-7.6H13z" fill="currentColor"/>',
+  // Neue Angriffsmächte: fokussierter Griff, geworfene Rückkehrklinge, laufendes Echo.
+  machtgriff:'<circle cx="12" cy="13" r="3.2" fill="currentColor"/><path d="M5 7l3.4 3.4M19 7l-3.4 3.4M12 21v-4.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 4.2 12 2l3 2.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  energieklingenwurf:'<path d="M4 14 14 4l3 3-10 10z" fill="currentColor"/><path d="M17.5 15a6.2 6.2 0 0 1-9.5 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 19.6 6.3 17M8 19.6l2.7-.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  macht_echo:'<circle cx="7.5" cy="6.5" r="2.1" fill="currentColor"/><path d="M5 20l2.5-6M10.5 13.5 7.5 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M13 9.5a5.5 5.5 0 0 1 0 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".5"/><path d="M16.6 7.5a9.5 9.5 0 0 1 0 13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".28"/>'
 };
 function svg(paths){ return `<svg class="card-icon" viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`; }
 
@@ -4477,12 +4874,12 @@ function pipsHTML(level, max=MAX_ABIL_LEVEL){
    Endlosmodus ersetzt Rang 3 tote Punkte durch einen kurzen, nicht stapelbaren Impuls. */
 function triggerEndlessLevelImpulse(){
   if(treeRang('echo_blade')>=3){
-    treeFlags.echoBladeImpulseUntil=Date.now()+5000;
+    treeFlags.echoBladeImpulseUntil=spielJetzt()+5000;
     return 'Klingenecho pulsiert';
   }
   if(treeRang('echo_power')>=3){
     treeFlags.echoPowerCharge=1;
-    treeFlags.echoPowerChargeUntil=Date.now()+5000;
+    treeFlags.echoPowerChargeUntil=spielJetzt()+5000;
     return 'Machtecho geladen';
   }
   return '';
@@ -4714,6 +5111,7 @@ function gameOver(){
   state='gameover'; if(sfx) sfx('gameover');
   setMusicLevel();
   updateTreeButton();
+  if(!messlauf){ save.niederlagen=(save.niederlagen|0)+1; persist(); }
   recordBest();
   const tagesLohn=tagesAbschluss();
   const earned=bucheFragmente();
@@ -4731,10 +5129,11 @@ function gameOver(){
 function update(dt){
   if(state!=='playing') return;
   /* Hitstop: In den größten Momenten (Ketten, Bosswechsel) steht die Simulation für
-     wenige Millisekunden still — der Treffer bekommt Gewicht. dt=0 friert alles
-     Simulierte, Date.now()-Effekte laufen weiter, was bei so kurzen Fenstern unsichtbar bleibt. */
+     wenige Millisekunden still — der Treffer bekommt Gewicht. Die Laufuhr erhält
+     nur wirksame Simulationszeit, also frieren auch alle Fristen gemeinsam. */
   if(hitstopMs>0){ hitstopMs-=dt; dt=0; }
-  if(kettenZahl&&Date.now()>kettenBis) kettenZahl=0;
+  spielZeitMs+=dt;
+  if(kettenZahl&&spielJetzt()>kettenBis) kettenZahl=0;
   musicTick(dt);
   // cooldowns (aktive Fähigkeiten) + Cooldown-Anzeige auf den Buttons
   for(const id of ACTIVE_IDS) if(activeCd[id]>0) activeCd[id]=Math.max(0, activeCd[id]-dt);
@@ -4750,7 +5149,7 @@ function update(dt){
   if(keys['d']||keys['arrowright']) ix+=1;
   const mlen=Math.hypot(ix,iy);
   if(mlen>1){ ix/=mlen; iy/=mlen; }          // Diagonale nicht schneller; Joystick bleibt analog
-  const pspeed=CONFIG.playerBaseSpeed*(1+bonuses.speed)*(moveBoostUntil>Date.now()?1.25:1)*figur().tempo*tagesFaktor('tempo');
+  const pspeed=CONFIG.playerBaseSpeed*(1+bonuses.speed)*(moveBoostUntil>spielJetzt()?1.25:1)*figur().tempo*tagesFaktor('tempo');
   player.x += ix*pspeed*dt/1000;
   player.y += iy*pspeed*dt/1000;
   const moved=Math.hypot(player.x-orbitLastX,player.y-orbitLastY);
@@ -4762,7 +5161,14 @@ function update(dt){
   // Lebensregeneration (schwächer auf höheren Schwierigkeiten) + Meta-Upgrade
   // Sprung ab Stufe 4 beim Lebensregen: heilt nicht mehr nur pro Kill, sondern laufend
   const regenAbil = (hatSprung('lebensregen')? 1.6 : 0) + (bonuses.regen||0);
-  if(player.hp<player.maxHp) player.hp = Math.min(player.maxHp, player.hp + (curDiff().regen + regenAbil)*dt/1000);
+  if(healRegenPulseCd>0) healRegenPulseCd-=dt;
+  if(player.hp<player.maxHp){
+    const hpVorher=player.hp;
+    player.hp = Math.min(player.maxHp, player.hp + (curDiff().regen + regenAbil)*dt/1000);
+    // Der laufende Rang-4-Tick bleibt dezent und wird höchstens etwa alle 650 ms
+    // markiert. Vollleben erzeugt keinen Schein; Killheilung bleibt stärker.
+    if(player.hp>hpVorher+0.001 && healRegenPulseCd<=0){ healFx=.55; healFxRegen=true; healRegenPulseCd=650; }
+  }
   // Lauf-Animation: Bobbing + dezenter Partikel-Trail
   const moving = mlen>0.01;
   player.bobPhase = moving ? (player.bobPhase||0)+dt*0.014 : 0;
@@ -4779,13 +5185,14 @@ function update(dt){
      Handel. Beide Hälften des Passivs sind deshalb angezogen. */
   const leerenTempo=hatLeerenhunger() ? 1+fehlendesLeben*0.45 : 1;
   const vorSwordAngle=swordAngle;
-  swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * (sonnenTempoUntil>Date.now()?1.22:1) * dt/1000;
+  swordAngle += CONFIG.swordSpinSpeed * (1 + bonuses.fireRate*0.6) * leerenTempo * (sonnenTempoUntil>spielJetzt()?1.22:1) * dt/1000;
   if(swordAngle>Math.PI*2){ swordAngle-=Math.PI*2; resetMissedOrbit(); }
   player.face = swordAngle;
   updateKartenEvos(dt);
   // Effekt-Timer
   if(stossWaveT>0){ stossWaveT -= dt/380; if(stossWaveT<0) stossWaveT=0; }
   if(wirbelT>0){ wirbelT -= dt/420; if(wirbelT<0) wirbelT=0; }
+  if(healFx>0){ healFx-=dt/420; if(healFx<0){ healFx=0; healFxRegen=false; } }
   perfMark('spieler');
   // Schwert-Treffer: Rundum-Grundschaden + Bonus dort, wo die Klinge wirklich ist
   spinHitTimer -= dt;
@@ -4796,8 +5203,8 @@ function update(dt){
       const ta=swordAngle, tx=player.x+Math.cos(ta)*(player.radius+bladeLen), ty=player.y+Math.sin(ta)*(player.radius+bladeLen);
       powerFields.push({kind:'lightTrail',x:tx,y:ty,r:28,t:260,tick:0,color:'#ffd257',shown:false});
     }
-    const boost = dmgBoostUntil>Date.now()?2:1;
-    const resonanz=treeFlags.resonanzUntil>Date.now()?1.25:1;
+    const boost = dmgBoostUntil>spielJetzt()?2:1;
+    const resonanz=treeFlags.resonanzUntil>spielJetzt()?1.25:1;
     const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz * tagesFaktor('klinge'));
     const leerenBonus=hatLeerenhunger() ? fehlendesLeben*(0.78+(treeFlags.leerenRisikoBonus||0)) : 0;
     const anglesNow=bladeAngles();
@@ -4864,7 +5271,7 @@ function update(dt){
       // Nachfassen-Treffer (Rang 2) durchschlagen ebenfalls.
       const durchschlag = runAbilities.schneide>=SPRUNG_STUFE || !!(treeFlags.singularorbit && treffer)
         || !!(modulRang('nachfassen')>=2 && nachfassenBereit && treffer);
-      const abgeprallt = en.panzer && !(en.panzerAusUntil>Date.now()) && !durchschlag;
+      const abgeprallt = en.panzer && !(en.panzerAusUntil>spielJetzt()) && !durchschlag;
       if(abgeprallt) dmg = Math.max(1, Math.round(dmg*hilfe().panzerDurchlass*((laufEreignis&&laufEreignis.durchlassMult)||1)));
       en.hp -= dmg;
       if(treffer){
@@ -4879,57 +5286,21 @@ function update(dt){
         // löscht das Flag selbst, ein zweiter Treffer im selben Tick kann also nicht doppelt
         // auslösen — und der ladende dritte Serientreffer selbst kann es nicht vorzeitig tun.
         if(durchschlagVorTick && treeFlags.durchschlagBereit) triggerDurchschlag(anglesNow[trefferIndex],dmg);
-        if(en.shockMarkUntil>Date.now()){
+        if(en.shockMarkUntil>spielJetzt()){
           const bonus=Math.round(dmg*.38); en.hp-=bonus; en.shockMarkUntil=0;
           if((treeFlags.powerMaster||0)>=2) en.stunT=Math.max(en.stunT||0,520);
           addBolt(player.x,player.y,en.x,en.y); pushFloat(en.x,en.y-34,'ENTLADUNG '+bonus,'#9ad0ff',1.05);
         }
-        if(en.gravKernUntil>Date.now() && (treeFlags.powerMaster||0)>=2){
+        if(en.gravKernUntil>spielJetzt() && (treeFlags.powerMaster||0)>=2){
           for(const o of enemies){
             if(o===en)continue; const od=Math.hypot(o.x-en.x,o.y-en.y);
             if(od<125&&od>1){o.x+=(en.x-o.x)/od*34;o.y+=(en.y-o.y)/od*34;}
           }
           particles.push({ring:true,x:en.x,y:en.y,color:'#4de0a0',life:.3,max:.3});
         }
-        // Splitter Rang 2 verbindet den Begleiter sichtbar mit der Kernmechanik:
-        // jeder dritte Sweet Hit schleudert Energie entlang der Klinge. Rang 3
-        // fächert den Rückflug auf und trifft dadurch eine ganze Linie.
-        if(abilityLevel('splitter')>=2 && ++splitterSweetZaehler>=3){
-          splitterSweetZaehler=0;
-          const slv=abilityLevel('splitter'), fan=slv>=3?[-.22,0,.22]:[0];
-          for(const off of fan){
-            const a=toEnemy+off;
-            pShots.push({x:player.x+Math.cos(a)*28,y:player.y+Math.sin(a)*28,vx:Math.cos(a)*470,vy:Math.sin(a)*470,
-              dmg:Math.round(CONFIG.abil.splitterDamage*(slv>=3?2.2:1.8)),life:1.0,hitsLeft:slv>=3?2:1,storm:true});
-          }
-          pushFloat(en.x,en.y-34,'SPLITTER!','#9ad0ff',1.1); if(sfx)sfx('laserPlayer');
-        }
-        // Nachhall: jeder n-te Zonentreffer löst eine kleine Druckwelle aus
-        if(isCarried('nachhall')){
-          const nlv=abilityLevel('nachhall');
-          const alle = nlv>=SPRUNG_STUFE? 3 : CONFIG.nachhall.alle;
-          if(++nachhallZaehler>=alle){
-            nachhallZaehler=0;
-            const nd=Math.round(CONFIG.nachhall.dmg*abilScale(nlv)*(1+bonuses.dmg));
-            let nachTreffer=0;
-            for(const o of enemies){
-              if(Math.hypot(o.x-en.x,o.y-en.y) < CONFIG.nachhall.radius+o.radius){
-                o.hp-=nd; pushFloat(o.x,o.y-14,'-'+nd,'#ffd257');
-                nachTreffer++;
-                if(nlv>=2 && o!==en){
-                  const a=Math.atan2(o.y-player.y,o.x-player.x), rr=player.radius+bladeLength()*.78;
-                  o.x=player.x+Math.cos(a)*rr; o.y=player.y+Math.sin(a)*rr;
-                }
-              }
-            }
-            particles.push({ring:true, x:en.x, y:en.y, color:'#ffd257', life:0.26, max:0.26});
-            if(nlv>=3 && nachTreffer>=3){
-              for(const o of enemies) if(Math.hypot(o.x-en.x,o.y-en.y)<CONFIG.nachhall.radius*1.45+o.radius) o.hp-=Math.round(nd*.55);
-              particles.push({ring:true,x:en.x,y:en.y,color:'#ffffff',life:.42,max:.42});
-            }
-            if(sfx) sfx('counter');
-          }
-        }
+        // (Splitter ist jetzt das Telekinetische Arsenal und feuert zeitgesteuert Homing-
+        //  Geschosse — kein On-Sweet-Fächer mehr; siehe telekinetischesArsenal().)
+        // (Singularität feuert jetzt zeitgesteuert, nicht mehr pro Zonentreffer — siehe starteSingularitaet().)
       }
       if(abgeprallt){
         spawnParticles(en.x,en.y,'#c8d4e6',3);
@@ -4949,25 +5320,7 @@ function update(dt){
         pushFloat(en.x,en.y-16,'-'+dmg,'#ffec8b');
         if(sfx)sfx('bladeHit');
       }
-      // Kettenblitz: der volle Klingentreffer springt auf den nächsten Gegner über
-      if(treffer && isCarried('kettenblitz')){
-        const clv=abilityLevel('kettenblitz');
-        const cDmg=Math.round(CONFIG.abil.chainDamage*abilScale(clv));
-        const cR=CONFIG.abil.chainRange*(1+0.05*(clv-1));
-        // Sprung ab Stufe 4: der Blitz sucht sich zwei Ziele statt eines
-        const ziele=Math.min(3,clv);
-        const getroffen=[];
-        for(let z=0; z<ziele; z++){
-          let best=null, bd=cR;
-          for(const o of enemies){
-            if(o===en || getroffen.includes(o)) continue;
-            const cd=Math.hypot(o.x-en.x,o.y-en.y); if(cd<bd){ bd=cd; best=o; }
-          }
-          if(!best) break;
-          best.hp-=cDmg; addBolt(en.x,en.y,best.x,best.y); pushFloat(best.x,best.y-14,'-'+cDmg,'#9ad0ff');
-          getroffen.push(best);
-        }
-      }
+      // (Ketten-Machtblitz feuert jetzt zeitgesteuert, nicht mehr pro Volltreffer — siehe ketteMachtblitz().)
       if(en.hp<=0) continue;
       const ang = Math.atan2(dy,dx);
       const sweetSchub=treeFlags.doppelorbit?16:treeFlags.singularorbit?10:14;
@@ -4978,48 +5331,8 @@ function update(dt){
     if(nachfassenBereit && tickSweet) nachfassenBereit=false;
   }
   perfMark('klinge');
-  // Beide Begleiter teilen die Liste, aber nie ihren Bestand oder ihre Drehrichtung.
-  if(isCarried('splitter')){
-    const slv=abilityLevel('splitter');
-    // Sprung ab Stufe 4: ein dritter Splitter kreist mit — spürbar mehr Dauerschaden
-    const anzahl=CONFIG.abil.splitterCount + (slv>=SPRUNG_STUFE? 1 : 0);
-    if(shards.filter(s=>s.kind!=='funkenkranz').length!==anzahl){
-      shards=shards.filter(s=>s.kind==='funkenkranz');
-      for(let i=0;i<anzahl;i++) shards.push({kind:'splitter',ang:i/anzahl*Math.PI*2,cd:0,x:player.x,y:player.y});
-    }
-    const SR=CONFIG.abil.splitterRadius*(1+bonuses.range*0.4);
-    const sDmg=Math.round(CONFIG.abil.splitterDamage*abilScale(slv));
-    for(const s of shards){
-      if(s.kind==='funkenkranz') continue;
-      s.ang += CONFIG.abil.splitterSpeed*dt/1000; s.cd-=dt;
-      s.x=player.x+Math.cos(s.ang)*SR; s.y=player.y+Math.sin(s.ang)*SR;
-      if(s.cd<=0){
-        for(const en of enemies){ if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+7){ en.hp-=sDmg; spawnParticles(s.x,s.y,'#9ad0ff',2); s.cd=CONFIG.abil.splitterHitCd; break; } }
-      }
-    }
-  } else if(shards.some(s=>s.kind!=='funkenkranz')) shards=shards.filter(s=>s.kind==='funkenkranz');
-  if(modulRang('funkenkranz')){
-    const F=CONFIG.funkenkranz, rang=modulRang('funkenkranz')-1, anzahl=F.count[rang];
-    const funken=shards.filter(s=>s.kind==='funkenkranz');
-    if(funken.length!==anzahl){
-      const phase=funken.length?funken[0].ang:-swordAngle;
-      shards=shards.filter(s=>s.kind!=='funkenkranz');
-      for(let i=0;i<anzahl;i++) shards.push({kind:'funkenkranz',ang:phase+i/anzahl*Math.PI*2,cd:0,x:player.x,y:player.y});
-    }
-    const radius=player.radius+bladeLength()+F.radius[rang];
-    for(const s of shards){
-      if(s.kind!=='funkenkranz') continue;
-      s.ang=(s.ang-F.speed*dt/1000)%(Math.PI*2); s.cd-=dt; s.r=radius; s.size=F.hitRadius[rang];
-      s.x=player.x+Math.cos(s.ang)*radius; s.y=player.y+Math.sin(s.ang)*radius;
-      if(s.cd<=0){
-        for(const en of enemies){
-          if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+s.size){
-            en.hp-=Math.round(F.dmg[rang]*(1+bonuses.dmg)); s.cd=F.hitCd; break;
-          }
-        }
-      }
-    }
-  } else if(shards.some(s=>s.kind==='funkenkranz')) shards=shards.filter(s=>s.kind!=='funkenkranz');
+  // Funkenkranz-Orbit vollständig entfernt (war der alte Plasmasturm-Grundorbit). shards wird
+  // von keiner Passive mehr befüllt; die Liste bleibt leer.
   perfMark('splitter');
 
   // spawn
@@ -5054,7 +5367,7 @@ function update(dt){
       en.x=player.x+Math.cos(a)*sd; en.y=player.y+Math.sin(a)*sd;
       dx=player.x-en.x; dy=player.y-en.y; d=Math.hypot(dx,dy);
     }
-    const modulOrbit=en.moduleOrbitUntil>Date.now();
+    const modulOrbit=en.moduleOrbitUntil>spielJetzt();
     if(modulOrbit){
       en.moduleOrbitAngle=(en.moduleOrbitAngle||Math.atan2(en.y-player.y,en.x-player.x))+(en.moduleOrbitDir||1)*2.5*dt/1000;
       // .78 hielt bei 48 px — nur 8 px vor dem Kontaktschaden (40 px). .92 liegt im Trefferband.
@@ -5080,9 +5393,10 @@ function update(dt){
       else if(en.jagdPhase==='zurueck' && (d>=CONFIG.jaeger.haltFern || en.shootCd<=0)) en.jagdPhase='an';
       jaegerRueckwaerts = en.jagdPhase==='zurueck';
     }
-    // Distanz-Gegner halten nur noch während des Ladens die Position; zündende Exploder
-    // bleiben stehen; Stun (Nova) friert ein.
-    const keepRange = en.type==='jaeger' && en.jagdPhase==='laden';
+    // Distanz-Gegner halten während des Ladens UND der kurzen Erholung nach dem Schuss
+    // die Position — Letzteres macht den Konter erreichbar; zündende Exploder bleiben
+    // stehen; Stun (Nova) friert ein.
+    const keepRange = en.type==='jaeger' && (en.jagdPhase==='laden' || en.jagdPhase==='erholung');
     if(d>1 && !modulOrbit && !keepRange && !en.exploding && !(en.stunT>0) && !(en.type==='boss' && en.ramT>0) && !(en.type==='boss' && en.phaseT>0)){
       const langsam=en.slowT>0?.55:1, erholung=en.ramRecoverT>0?.32:1;
       const richtung = jaegerRueckwaerts ? -1 : 1;
@@ -5104,20 +5418,30 @@ function update(dt){
     if(en.slowT>0) en.slowT-=dt;
     if(en.ramRecoverT>0) en.ramRecoverT-=dt;
     // Jäger (Distanz-Angreifer): lädt nur noch in Phase 'laden' sichtbar auf, sonst würde
-    // er beim Anrücken schon unsichtbar vorladen. Schussmechanik selbst unverändert.
+    // er beim Anrücken schon unsichtbar vorladen. Die Schussrichtung wird beim ERSTEN
+    // Ladeframe fixiert (en.aimX/aimY) und danach nicht mehr nachgeführt — seitliches
+    // Ausweichen bringt den Spieler damit sichtbar aus der Linie (der Zielstrahl im
+    // Zeichencode zeigt genau diese gesperrte Richtung). Nach dem Schuss hält der Jäger
+    // kurz still (Phase 'erholung'), bevor er zurückweicht: dieses Fenster macht den
+    // Gegenangriff nach einem Ausweichen erreichbar. Kein zusätzlicher Schuss.
     if(en.type==='jaeger'){
       en.shootCd=(en.shootCd||0)-dt;
       if(en.jagdPhase==='laden' && en.shootCd<=0 && !(en.stunT>0)){
+        if(en.chargeT<=0){ const inv=1/(d||1); en.aimX=dx*inv; en.aimY=dy*inv; }   // Richtung einmalig sperren
         en.chargeT=(en.chargeT||0)+dt;
         if(en.chargeT>=CONFIG.jaeger.chargeMs){
           en.chargeT=0; en.shootCd=CONFIG.jaeger.cooldown;
-          const nx=dx/d, ny=dy/d;
+          const nx=en.aimX, ny=en.aimY;   // gesperrte Linie, nicht die Live-Position
           shots.push({x:en.x+nx*en.radius, y:en.y+ny*en.radius, vx:nx*CONFIG.shots.speed, vy:ny*CONFIG.shots.speed,
             dmg:en.dmg, color:en.color, r:CONFIG.shots.radius, life:CONFIG.shots.life});
           if(sfx) sfx('laserEnemy');
-          en.jagdPhase='zurueck';   // nach dem Schuss Raum gewinnen statt sofort weiterzuladen
+          en.jagdPhase='erholung'; en.jaegerErholT=CONFIG.jaeger.recoverMs;   // erst still (verwundbar), dann Raum gewinnen
         }
-      } else { en.chargeT=0; }
+      } else if(en.jagdPhase!=='erholung'){ en.chargeT=0; }
+      if(en.jagdPhase==='erholung'){
+        en.jaegerErholT=(en.jaegerErholT||0)-dt;
+        if(en.jaegerErholT<=0) en.jagdPhase='zurueck';
+      }
     }
     // Boss: Fähigkeiten mit Vorwarnung – je später die Welle, desto mehr; „Schüler" sieht die heftigen später
     if(en.type==='boss'){
@@ -5245,7 +5569,7 @@ function update(dt){
   // Begleiter: umkreist den Spieler, zieht Beute an und schießt — beides zugleich
   for(const hf of helfer){
     const W=begleiterWerte(hf.stufe);
-    const ueberladen=helferOverdriveUntil>Date.now();
+    const ueberladen=helferOverdriveUntil>spielJetzt();
     hf.ang += (ueberladen?2.1:1.3) * dt/1000;
     hf.x = player.x + Math.cos(hf.ang)*hf.r;
     hf.y = player.y + Math.sin(hf.ang)*hf.r;
@@ -5273,6 +5597,19 @@ function update(dt){
   // Eigene Projektile von Mächten, Begleitern und Evolutionen.
   for(let i=pShots.length-1;i>=0;i--){
     const s=pShots[i];
+    // Homing (Telekinetisches Arsenal): bei Zielverlust neues gültiges Ziel wählen, sonst
+    // sanft zum Ziel einlenken bei konstantem Tempo — läuft ohne Ziel gerade aus.
+    if(s.homing){
+      if(!s.zielRef || s.zielRef.hp<=0){
+        let best=null,bd=1e9; for(const en of enemies){ if(en.hp<=0)continue; const d=Math.hypot(en.x-s.x,en.y-s.y); if(d<bd){bd=d;best=en;} }
+        s.zielRef=best;
+      }
+      if(s.zielRef){
+        const sp=Math.hypot(s.vx,s.vy)||300, dx=s.zielRef.x-s.x, dy=s.zielRef.y-s.y, d=Math.hypot(dx,dy)||1;
+        s.vx+=(dx/d*sp-s.vx)*0.2; s.vy+=(dy/d*sp-s.vy)*0.2;
+        const nv=Math.hypot(s.vx,s.vy)||1; s.vx=s.vx/nv*sp; s.vy=s.vy/nv*sp;
+      }
+    }
     s.x+=s.vx*dt/1000; s.y+=s.vy*dt/1000; s.life-=dt/1000;
     if(s.life<=0){ pShots.splice(i,1); continue; }
     let hit=false;
@@ -5281,6 +5618,7 @@ function update(dt){
       if(Math.hypot(en.x-s.x,en.y-s.y)<en.radius+5){
         const shotColor=s.moduleColor||(s.spectral?'#c77dff':'#9ad0ff');
         en.hp-=s.dmg; spawnParticles(s.x,s.y,shotColor,5); pushFloat(s.x,s.y-12,'-'+s.dmg,shotColor);
+        if(s.knock){ const ka=Math.atan2(en.y-s.y,en.x-s.x); en.x+=Math.cos(ka)*s.knock; en.y+=Math.sin(ka)*s.knock; }
         if(s.stormSlow) en.slowT=Math.max(en.slowT||0,600);
         if(s.moduleNova>=2) modulePulse(en.x,en.y,55,Math.round(s.dmg*.52),'#c77dff',210);
         if(!s.hitIds)s.hitIds=[]; s.hitIds.push(en);
@@ -5290,6 +5628,25 @@ function update(dt){
     if(hit) pShots.splice(i,1);
   }
   perfMark('projektile');
+  // Singularitäten: Gruppe zusammenziehen/halten, am Ende leichte Implosion. Zentrum steht fest.
+  for(let i=singularities.length-1;i>=0;i--){
+    const s=singularities[i]; s.t-=dt;
+    const gross=s.lvl>=SPRUNG_STUFE;
+    const pr=CONFIG.nachhall.pullR*(gross?1.3:1), pf=CONFIG.nachhall.pullForce*(gross?1.25:1);
+    for(const en of enemies){
+      if(en.hp<=0 || en.type==='boss' || en.type==='knoten') continue;
+      const dx=s.x-en.x, dy=s.y-en.y, d=Math.hypot(dx,dy);
+      if(d<pr && d>2){ const step=Math.min(d-1, pf*dt/1000); en.x+=dx/d*step; en.y+=dy/d*step; }
+    }
+    if(s.t<=0){
+      const idmg=Math.round(CONFIG.nachhall.implosionDmg*abilScale(s.lvl)*(1+bonuses.dmg));
+      const ir=CONFIG.nachhall.implosionR*(gross?1.25:1);
+      for(const en of enemies){ if(en.hp>0 && Math.hypot(en.x-s.x,en.y-s.y)<ir+en.radius){ en.hp-=idmg; pushFloat(en.x,en.y-14,'-'+idmg,'#c9a3ff'); } }
+      particles.push({ring:true,x:s.x,y:s.y,color:'#c9a3ff',life:.4,max:.4});
+      if(sfx) sfx('counter');
+      singularities.splice(i,1);
+    }
+  }
   // Bomben: Ticken, dann verzögerte Explosion mit Schub
   for(let i=bombs.length-1;i>=0;i--){
     const b=bombs[i];
@@ -5306,7 +5663,7 @@ function update(dt){
           const kern=(b.master>=1||b.powerModule>=2)&&bd<b.r*.46;
           bombHits.push(en); if(kern)coreHit=true;
           const bDmg=Math.round(b.dmg*(kern?1.45:1)); en.hp-=bDmg;
-          if(b.master>=2&&bd<b.r*.6) en.panzerAusUntil=Date.now()+2600;
+          if(b.master>=2&&bd<b.r*.6) en.panzerAusUntil=spielJetzt()+2600;
           const ba=bd>0.001? Math.atan2(en.y-b.y,en.x-b.x) : Math.random()*Math.PI*2;
           en.x+=Math.cos(ba)*40; en.y+=Math.sin(ba)*40;
           spawnParticles(en.x,en.y,en.color,kern?8:4); pushFloat(en.x,en.y-16,(kern?'KERN ':'-')+bDmg,kern?'#ffffff':'#ff9a5a');
@@ -5382,7 +5739,7 @@ function update(dt){
     } else if(f.kind==='module_stoss_return'&&!f.fired){
       f.fired=true;
       f.x=player.x;f.y=player.y;
-      for(const en of enemies){const dx=f.x-en.x,dy=f.y-en.y,d=Math.hypot(dx,dy);if(en.moduleStossUntil>Date.now()&&d<f.r+en.radius&&d>1){const ziel=player.radius+bladeLength()*.82,zug=Math.min(95,Math.max(0,d-ziel));en.x+=dx/d*zug;en.y+=dy/d*zug;if(f.dmg){en.hp-=f.dmg;en.stunT=Math.max(en.stunT||0,220);}en.moduleStossUntil=0;}}
+      for(const en of enemies){const dx=f.x-en.x,dy=f.y-en.y,d=Math.hypot(dx,dy);if(en.moduleStossUntil>spielJetzt()&&d<f.r+en.radius&&d>1){const ziel=player.radius+bladeLength()*.82,zug=Math.min(95,Math.max(0,d-ziel));en.x+=dx/d*zug;en.y+=dy/d*zug;if(f.dmg){en.hp-=f.dmg;en.stunT=Math.max(en.stunT||0,220);}en.moduleStossUntil=0;}}
       particles.push({ring:true,x:f.x,y:f.y,color:f.color,life:.34,max:.34});pushFloat(f.x,f.y-42,f.dmg?'FELDBRUCH':'RÜCKLEITER','#6ec8ff',1.0);
     } else if(f.kind==='module_sog_end'&&!f.fired){
       f.fired=true;
@@ -6096,16 +6453,16 @@ function draw(){
   ctx.save(); ctx.translate(sx,sy);
   // — Hintergrund: Biome mit eigener Palette + Parallax-Deko; Kampfebene bleibt lesbar —
   const biome=biomeForWave();
-  const now=Date.now();
+  const now=spielJetzt(), wallNow=Date.now();
   /* Tiefenebenen von hinten nach vorne: Grundfarbe, Glow, Nebel, Sterne, Landmarken,
      Tech-Raster (weltfest, zum Rand ausgeblendet, wirkt wie eine Plattform unter dem
      Spieler), Staub, Vignette. Wahlweise auf der halbauflösenden Zwischenleinwand. */
   const bg = hintergrundHalb ? holeHintergrundKontext(w,h) : null;
   if(bg){
-    zeichneHintergrund(bg,w,h,biome,now,renderDpr*BG_SKALA);
+    zeichneHintergrund(bg,w,h,biome,wallNow,renderDpr*BG_SKALA);
     ctx.drawImage(bgLeinwand,0,0,w,h);      // hochskaliert; der Shake gilt bereits
   } else {
-    zeichneHintergrund(ctx,w,h,biome,now,1);
+    zeichneHintergrund(ctx,w,h,biome,wallNow,1);
   }
   perfMark('zHintergrund');
 
@@ -6308,6 +6665,30 @@ function draw(){
     }
   }
   // Konterstoß-Ring
+  // Kleine, lokale Bereitschaftsanzeigen: Sie spiegeln nur vorhandene Zustände
+  // und greifen weder in Auslöser noch in Trefferprüfung ein.
+  if(healFx>0){
+    ctx.save(); ctx.globalAlpha=Math.max(0,healFx)*(healFxRegen?.55:.72); ctx.globalCompositeOperation='lighter';
+    ctx.strokeStyle=healFxRegen?'#72d6b0':'#4de0a0'; ctx.lineWidth=healFxRegen?1.4:2; sbc(healFxRegen?'#72d6b0':'#4de0a0',healFxRegen?5:8);
+    ctx.beginPath(); ctx.arc(player.x,player.y,player.radius+10+(1-healFx)*7,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+  if(modulRang('nachfassen') && nachfassenBereit){
+    ctx.save(); ctx.globalAlpha=.78; ctx.globalCompositeOperation='lighter';
+    ctx.strokeStyle='#ffd257'; ctx.lineWidth=2; ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.arc(player.x,player.y,player.radius+bladeLength()+8,-.8,.8); ctx.stroke();
+    ctx.setLineDash([]); ctx.restore();
+  }
+  if(modulRang('taktschlag')){
+    const ziel=modulRang('taktschlag')>=2?2:3, fort=Math.min(1,taktschlagZaehler/ziel);
+    if(fort>0){
+      ctx.save(); ctx.globalAlpha=.42+.28*fort; ctx.globalCompositeOperation='lighter';
+      ctx.strokeStyle='#ffd257'; ctx.lineWidth=1.5; ctx.setLineDash([4,5]);
+      ctx.beginPath(); ctx.arc(player.x,player.y,player.radius+bladeLength()+14,-Math.PI/2,-Math.PI/2+Math.PI*2*fort); ctx.stroke();
+      ctx.setLineDash([]); ctx.restore();
+    }
+  }
+  // Konterstoß-Ring
   if(counterFx>0){
     ctx.save(); ctx.globalAlpha=counterFx; ctx.globalCompositeOperation='lighter';
     ctx.strokeStyle='#ff9a6b'; ctx.lineWidth=3; ctx.shadowColor='#ff9a6b'; sb(12);
@@ -6374,6 +6755,17 @@ function draw(){
     }
     // Bodenschatten (nicht rotiert)
     ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(en.x, en.y+r*0.75, r*0.85, r*0.35,0,0,Math.PI*2); ctx.fill();
+    // Jäger-Zielstrahl: die zu Ladebeginn fixierte Schusslinie sichtbar machen. Bewusst
+    // NICHT mit ang rotiert, sondern entlang der gesperrten Richtung — so wandert die
+    // Linie beim seitlichen Ausweichen erkennbar vom Spieler weg.
+    if(en.type==='jaeger' && en.chargeT>0 && (en.aimX||en.aimY)){
+      const grow=Math.min(1,en.chargeT/CONFIG.jaeger.chargeMs);
+      ctx.save(); ctx.translate(en.x,en.y); ctx.globalAlpha=0.22+0.4*grow;
+      ctx.strokeStyle='#ffd257'; ctx.lineWidth=2; ctx.setLineDash([6,7]);
+      ctx.beginPath(); ctx.moveTo(en.aimX*(r+4), en.aimY*(r+4));
+      ctx.lineTo(en.aimX*CONFIG.jaeger.shootRange*grow, en.aimY*CONFIG.jaeger.shootRange*grow); ctx.stroke();
+      ctx.setLineDash([]); ctx.restore();
+    }
     ctx.save(); ctx.translate(en.x,en.y); ctx.rotate(ang);
     ctx.lineJoin='round'; sbc(en.color,15); ctx.strokeStyle=en.color; ctx.lineWidth=2.5;
     const tNow=now;
@@ -6574,6 +6966,55 @@ function draw(){
     ctx.fillStyle='#eaf6ff'; sb(14);
     ctx.beginPath(); ctx.arc(s.x,s.y,4,0,Math.PI*2); ctx.fill();
   }
+  // Singularität: schrumpfende Ringmarke (zieht zusammen) plus violetter Kern — klar lesbar.
+  for(const s of singularities){
+    const gross=s.lvl>=SPRUNG_STUFE, pr=CONFIG.nachhall.pullR*(gross?1.3:1);
+    if(!sichtbar(s.x,s.y,pr+16)) continue;
+    const rest=Math.max(0,Math.min(1,s.t/s.life));
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    ctx.strokeStyle='#c9a3ff'; ctx.globalAlpha=.2+.45*rest; ctx.lineWidth=2;
+    ctx.setLineDash([5,7]); ctx.lineDashOffset=-now/60;
+    ctx.beginPath(); ctx.arc(s.x,s.y,pr*rest,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.globalAlpha=.7; ctx.fillStyle='#c9a3ff';
+    ctx.beginPath(); ctx.arc(s.x,s.y,5+5*(1-rest),0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  // Machtgriff: vier Klammern schließen sich um das Ziel (zieht sich zusammen = Crush).
+  if(machtgriffAktiv && machtgriffAktiv.target){
+    const g=machtgriffAktiv, e=g.target, prog=1-Math.max(0,Math.min(1,g.t/g.hold));
+    if(sichtbar(e.x,e.y,e.radius+26)){
+      ctx.save(); ctx.translate(e.x,e.y); ctx.globalCompositeOperation='lighter';
+      ctx.strokeStyle='#ffe08a'; ctx.globalAlpha=.45+.45*prog; ctx.lineWidth=2.4;
+      const r=e.radius+12-8*prog;
+      for(let k=0;k<4;k++){ const a=k*Math.PI/2+Math.PI/4, cx=Math.cos(a)*r, cy=Math.sin(a)*r, tx=-Math.sin(a), ty=Math.cos(a);
+        ctx.beginPath(); ctx.moveTo(cx+tx*7,cy+ty*7); ctx.lineTo(cx,cy); ctx.lineTo(cx-tx*7,cy-ty*7); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+  // Energieklingen-Wurf: rotierende Doppelklinge; Rückweg heller getönt (getrennt sichtbar).
+  if(wurfklinge){
+    const w=wurfklinge;
+    if(sichtbar(w.x,w.y,w.radius+18)){
+      const col=w.phase==='hin'?'#7fe9ff':'#c8fff0';
+      ctx.save(); ctx.translate(w.x,w.y); ctx.globalCompositeOperation='lighter'; ctx.rotate((now/55)%(Math.PI*2));
+      sbc(col,16); ctx.fillStyle=col;
+      ctx.beginPath(); ctx.moveTo(-w.radius,0); ctx.lineTo(0,-4); ctx.lineTo(w.radius,0); ctx.lineTo(0,4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#eaffff'; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+  // Macht-Echo: erst den Weg markieren, dann die laufende Geistfigur darauf zeigen.
+  if(machtEcho && machtEcho.pfad.length){
+    const m=machtEcho;
+    ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.strokeStyle='#9fb8ff';
+    ctx.globalAlpha=m.phase==='mark'?.55:.28; ctx.lineWidth=2; ctx.setLineDash([4,6]); ctx.lineDashOffset=-now/50;
+    ctx.beginPath(); for(let i=0;i<m.pfad.length;i++){ const p=m.pfad[i]; i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); } ctx.stroke(); ctx.setLineDash([]);
+    if(m.phase==='lauf'){ const g=m.pfad[Math.min(m.pfad.length-1,Math.floor(m.idx))];
+      ctx.globalAlpha=.7; ctx.fillStyle='#9fb8ff'; sbc('#9fb8ff',14);
+      ctx.beginPath(); ctx.arc(g.x,g.y,player.radius*0.8,0,Math.PI*2); ctx.fill(); }
+    ctx.restore();
+  }
   // Anhaltende Machtfelder: dezent genug für Lesbarkeit, aber als neue
   // Mechanik sofort erkennbar.
   for(const f of powerFields){
@@ -6721,7 +7162,7 @@ function draw(){
   for(const hf of helfer){
     if(hf.x===undefined) continue;
     ctx.save(); ctx.translate(hf.x,hf.y);
-    const puls=1+0.12*Math.sin(Date.now()/220 + hf.ang), ueberladen=helferOverdriveUntil>Date.now();
+    const puls=1+0.12*Math.sin(wallNow/220 + hf.ang), ueberladen=helferOverdriveUntil>now;
     if(ueberladen){
       ctx.strokeStyle='rgba(255,210,87,.82)';ctx.lineWidth=2.3;ctx.shadowColor='#ffd257';sb(16);
       ctx.beginPath();ctx.arc(0,0,14+Math.sin(now/90)*1.5,0,Math.PI*2);ctx.stroke();sb(0);
@@ -6749,30 +7190,8 @@ function draw(){
     ctx.beginPath(); ctx.arc(3.5,0,2.2*puls,0,Math.PI*2); ctx.fill();
     ctx.restore();
   }
-  // kreisende Splitter
-  if(shards.length){
-    ctx.save(); ctx.globalCompositeOperation='lighter';
-    for(const s of shards){
-      if(s.kind==='funkenkranz'){
-        const color=['#3bd17a','#35e0e0'].includes(currentSkin().blade)?'#ffb5f5':'#65ffe0';
-        sbc(color,12); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineCap='round';
-        ctx.beginPath(); ctx.arc(player.x,player.y,s.r,s.ang,s.ang+.42); ctx.stroke();
-        ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.ang-Math.PI/2); ctx.scale(s.size/7,s.size/7);
-        ctx.fillStyle=color; ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(-3,6); ctx.lineTo(-7,0); ctx.lineTo(-3,-6); ctx.closePath(); ctx.fill();
-        ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,0,2,0,Math.PI*2); ctx.fill();
-        ctx.restore(); continue;
-      }
-      sbc('#9ad0ff',10); ctx.fillStyle='#bfe3ff';
-      ctx.beginPath();
-      if(runKartenEvos.splitterfaecher){
-        ctx.moveTo(s.x+Math.cos(s.ang)*9,s.y+Math.sin(s.ang)*9);
-        ctx.lineTo(s.x+Math.cos(s.ang+2.4)*7,s.y+Math.sin(s.ang+2.4)*7);
-        ctx.lineTo(s.x+Math.cos(s.ang-2.4)*7,s.y+Math.sin(s.ang-2.4)*7); ctx.closePath();
-      } else ctx.arc(s.x,s.y,4.5,0,Math.PI*2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
+  // (Kreisende Splitter/Funken entfernt — shards bleibt leer; Arsenal und Plasmasturm
+  //  zeichnen über pShots bzw. Plasmasplitter.)
   zeichneKartenEvos();
   perfMark('zSpieler');
   // particles (additiv = leuchtend)
@@ -6790,9 +7209,9 @@ function draw(){
       ctx.lineTo(p.x2,p.y2); ctx.stroke(); sb(0); continue;
     }
     if(p.ring){   // Sweet-Spot-Funkenring: dehnt sich kurz auf und verblasst
-      const t=1-p.life/p.max, rr=6+t*22;
-      ctx.strokeStyle=p.color; ctx.lineWidth=3*(1-t)+0.5;
-      sbc(p.color,12);
+      const t=1-p.life/p.max, rr=p.small ? 5+t*13 : 6+t*22;
+      ctx.strokeStyle=p.color; ctx.lineWidth=(p.small?1.8:3)*(1-t)+0.5;
+      sbc(p.color,p.small?7:12);
       ctx.beginPath(); ctx.arc(p.x,p.y,rr,0,Math.PI*2); ctx.stroke(); sb(0); continue;
     }
     if(p.stormRing){
@@ -6925,7 +7344,7 @@ function loop(t){
   const rohDt=t-lastTime;
   const dt=Math.min(50, rohDt); lastTime=t;
   messeBildrate(t);            // erkennt schwache Geräte und spart dauerhaft Effekte
-  if(state==='countdown') tickCombatResume(t);
+  if(state==='countdown') tickCombatResume(dt);
   const spielt=state==='playing';
   perfSammeln=spielt;              // Phasen nur aus Kampfbildern, passend zum Teiler
   const updateStart=performance.now();
@@ -6934,9 +7353,10 @@ function loop(t){
   perf.update=performance.now()-updateStart;
   const drawStart=performance.now();
   perfPhaseUhr=drawStart;
-  draw();
-  perf.draw=performance.now()-drawStart;
-  if(PERF_GPU && canvas.width>0 && canvas.height>0){
+  const mussZeichnen=spielt||state==='countdown'||drawPending;
+  if(mussZeichnen){ draw(); drawPending=false; }
+  perf.draw=mussZeichnen?performance.now()-drawStart:0;
+  if(mussZeichnen && PERF_GPU && canvas.width>0 && canvas.height>0){
     perfPhaseUhr=performance.now();
     try{ ctx.getImageData(0,0,1,1); }catch(e){}
     perfMark('gpuSync');       // Wartezeit auf die Grafikpipeline
