@@ -462,6 +462,8 @@ function hatLeerenhunger(){ return !!(treeFlags.leerenHeilung || treeFlags.leere
    - Hitstop und Killketten: kurze Zeitlupe in den größten Momenten, Serienzähler
      mit kleinem Fokuslohn. Alles über die vorhandenen Effektwege (Floats, Shake). */
 var laufVorgabe=null;          // gesetzt, während ein Tageslauf läuft
+var aktiverPlanet=null;        // gesetzt, während ein Kampagnen-Lauf läuft (Planet-ID)
+var kampagneBonusVergeben=false; // Abschlussbonus je Lauf nur einmal (Sieg ODER Niederlage, nicht beides über Endlos)
 var tagesFaktoren={};          // zusammengeführte Faktoren aus Twist+Regel
 var laufEreignis=null, letztesEreignisId='';
 var hitstopMs=0, kettenZahl=0, kettenBis=0;
@@ -934,7 +936,7 @@ function checkMilestones(){
 /* TESTFASSUNG des Konzepts vom 11.8.2026 — läuft neben der stabilen Version.
    Eigener Speicherschlüssel, damit ein Testlauf den echten Spielstand nicht anfasst. */
 const SAVE_KEY='orbitblade_konzept_save', SAVE_BACKUP_KEY=SAVE_KEY+'_backup',
-      SAVE_CORRUPT_KEY=SAVE_KEY+'_beschaedigt', SAVE_VERSION=12;
+      SAVE_CORRUPT_KEY=SAVE_KEY+'_beschaedigt', SAVE_VERSION=13;
 // opts: Bedien-Einstellung für die Seite des einzigen Machtknopfs
 // best ist jetzt je Hilfsstufe getrennt — sonst wäre die Bestmarke nicht vergleichbar
 const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin', muted:false, bossKills:0, stars:0, meta:{}, tutorialDone:false, tutorialVersion:0, focusTutorialSeen:false,
@@ -944,6 +946,10 @@ const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin
   // dürfen gewählt werden; einen zweiten Werkzeugslot gibt es nicht.
   startMaechte:{ slot1:'wirbel' },
   klingenform:'strahl', figur:'held', orbitauftrag:null, orbitauftragTauschTag:'', orbitauftragLetzterId:'',
+  // Galaxie-Kampagne: befreite Planeten, Heldenkern-Stufen und Intro-/Bonus-Flags.
+  // Rein additiv — der Kampf bleibt unverändert; ein Planet-Run ist ein normaler Lauf.
+  // held: permanente Heldenkern-Stufen (0..5 je Track), gelten in ALLEN Läufen.
+  kampagne:{ planeten:{}, introGesehen:false, held:{ klinge:0, leben:0, macht:0, fokus:0 }, starterBonusGewaehrt:false, warpkerne:{} },
   tage:{}, tagesLohnTag:'' };
 let save = clone(DEFAULT_SAVE);
 let saveRecoveryNotice='';
@@ -994,6 +1000,12 @@ function loadSave(){
   if(!istGueltigerOrbitauftrag(save.orbitauftrag)) save.orbitauftrag=null;
   if(typeof save.orbitauftragTauschTag!=='string') save.orbitauftragTauschTag='';
   if(typeof save.orbitauftragLetzterId!=='string' || !Object.prototype.hasOwnProperty.call(ORBIT_AUFTRAEGE,save.orbitauftragLetzterId)) save.orbitauftragLetzterId='';
+  // Kampagnen-Zustand defensiv normalisieren (alte Saves, Teilobjekte, Fremdformate)
+  if(!save.kampagne || typeof save.kampagne!=='object') save.kampagne=clone(DEFAULT_SAVE.kampagne);
+  if(!save.kampagne.planeten || typeof save.kampagne.planeten!=='object') save.kampagne.planeten={};
+  if(!save.kampagne.held || typeof save.kampagne.held!=='object') save.kampagne.held=clone(DEFAULT_SAVE.kampagne.held);
+  for(const k of ['klinge','leben','macht','fokus']) save.kampagne.held[k]=Math.max(0,Math.min(5,save.kampagne.held[k]|0));
+  if(!save.kampagne.warpkerne || typeof save.kampagne.warpkerne!=='object') save.kampagne.warpkerne={};
   if(wiederhergestellt){
     try{ if(speicher) speicher.setItem(SAVE_KEY,JSON.stringify(save)); }catch(e){}
   }
@@ -1096,6 +1108,16 @@ function migrateSave(data){
   // Eintrags werden vorsorglich entfernt, damit keine entfernte Wirkung wiederkehrt.
   if(data.v<12){
     if(data.unlocks){ delete data.unlocks['ability:funkenkranz']; delete data.unlocks['module:funkenkranz']; }
+  }
+  // v12 → v13: Galaxie-Kampagne. Rein additiv — es gibt keinen bestehenden Bestand
+  // zu erstatten oder zu entwerten. Nur das neue Feld anlegen, falls es fehlt; ein
+  // bereits vorhandenes bleibt unangetastet (idempotent, verlustfrei, defensiv).
+  if(data.v<13){
+    if(!data.kampagne || typeof data.kampagne!=='object') data.kampagne={ planeten:{}, introGesehen:false };
+    if(!data.kampagne.planeten || typeof data.kampagne.planeten!=='object') data.kampagne.planeten={};
+    if(!data.kampagne.held || typeof data.kampagne.held!=='object') data.kampagne.held={ klinge:0, leben:0, macht:0, fokus:0 };
+    if(typeof data.kampagne.starterBonusGewaehrt!=='boolean') data.kampagne.starterBonusGewaehrt=false;
+    if(!data.kampagne.warpkerne || typeof data.kampagne.warpkerne!=='object') data.kampagne.warpkerne={};
   }
   data.v = SAVE_VERSION;
   return data;
@@ -1860,7 +1882,7 @@ let fokus=0, fokusBereit=false, fokusAktiv=false;
 // Der Bonus gilt genau für den einen Einsatz und wird dabei aufgebraucht
 function fokusFaktor(){ return fokusAktiv? CONFIG.fokusBonus : 1; }
 // Wie viele Sweet-Spot-Treffer die Leiste braucht — der Charakter verschiebt das
-function fokusZiel(){ return Math.max(4, Math.round(CONFIG.fokusZiel*figur().fokusZiel)); }
+function fokusZiel(){ return Math.max(4, Math.round(CONFIG.fokusZiel*figur().fokusZiel*heldFokus())); }
 function fokusVoll(quelle){
   if(fokusBereit) return false;
   fokus=fokusZiel(); fokusBereit=true;
@@ -2135,7 +2157,7 @@ function abilityLevel(id){
   return passivStufe(id) || 1;
 }
 function abilScale(level){ return 1 + CONFIG.abilLevelScale*(level-1); }
-function machtFaktor(id){ return treeFlags['powerDmg_'+id]||1; }
+function machtFaktor(id){ return (treeFlags['powerDmg_'+id]||1) * heldMacht(); }
 function abilUnlocked(id){ return isAvailable('ability', id); }
 function activeCdMax(id){
   if(!id) return 0;
@@ -2652,12 +2674,167 @@ const META_UPGRADES=[
   {gruppe:'Kosmetik',id:'hangarprojektion',name:'Hangarprojektion',desc:'Projiziert einen feinen kosmetischen Orbit um deinen Träger.',icon:'kette',base:5000},
 ];
 
+/* ---- Galaxie-Kampagne ----
+   Datengetrieben (CLAUDE-Plan §40): ein Planet ist ein Datenobjekt, der Kampf nutzt
+   die vorhandenen Systeme mit einem OPTIONALEN, campagne-lokalen Modifikator (`mod`).
+   Der Kampf selbst bleibt ein normaler Orbitblade-Lauf; `mod` verschiebt nur die
+   Gegnermischung (eine klare Identität je Planet, keine Modifikatorflut, Plan §9).
+   `mod` wird ausschließlich über `aktiverPlanet` gelesen und nach dem Lauf mit dem
+   Zurücksetzen von `aktiverPlanet` unwirksam — kein Leak in andere Modi (Plan §41).
+   Sektor I ist vollständig spielbar (Phase 4). Sektor II ist ein Teaser, der erst
+   nach dem Sektor-I-Warpkern erscheint; seine Welten bleiben bis Phase 7 gesperrt. */
+const KAMPAGNE={
+  sektoren:[
+    { id:'s1', name:'Sektor I · Randwelten', planeten:[
+      { id:'eos',    name:'EOS',      typ:'befreiung', stufe:1, order:0,
+        besonderheit:'Verständliche Grundgegner', kurz:'Dein erster Einsatz. Ein ruhiger Anfang.',
+        motiv:'var(--good)' },
+      { id:'kryos',  name:'KRYOS',    typ:'befreiung', stufe:2, order:1,
+        besonderheit:'Viele gepanzerte Gegner', kurz:'Eine Panzerwerft. Ziele deine Volltreffer.',
+        motiv:'var(--accent)', mod:{ panzerAb:3, panzerChance:0.42 } },
+      { id:'vega',   name:'VEGA',     typ:'befreiung', stufe:2, order:2,
+        besonderheit:'Jäger treten häufig auf', kurz:'Ein Jägerstützpunkt. Weiche den Zielstrahlen aus.',
+        motiv:'#c77dff', mod:{ jaegerAb:4, jaegerMult:1.6 } },
+      { id:'nexus1', name:'KOMMANDO', typ:'boss',      stufe:3, order:3, sektorAbschluss:true,
+        besonderheit:'Sektor-Kommandant', kurz:'Der Besatzungskern des Sektors. Bezwinge den Kommandanten.',
+        motiv:'var(--danger)', mod:{ panzerAb:6, panzerChance:0.30, jaegerAb:6, jaegerMult:1.3 } },
+    ]},
+    { id:'s2', name:'Sektor II · Ionennebel', braucht:'s1', planeten:[
+      { id:'ionos', name:'IONOS', typ:'befreiung', stufe:3, order:0, gesperrt:true,
+        besonderheit:'Instabile Systeme', kurz:'Bald verfügbar.', motiv:'var(--accent)' },
+      { id:'aura',  name:'AURA',  typ:'befreiung', stufe:4, order:1, gesperrt:true,
+        besonderheit:'Elektrische Stürme', kurz:'Bald verfügbar.', motiv:'#c77dff' },
+    ]},
+  ]
+};
+function planetById(id){
+  for(const s of KAMPAGNE.sektoren) for(const p of s.planeten) if(p.id===id) return p;
+  return null;
+}
+function planetBefreit(id){
+  return !!(save.kampagne && save.kampagne.planeten && save.kampagne.planeten[id]==='befreit');
+}
+function sektorVonPlanet(id){
+  for(const s of KAMPAGNE.sektoren) if(s.planeten.some(p=>p.id===id)) return s;
+  return null;
+}
+/* Erreichbar = spielbar. Ein befreiter Planet bleibt wiederholbar (Plan §26). Sonst
+   ist ein Planet erreichbar, wenn alle nicht gesperrten Vorgänger seines Sektors mit
+   kleinerer `order` befreit sind. So bildet die Route sich von selbst: EOS (order 0)
+   ist offen, KRYOS nach EOS, VEGA nach KRYOS, die Kommandowelt nach VEGA. */
+function planetErreichbar(p){
+  if(!p || p.gesperrt) return false;
+  if(planetBefreit(p.id)) return true;
+  const s=sektorVonPlanet(p.id); if(!s) return false;
+  return s.planeten.every(o=> o.gesperrt || o.order>=p.order || planetBefreit(o.id));
+}
+function planetStatus(p){
+  if(!p) return 'gesperrt';
+  if(p.gesperrt) return 'gesperrt';
+  if(planetBefreit(p.id)) return 'befreit';
+  return planetErreichbar(p) ? 'erreichbar' : 'gesperrt';
+}
+// Einen Planeten als befreit vermerken. Gibt true zurück, wenn es die Erstbefreiung war.
+function markiereBefreit(id){
+  save.kampagne=save.kampagne||{planeten:{},introGesehen:false};
+  save.kampagne.planeten=save.kampagne.planeten||{};
+  const erst = save.kampagne.planeten[id]!=='befreit';
+  save.kampagne.planeten[id]='befreit';
+  persist();
+  return erst;
+}
+// Campagne-lokaler Gegner-Modifikator des aktiven Planeten (leer außerhalb der Kampagne).
+function planetMod(){
+  if(!aktiverPlanet) return {};
+  const p=planetById(aktiverPlanet);
+  return (p && p.mod) || {};
+}
+// Ist der Warpkern eines Sektors verdient? (Sektorabschluss durch dessen Kommandowelt.)
+function warpkernErreicht(sektorId){
+  return !!(save.kampagne && save.kampagne.warpkerne && save.kampagne.warpkerne[sektorId]);
+}
+
+/* ---- Heldenkern (Phase 2): permanente Kampfkraft über Fragmente ----
+   Vier Tracks à 5 Stufen. Die Boni docken ZENTRAL an bestehenden Werten an
+   (Plan §16): Klinge → Orbit-Grundschaden, Leben → maxHp, Macht → machtFaktor()
+   der gewählten Hauptmacht, Fokus → fokusZiel() (lädt schneller). Sie gelten in
+   allen Läufen, wie die vorhandene Meta (Startimpuls, Begleiter).
+
+   ACHTUNG: Alle Prozentwerte sind IMPLEMENTIERUNGS-STARTWERTE, noch nicht
+   balancegemessen (Plan §18/§44). Gesamtwirkung bewusst klein gedeckelt, damit
+   Volltreffer, Positionierung und der Run-Build der stärkste Multiplikator bleiben
+   (Plan §3.5/§43). Kosten sind Startwerte (Plan §24), gegen die Fragmentquellen
+   noch zu prüfen. */
+const HELD_MAX=5;
+const HELD_KOSTEN=[300,700,1400,2500,4000];   // Fragmentkosten je Stufe (Startwerte)
+const HELD_TRACKS=[
+  {id:'klinge', name:'Klingenreaktor', kurz:'Mehr Grundschaden der Orbitklinge.', icon:'schaden'},
+  {id:'leben',  name:'Vitalmatrix',    kurz:'Mehr maximales Leben.',              icon:'leben'},
+  {id:'macht',  name:'Machtkern',      kurz:'Stärkere Hauptmacht.',               icon:'boost'},
+  {id:'fokus',  name:'Fokusleiter',    kurz:'Fokus lädt etwas schneller.',        icon:'tempo'},
+];
+function heldLevel(id){ return (save.kampagne&&save.kampagne.held&&(save.kampagne.held[id]|0))||0; }
+function heldKosten(id){ const lv=heldLevel(id); return lv>=HELD_MAX?null:HELD_KOSTEN[lv]; }
+// Bonus-Faktoren (Startwerte). Deckel bei Stufe 5: Klinge +20%, Leben +30%,
+// Macht +25%, Fokusziel −10% (füllt entsprechend schneller).
+function heldKlinge(){ return 1 + heldLevel('klinge')*0.04; }
+function heldLeben(){  return 1 + heldLevel('leben')*0.06; }
+function heldMacht(){  return 1 + heldLevel('macht')*0.05; }
+function heldFokus(){  return 1 - heldLevel('fokus')*0.02; }
+// Einen Heldenkern-Track kaufen. Gibt true bei Erfolg (genug Fragmente, nicht am Cap).
+function kaufeHeld(id){
+  const lv=heldLevel(id); if(lv>=HELD_MAX) return false;
+  const preis=HELD_KOSTEN[lv]; if(save.stars<preis) return false;
+  save.stars-=preis;
+  save.kampagne.held=save.kampagne.held||{klinge:0,leben:0,macht:0,fokus:0};
+  save.kampagne.held[id]=lv+1;
+  persist();
+  return true;
+}
+/* Einmaliger Starterbonus (Plan §13.6): Der erste beendete Kampagnen-Lauf — Sieg
+   ODER Niederlage — sichert genug Fragmente für mindestens ein Heldenkern-Upgrade,
+   auch wenn der Spieler früh stirbt. Streng einmalig über ein Save-Flag, also kein
+   wiederholbarer Exploit. Ein Messlauf löst ihn nicht aus. */
+function gewaehreStarterBonus(){
+  if(messlauf) return 0;
+  save.kampagne=save.kampagne||{planeten:{},introGesehen:false};
+  if(save.kampagne.starterBonusGewaehrt) return 0;
+  save.kampagne.starterBonusGewaehrt=true;
+  const bonus=Math.max(0, HELD_KOSTEN[0]-save.stars);   // auf mindestens Tier-I-Kosten auffüllen
+  if(bonus>0) save.stars+=bonus;
+  persist();
+  return bonus;
+}
+/* Kampagnen-Abschlussbelohnung (Plan §23): NUR für Kampagnen-Läufe, additiv zu den
+   Kill-Drops. Die sichere Bergung koppelt an den Runfortschritt, dazu Boss-, Sieg-
+   und einmaliger Erstbefreiungsbonus. Genau EINMAL pro Lauf (kampagneBonusVergeben),
+   damit ein Endlos-Weiterspielen nach dem Sieg nicht ein zweites Mal zahlt. So bleibt
+   ein Sieg klar lohnender als absichtliches Frühsterben, und es gibt keinen
+   wiederholbaren Farm-Exploit. Alle Zahlen sind Startwerte (Plan §24/§44), noch
+   nicht balancegemessen. */
+function kampagneAbschluss(gewonnen, erstBefreiung){
+  const leer={bergung:0,boss:0,sieg:0,erst:0,summe:0};
+  if(messlauf || !aktiverPlanet || kampagneBonusVergeben) return leer;
+  kampagneBonusVergeben=true;
+  const bosse=Math.max(0, Math.floor((wave-1)/5) + (gewonnen?1:0));
+  const r={
+    bergung: Math.round(wave*10),            // sichere Bergung, an den Fortschritt gekoppelt
+    boss: bosse*50,                          // je im Lauf besiegtem Boss
+    sieg: gewonnen?500:0,                     // Abschlussbonus bei Sieg
+    erst: (gewonnen&&erstBefreiung)?700:0,    // einmalige Erstbefreiung
+    summe:0
+  };
+  r.summe=r.bergung+r.boss+r.sieg+r.erst;
+  if(r.summe>0){ save.stars+=r.summe; persist(); }
+  return r;
+}
+
 function newPlayer(){
   const w = canvas.clientWidth || window.innerWidth;
   const h = canvas.clientHeight || window.innerHeight;
   // Ein Startwert für alle — die Schwierigkeit wächst über die Wellen.
   // Charakter-Werteschnitt fließt hier ein, damit er den ganzen Lauf über gilt.
-  const hp = Math.round(CONFIG.playerHp * figur().hp);
+  const hp = Math.round(CONFIG.playerHp * figur().hp * heldLeben());
   return { x: w/2, y: h/2, vx:0, vy:0, face:0, radius: CONFIG.playerRadius,
     hp, maxHp:hp, level:1, xp:0, xpNeed:CONFIG.xpBase, stars:0, hits:0, bobPhase:0, trailT:0 };
 }
@@ -2696,6 +2873,7 @@ function resetGame(){
   toasts=[]; banner=null;
   tutStep=0; tutT=0; tutorialCircleUntil=0; tutorialBladeUntil=0; unlockFx=0; combatResumeRest=0; combatResumeStep='';
   pauseReturnState='playing'; setzeHelfer();
+  kampagneBonusVergeben=false;   // neuer Lauf: Abschlussbonus wieder freigeben
   if(metaLevel('startimpuls')>0) skillPoints=1;
   // Tages-Twist „Fliegender Start": zwei zusätzliche Punkte, wie beim Startimpuls
   // außerhalb der regulären Ökonomie — ein guter Tag darf mächtig beginnen.
@@ -2716,6 +2894,8 @@ function hideAll(){
   overlayStart.classList.add('hidden'); overlayPause.classList.add('hidden');
   overlayOver.classList.add('hidden');
   document.getElementById('overlay-hangar').classList.add('hidden');
+  document.getElementById('overlay-galaxie').classList.add('hidden');
+  document.getElementById('overlay-planet').classList.add('hidden');
   overlayAuslese.classList.add('hidden');
   if(combatResume) combatResume.classList.add('hidden');
   syncUiAccessibility();
@@ -2962,9 +3142,12 @@ function randomEnemyType(){
   // Panzer erscheinen ab der eingestellten Welle — auf „Meister" deutlich früher.
   // Sie sind der Grund, warum Positionieren spät im Lauf wieder zählt.
   // Tages-Regel und Bleiregen-Ereignis verschieben Welle und Häufigkeit nach oben.
-  const panzerAb = (laufVorgabe&&laufVorgabe.regel&&laufVorgabe.regel.panzer&&laufVorgabe.regel.panzer.ab)
+  // Planet-Identität (Phase 4): campagne-lokaler Modifikator vor allen anderen Quellen.
+  // Leer außerhalb der Kampagne, daher für Tageslauf/Endlos/Normal unverändert.
+  const pm=planetMod();
+  const panzerAb = pm.panzerAb || (laufVorgabe&&laufVorgabe.regel&&laufVorgabe.regel.panzer&&laufVorgabe.regel.panzer.ab)
     || (laufEreignis&&laufEreignis.panzerAb) || hilfe().panzerAb || CONFIG.panzerAbWelle;
-  const panzerChance = (laufEreignis&&laufEreignis.panzerChance)
+  const panzerChance = pm.panzerChance || (laufEreignis&&laufEreignis.panzerChance)
     || (laufVorgabe&&laufVorgabe.regel&&laufVorgabe.regel.panzer&&laufVorgabe.regel.panzer.chance) || 0.22;
   // Die Gewichte werden nacheinander vom selben Zufallsraum abgezogen. Vorher
   // blockierte „Panzer" alle kleineren Schwellen: Exploder erschienen ab Welle 12
@@ -2973,7 +3156,8 @@ function randomEnemyType(){
   if(wave>=panzerAb){ if(r<panzerChance) return 'panzer'; r-=panzerChance; }
   const exploderChance=wave>=8 ? exotic*0.45 : 0;
   if(r<exploderChance) return 'exploder'; r-=exploderChance;
-  const jaegerChance=wave>=6 ? exotic : 0;
+  const jaegerAb = pm.jaegerAb || 6;
+  const jaegerChance = wave>=jaegerAb ? exotic*(pm.jaegerMult||1) : 0;
   if(r<jaegerChance) return 'jaeger';
   r=laufRnd();
   if(wave<3) return r<0.75? 'drohne':'soldat';   // frühe Wellen: nur leichte Gegner
@@ -3136,15 +3320,16 @@ document.getElementById('resume-btn').addEventListener('click',resumeGame);
    Die Rückfrage kommt nur, wenn wirklich etwas auf dem Spiel steht. */
 function laufBeenden(){
   tagesAbschluss();        // auch ein freiwilliges Ende zählt für den Tageslauf
-  beendeTageslaufVorgabe();
   bucheFragmente();
+  const warKampagne=!!aktiverPlanet;
   state='menu'; setMusicLevel();
   updateTreeButton();
   hideAll();
   document.getElementById('overlay-abbruch').classList.add('hidden');
   sorgeOrbitauftrag(); renderOrbitauftrag();
-  refreshMenuVisibility();
-  overlayStart.classList.remove('hidden');
+  // Kampagne: zurück zur Galaxie (Planet bleibt besetzt). Sonst ins Startmenü.
+  if(warKampagne){ zurGalaxie(); }
+  else { beendeTageslaufVorgabe(); refreshMenuVisibility(); overlayStart.classList.remove('hidden'); }
 }
 function frageAbbruch(){
   if(wave<3 && player.stars<=0){ laufBeenden(); return; }   // nichts zu verlieren
@@ -3488,23 +3673,193 @@ wendeBedienungAn();
    wollte, fand ihn hinter der falschen Beschriftung nicht. Seit die Hauptmacht dort
    festgelegt werden, muss der Weg dorthin außerdem offensichtlich sein. */
 function zumHauptmenue(){
+  aktiverPlanet=null;
   overlayOver.classList.add('hidden');
+  document.getElementById('overlay-galaxie').classList.add('hidden');
+  document.getElementById('overlay-planet').classList.add('hidden');
   beendeTageslaufVorgabe();
   refreshMenuVisibility();
   document.getElementById('overlay-start').classList.remove('hidden');
   state='menu'; setMusicLevel();
   updateTreeButton(); sorgeOrbitauftrag(); renderOrbitauftrag();
 }
-document.getElementById('restart-btn').addEventListener('click', zumHauptmenue);
+
+/* ---- Galaxiekarte: der Kampagnen-Rahmen (Plan §11/§13/§36) ----
+   Die Karte ist der primäre Weg in einen Lauf. Tageslauf, Sammlung und Vorbereitung
+   bleiben über das Startmenü erreichbar; die Karte selbst ist bewusst leichtgewichtig
+   (nur DOM/CSS, keine Dauer-Partikel — Plan §56). */
+function planetTypLabel(p){
+  return p.typ==='boss' ? 'Kommandowelt' : 'Befreiungswelt';
+}
+function bedrohungsMarke(stufe){
+  // Einfache Skala I–V (Plan §10): Orientierung, kein Zugangsschutz.
+  const roem=['I','II','III','IV','V'][Math.max(0,Math.min(4,(stufe|0)-1))]||'I';
+  let pips='';
+  for(let i=1;i<=5;i++) pips+=`<i class="bedroh-pip${i<=stufe?' an':''}"></i>`;
+  return `<span class="bedrohung" title="Bedrohung ${roem}"><span class="bedroh-pips">${pips}</span><b>${roem}</b></span>`;
+}
+function renderGalaxie(){
+  const wrap=document.getElementById('galaxie-karte'); if(!wrap) return;
+  wrap.innerHTML='';
+  for(const s of KAMPAGNE.sektoren){
+    const grp=document.createElement('div'); grp.className='galaxie-sektor';
+    const h=document.createElement('h3'); h.className='galaxie-sektor-titel'; h.textContent=s.name; grp.appendChild(h);
+    // Ein Sektor mit `braucht` erscheint erst als verriegelter Teaser, bis sein
+    // Warpkern durch den Sektor-Boss davor verdient wurde (Plan §11.2/§33).
+    if(s.braucht && !warpkernErreicht(s.braucht)){
+      const t=document.createElement('div'); t.className='galaxie-teaser';
+      t.innerHTML=`<span class="planet-schloss">🔒</span> Warpkern nötig — bezwinge zuerst den Kommandanten von Sektor I.`;
+      grp.appendChild(t); wrap.appendChild(grp); continue;
+    }
+    const reihe=document.createElement('div'); reihe.className='galaxie-reihe';
+    s.planeten.forEach((p,i)=>{
+      if(i>0){ const v=document.createElement('span'); v.className='galaxie-route'; reihe.appendChild(v); }
+      const st=planetStatus(p);
+      const node=document.createElement('button');
+      node.className='planet-node '+st;
+      node.style.setProperty('--motiv', p.motiv||'var(--accent)');
+      node.setAttribute('aria-label', p.name+' — '+(st==='befreit'?'befreit':st==='erreichbar'?'erreichbar':'gesperrt'));
+      node.innerHTML=
+        `<span class="planet-scheibe">${p.typ==='boss'?'<span class="planet-boss">★</span>':''}${st==='befreit'?'<span class="planet-haken">✓</span>':''}${st==='gesperrt'?'<span class="planet-schloss">🔒</span>':''}</span>`+
+        `<span class="planet-name">${p.name}</span>`+
+        `<span class="planet-sub">${st==='befreit'?'Befreit':planetTypLabel(p)}</span>`;
+      if(st==='gesperrt') node.disabled=true;
+      else node.addEventListener('click',()=>oeffnePlanet(p.id));
+      reihe.appendChild(node);
+    });
+    grp.appendChild(reihe); wrap.appendChild(grp);
+  }
+  // Leitzeile: welcher Schritt ist als nächstes sinnvoll?
+  const hint=document.getElementById('galaxie-hinweis');
+  if(hint){
+    const naechster=KAMPAGNE.sektoren.flatMap(s=>s.planeten).find(p=>planetStatus(p)==='erreichbar'&&!planetBefreit(p.id));
+    hint.textContent = naechster ? (naechster.name+' braucht deine Hilfe.') : 'Sektor gesichert. Weitere Welten folgen bald.';
+  }
+}
+function oeffneGalaxie(){
+  overlayStart.classList.add('hidden');
+  renderGalaxie();
+  document.getElementById('overlay-galaxie').classList.remove('hidden');
+}
+function schliesseGalaxie(){
+  document.getElementById('overlay-galaxie').classList.add('hidden');
+  refreshMenuVisibility();
+  overlayStart.classList.remove('hidden');
+}
+// Kompakter Pre-Run-Screen (Plan §12): eine Besonderheit, große Aktion, keine Statistikwand.
+function oeffnePlanet(id){
+  const p=planetById(id); if(!p || !planetErreichbar(p)) return;
+  const befreit=planetBefreit(id);
+  const macht=ABILITIES[startMaechte().slot1]?.name||'Wirbel';
+  document.getElementById('planet-name').textContent=p.name;
+  document.getElementById('planet-bedrohung').innerHTML=bedrohungsMarke(p.stufe);
+  document.getElementById('planet-info').innerHTML=
+    `<p class="planet-typ">${planetTypLabel(p)}</p>`+
+    `<p class="planet-bes"><b>Besonderheit:</b> ${p.besonderheit}</p>`+
+    `<p class="planet-kurz">${p.kurz}</p>`+
+    `<p class="planet-lohn">${befreit?'Bereits befreit · Fragmente sammeln':'Erstbefreiung · Fragmente sichern'}</p>`+
+    `<p class="planet-macht">Hauptmacht: <b>${macht}</b></p>`;
+  const btn=document.getElementById('planet-start');
+  btn.textContent = befreit ? 'Erneut befreien' : 'Befreien';
+  btn.dataset.planet=id;
+  document.getElementById('overlay-galaxie').classList.add('hidden');
+  document.getElementById('overlay-planet').classList.remove('hidden');
+}
+function schliessePlanet(){
+  document.getElementById('overlay-planet').classList.add('hidden');
+  renderGalaxie();
+  document.getElementById('overlay-galaxie').classList.remove('hidden');
+}
+// Einen Kampagnen-Lauf starten. EOS ist eine Befreiungswelt = normaler Lauf, daher
+// nur Planetkontext setzen und den bestehenden Laufstart nutzen (minimal-invasiv).
+function starteKampagnenLauf(id){
+  const p=planetById(id); if(!p || !planetErreichbar(p)) return;
+  laufVorgabe=null;             // kein Tageslauf
+  aktiverPlanet=id;
+  resetGame();                  // hideAll() schließt Galaxie/Planet mit
+}
+// Rückkehr zur Galaxiekarte nach einem Kampagnen-Lauf (Plan §32).
+function zurGalaxie(){
+  aktiverPlanet=null;
+  beendeTageslaufVorgabe();
+  overlayOver.classList.add('hidden');
+  document.getElementById('overlay-sieg').classList.add('hidden');
+  document.getElementById('overlay-planet').classList.add('hidden');
+  overlayStart.classList.add('hidden');
+  refreshMenuVisibility();
+  renderGalaxie();
+  document.getElementById('overlay-galaxie').classList.remove('hidden');
+  state='menu'; setMusicLevel();
+  updateTreeButton(); sorgeOrbitauftrag(); renderOrbitauftrag();
+}
+// Ein beendeter Lauf kehrt in seinen Hub zurück: Galaxie bei Kampagne, sonst Startmenü.
+function verlasseLaufZuHub(){
+  if(aktiverPlanet) zurGalaxie();
+  else zumHauptmenue();
+}
+
+document.getElementById('restart-btn').addEventListener('click', verlasseLaufZuHub);
 document.getElementById('sieg-weiter').addEventListener('click', endlosWeiter);
 document.getElementById('sieg-einfrieren').addEventListener('click',()=>startEndlosmodus(true));
 document.getElementById('sieg-menue').addEventListener('click',()=>{
   document.getElementById('overlay-sieg').classList.add('hidden');
-  zumHauptmenue();
+  verlasseLaufZuHub();
 });
 document.getElementById('wieder-btn').addEventListener('click',()=>resetGame());
-document.getElementById('start-btn').addEventListener('click',resetGame);
-document.getElementById('tages-btn').addEventListener('click',startTageslauf);
+document.getElementById('start-btn').addEventListener('click',oeffneGalaxie);
+document.getElementById('galaxie-back').addEventListener('click',schliesseGalaxie);
+document.getElementById('planet-back').addEventListener('click',schliessePlanet);
+document.getElementById('planet-start').addEventListener('click',function(){ starteKampagnenLauf(this.dataset.planet); });
+document.getElementById('tages-btn').addEventListener('click',()=>{ aktiverPlanet=null; startTageslauf(); });
+
+/* ---- Heldenkern-Screen (Phase 2): permanente Verbesserungen mit Fragmenten ----
+   Erreichbar aus Galaxie, Sieg und Niederlage (der „erste Upgrade-Moment", Plan §13.5).
+   Zahlt mit der bestehenden Fragmentwährung; keine zweite Wirtschaft. */
+let heldReturn='galaxie';
+function heldOpener(){
+  return heldReturn==='sieg' ? document.getElementById('overlay-sieg')
+       : heldReturn==='gameover' ? overlayOver
+       : document.getElementById('overlay-galaxie');
+}
+function openHeld(from){
+  heldReturn=from||'galaxie';
+  const op=heldOpener(); if(op) op.classList.add('hidden');
+  const fb=document.getElementById('held-feedback'); if(fb) fb.textContent='';
+  renderHeld();
+  document.getElementById('overlay-held').classList.remove('hidden');
+}
+function closeHeld(){
+  document.getElementById('overlay-held').classList.add('hidden');
+  if(heldReturn==='sieg') document.getElementById('overlay-sieg').classList.remove('hidden');
+  else if(heldReturn==='gameover') overlayOver.classList.remove('hidden');
+  else { renderGalaxie(); document.getElementById('overlay-galaxie').classList.remove('hidden'); }
+}
+function renderHeld(){
+  const stars=document.getElementById('held-stars'); if(stars) stars.textContent=save.stars;
+  const grid=document.getElementById('held-grid'); if(!grid) return;
+  grid.innerHTML='';
+  for(const t of HELD_TRACKS){
+    const lv=heldLevel(t.id), full=lv>=HELD_MAX, preis=heldKosten(t.id);
+    const c=document.createElement('div'); c.className='held-card';
+    c.innerHTML=`<div class="held-head">${svg(ICON[t.icon]||'')}<h3>${t.name}</h3></div>`+
+      `<p>${t.kurz}</p>`+
+      `<div class="held-pips">${pipsHTML(lv,HELD_MAX)}</div>`+
+      `<button ${(full||preis>save.stars)?'disabled':''}>${full?'✓ Max':preis+' ◆'}</button>`;
+    c.querySelector('button').onclick=()=>{
+      if(!kaufeHeld(t.id)) return;
+      if(sfx) sfx('buy');
+      renderHeld();
+      const fb=document.getElementById('held-feedback'); if(fb) fb.textContent='Dein Held ist stärker!';
+      const gh=document.querySelector('#overlay-held .guthaben');
+      if(gh){ gh.classList.remove('abgebucht'); void gh.offsetWidth; gh.classList.add('abgebucht'); }
+    };
+    grid.appendChild(c);
+  }
+}
+document.getElementById('held-back').addEventListener('click',closeHeld);
+document.getElementById('sieg-held').addEventListener('click',()=>openHeld('sieg'));
+document.getElementById('gameover-held').addEventListener('click',()=>openHeld('gameover'));
+document.getElementById('galaxie-held').addEventListener('click',()=>openHeld('galaxie'));
 renderTagessignal();
 function openHangar(){
   openMetaShop('start');
@@ -5083,18 +5438,47 @@ function sieg(){
     else { const idx=pruefstufeIndex(id); if(idx>=0) n=Math.min(PRUEFSTUFEN.length, idx+2); }
     if(n>(save.pruefFrei||0)){ save.pruefFrei=n; neuFrei=PRUEFSTUFEN[n-1]; }
   }
+  // Kampagne: der befreite Planet wechselt dauerhaft auf „befreit". Der Kampf selbst
+  // war ein normaler Lauf; hier wird nur der Weltzustand gesetzt (Plan §13.4/§32).
+  const kampagnePlanet=(!messlauf && aktiverPlanet) ? planetById(aktiverPlanet) : null;
+  let erstBefreiung=false;
+  if(kampagnePlanet){ erstBefreiung=markiereBefreit(aktiverPlanet); }
+  // Sektorabschluss: die Kommandowelt verdient den Warpkern ihres Sektors und öffnet
+  // den nächsten Bereich (Plan §33). Der Warpkern kostet keine Fragmente (Plan §20.1).
+  let sektorLabel='';
+  if(kampagnePlanet && kampagnePlanet.sektorAbschluss){
+    const sek=sektorVonPlanet(kampagnePlanet.id);
+    if(sek){
+      save.kampagne.warpkerne=save.kampagne.warpkerne||{};
+      save.kampagne.warpkerne[sek.id]=true; persist();
+      sektorLabel=(sek.name.split(' · ')[0])||'Sektor';
+    }
+  }
   const verdient=bucheFragmente();
+  const abschluss=kampagnePlanet ? kampagneAbschluss(true, erstBefreiung) : {summe:0};
+  const starterBonus=kampagnePlanet ? gewaehreStarterBonus() : 0;
   const tagesLohn=tagesAbschluss();
   const ersterSieg=!save.gewonnen;
   save.gewonnen=true; save.endlosFrei=true; persist();
   document.getElementById('sieg-text').innerHTML=
+    (kampagnePlanet? `<b class="sieg-befreit">${kampagnePlanet.name} befreit</b>`+(erstBefreiung?' · Erstbefreiung':'')+'<br>' : '')+
+    (sektorLabel? `<b class="sieg-sektor">${sektorLabel} befreit</b> · Warpkern erhalten · nächster Sektor offen<br>` : '')+
     (ersterSieg? '<b>Zum ersten Mal!</b><br>' : '')+
-    `Du hast den Zerbrochenen Mond bezwungen — auf <b>${hilfe().name}</b>.<br>`+
+    (kampagnePlanet? `Der Besatzungskern ist zerstört — auf <b>${hilfe().name}</b>.<br>`
+                   : `Du hast den Zerbrochenen Mond bezwungen — auf <b>${hilfe().name}</b>.<br>`)+
     `Level ${player.level} · Orbitpfad abgeschlossen`+
     (finalePunkte? `<br><b style="color:var(--gold)">+${finalePunkte} Finale-${finalePunkte===1?'Punkt':'Punkte'}</b> · Orbit jetzt abschließen` : '')+
     (neuFrei? `<br><b style="color:var(--gold)">${neuFrei.name} freigeschaltet</b> · ${neuFrei.kurz}` : '')+
-    (verdient>0? `<br><b style="color:var(--gold)">+${verdient} ◆</b> Fragmente` : '')+
+    (verdient>0? `<br><b style="color:var(--gold)">+${verdient} ◆</b> im Kampf gesammelt` : '')+
+    (abschluss.summe>0? `<br><b style="color:var(--gold)">+${abschluss.summe} ◆</b> Bergung`+
+      (abschluss.erst? ` · <b style="color:var(--gold)">Erstbefreiung +${abschluss.erst}</b>` : '') : '')+
+    (starterBonus>0? `<br><b style="color:var(--gold)">+${starterBonus} ◆</b> Startbonus` : '')+
+    (kampagnePlanet? `<br><b style="color:var(--accent)">Heldenkern verfügbar</b> · Mach deinen Helden stärker` : '')+
     (tagesLohn? `<br><b style="color:var(--accent)">Tageslauf geschafft${tagesLohn}</b>` : '');
+  const siegMenue=document.getElementById('sieg-menue');
+  if(siegMenue) siegMenue.textContent = aktiverPlanet ? 'Zur Galaxie' : 'Hauptmenü';
+  const siegHeld=document.getElementById('sieg-held');
+  if(siegHeld) siegHeld.classList.toggle('hidden', !kampagnePlanet);
   hideAll();
   document.getElementById('overlay-sieg').classList.remove('hidden');
   renderOrbitauftrag();
@@ -5139,11 +5523,24 @@ function gameOver(){
   const tagesLohn=tagesAbschluss();
   const earned=bucheFragmente();
   const best=bestFuer();
+  // Kampagne: Rückzug statt hartes Aus. Der Planet bleibt besetzt, der Fortschritt
+  // (Fragmente) bleibt erhalten (Plan §13.6). Der Kampf-Ausgang bleibt unverändert.
+  const kampagnePlanet=(!messlauf && aktiverPlanet) ? planetById(aktiverPlanet) : null;
+  const abschluss=kampagnePlanet ? kampagneAbschluss(false, false) : {summe:0};
+  const starterBonus=kampagnePlanet ? gewaehreStarterBonus() : 0;
   document.getElementById('gameover-stats').innerHTML=
+    (kampagnePlanet? `<b class="gameover-rueckzug">${kampagnePlanet.name} bleibt besetzt</b> · Dein Fortschritt bleibt.<br>` : '')+
     `Erreicht: <b>Welle ${wave}</b> · Level ${player.level}<br>`+
-    (earned>0? `<b style="color:var(--gold)">+${earned} ◆</b> Fragmente · ${save.stars} ◆ insgesamt<br>`:'')+
+    (earned>0? `<b style="color:var(--gold)">+${earned} ◆</b> im Kampf gesammelt<br>`:'')+
+    (abschluss.summe>0? `<b style="color:var(--gold)">+${abschluss.summe} ◆</b> Bergung<br>`:'')+
+    (starterBonus>0? `<b style="color:var(--gold)">+${starterBonus} ◆</b> Startbonus · genug für ein Heldenkern-Upgrade<br>`:'')+
+    `<span style="color:var(--muted)">${save.stars} ◆ insgesamt</span><br>`+
     (tagesLohn? `<b style="color:var(--accent)">Tageslauf geschafft${tagesLohn}</b><br>`:'')+
     `<span style="color:var(--muted)">Bestmarke: Welle ${best}</span>`;
+  const overMenue=document.getElementById('restart-btn');
+  if(overMenue) overMenue.textContent = aktiverPlanet ? 'Zur Galaxie' : 'Hauptmenü';
+  const overHeld=document.getElementById('gameover-held');
+  if(overHeld) overHeld.classList.toggle('hidden', !kampagnePlanet);
   renderOrbitauftrag();
   overlayOver.classList.remove('hidden');
 }
@@ -5228,7 +5625,7 @@ function update(dt){
     }
     const boost = dmgBoostUntil>spielJetzt()?2:1;
     const resonanz=treeFlags.resonanzUntil>spielJetzt()?1.25:1;
-    const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz * tagesFaktor('klinge'));
+    const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz * tagesFaktor('klinge') * heldKlinge());
     const leerenBonus=hatLeerenhunger() ? fehlendesLeben*(0.78+(treeFlags.leerenRisikoBonus||0)) : 0;
     const anglesNow=bladeAngles();
     const bandLoch=bandInnen();   // 0 ohne Band, dann faellt die Pruefung weg
@@ -5246,7 +5643,7 @@ function update(dt){
     // waere kein "naechster" Volltreffer mehr, sondern derselbe.
     const durchschlagVorTick = treeFlags.kronenform==='praez' && !!treeFlags.durchschlagBereit;
     if(tickSweet && !orbitRoundSweet) orbitSweetPulse();
-    const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+leerenBonus) * sweetKlingenFaktor() * (lightTick?1.35:1) * tagesFaktor('klinge'));
+    const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+leerenBonus) * sweetKlingenFaktor() * (lightTick?1.35:1) * tagesFaktor('klinge') * heldKlinge());
     if(lightTick){ orbitRoundDistance=0; orbitRoundLight=false; if(PERF_DEBUG)treeFlags.debugLichtbund=(treeFlags.debugLichtbund||0)+1; pushFloat(player.x,player.y-38,'LICHTBUND ×1.35','#ffd257',1.05); }
     let faecherBereit=!!runKartenEvos.splitterfaecher && nachfassenBereit;
     for(const en of enemies){

@@ -9,7 +9,7 @@
      lieferte GitHub Pages zwar neue Dateien aus, die Browser luden aber die
      zwischengespeicherte alte Fassung unter derselben Adresse. Gepushte
      Aenderungen kamen auf dem Geraet schlicht nicht an. -->
-  <link rel="stylesheet" href="style.css?v=20260907-figuren-designs">
+  <link rel="stylesheet" href="style.css?v=20260907-sektor1">
 </head>
 <body>
 <div id="game-wrap">
@@ -151,6 +151,7 @@
     <p id="gameover-stats"></p>
     <section id="gameover-orbitauftrag" class="orbitauftrag-karte kompakt" aria-label="Orbitauftrag"></section>
     <button id="wieder-btn" class="primary">Nochmal spielen</button>
+    <button id="gameover-held" class="secondary hidden">◆ Held verstärken</button>
     <button id="metashop-btn" class="secondary">◆ Werkstatt</button>
     <button id="restart-btn" class="secondary">Hauptmenü</button>
   </div>
@@ -160,6 +161,7 @@
     <h2>Gewonnen</h2>
     <p id="sieg-text"></p>
     <section id="sieg-orbitauftrag" class="orbitauftrag-karte kompakt" aria-label="Orbitauftrag"></section>
+    <button id="sieg-held" class="primary hidden">◆ Held verstärken</button>
     <button id="sieg-weiter" class="primary">Endlos weiterspielen</button>
     <button id="sieg-einfrieren" class="secondary hidden">Restpunkt verwerfen &amp; Endlos</button>
     <button id="sieg-menue" class="secondary">Hauptmenü</button>
@@ -186,6 +188,51 @@
     <button id="hangar-workshop" class="secondary">◆ Werkstatt</button>
     <button id="hangar-collection" class="secondary">Sammlung &amp; Bestmarken</button>
     <button id="hangar-back" class="primary">Zurück</button>
+  </div>
+
+  <!-- Galaxiekarte: der Kampagnen-Rahmen. Tap auf einen erreichbaren Planeten öffnet
+       den Pre-Run-Screen. Tageslauf/Sammlung bleiben über das Startmenü erreichbar. -->
+  <div id="overlay-galaxie" class="overlay hidden">
+    <div class="galaxie-panel">
+      <header class="galaxie-head">
+        <button id="galaxie-back" class="icon-back" aria-label="Zurück">‹</button>
+        <h2>Galaxie</h2>
+        <button id="galaxie-held" class="held-chip" aria-label="Heldenkern">◆ Held</button>
+      </header>
+      <p class="galaxie-hinweis" id="galaxie-hinweis"></p>
+      <div id="galaxie-karte" class="galaxie-karte"></div>
+    </div>
+  </div>
+
+  <!-- Heldenkern: permanente Verbesserungen mit Fragmenten (Phase 2) -->
+  <div id="overlay-held" class="overlay hidden">
+    <div class="held-panel">
+      <header class="galaxie-head">
+        <button id="held-back" class="icon-back" aria-label="Zurück">‹</button>
+        <h2>Heldenkern</h2>
+        <span></span>
+      </header>
+      <div class="guthaben">
+        <span class="guthaben-sym">◆</span>
+        <span class="guthaben-zahl" id="held-stars">0</span>
+        <span class="guthaben-label">Fragmente</span>
+      </div>
+      <p class="held-feedback" id="held-feedback" role="status" aria-live="polite"></p>
+      <div id="held-grid" class="held-grid"></div>
+    </div>
+  </div>
+
+  <!-- Pre-Run-Screen: eine Besonderheit, große Aktion, keine Statistikwand (Plan §12) -->
+  <div id="overlay-planet" class="overlay hidden">
+    <div class="planet-panel">
+      <header class="galaxie-head">
+        <button id="planet-back" class="icon-back" aria-label="Zurück">‹</button>
+        <h2 id="planet-name">Planet</h2>
+        <span id="planet-bedrohung"></span>
+      </header>
+      <div id="planet-info" class="planet-info"></div>
+      <button id="planet-start" class="primary">Befreien</button>
+    </div>
   </div>
 
   <!-- Info: erklärt die Grundlagen, erreichbar aus Start- und Pausenmenü -->
@@ -278,6 +325,6 @@
     </div>
   </div>
 </div>
-  <script src="game.js?v=20260907-figuren-designs"></script>
+  <script src="game.js?v=20260907-sektor1"></script>
 </body>
 </html>

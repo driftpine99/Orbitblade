@@ -1,9 +1,21 @@
 # Orbitblade v5 – Gesamtkonzept und verbindlicher Arbeitsstand
 
-**Stand: 31.08.2026.** Dieses Dokument trennt das vorhandene Spiel, beschlossene
+**Stand: 07.09.2026.** Dieses Dokument trennt das vorhandene Spiel, beschlossene
 Ziele und Messbefunde. Der Ist-Stand wurde bei der Konsolidierung am aktiven Code
 und durch gezielte Strukturprüfungen abgeglichen. Ältere Messungen sind datiert;
 sie sind keine heutigen Neumessungen und keine Garantie für jede Hardware.
+
+**Neue Produktrichtung (07.09.2026):** Der Nutzer hat die Galaxie-Kampagne mit
+permanenter Progression beschlossen; der verbindliche Fahrplan steht in
+[Galaxie-Kampagne Umsetzungsplan](ORBITBLADE_Galaxie_Kampagne_Umsetzungsplan_Claude_Code.md).
+Er erweitert bzw. überschreibt ältere Aussagen hier, wo sie kollidieren: permanente
+Fragment-Upgrades sind künftig erwünscht und dürfen Kampfkraft verbessern; die
+Galaxiekarte wird der primäre Rahmen für normale Läufe. Unverändert bleiben
+Orbitklinge, Positionierung/Volltreffer, Bewegung + genau ein aktiver Machtknopf,
+keine zweite farmbare Währung und keine automatische Gegner-Skalierung. Umgesetzt
+sind **Phase 1** (Vertical Slice EOS, siehe 3.9), **Phase 2** (Heldenkern, siehe
+3.10), **Phase 3** (Fragmentökonomie, siehe 3.11) und **Phase 4** (Sektor I
+vollständig, siehe 3.12); Phasen 5–7 sind Ziel, nicht gebaut.
 
 ## 1. Verbindlichkeit, Ablage und Arbeitsregeln
 
@@ -310,7 +322,7 @@ im Spieltest zu beurteilen.
 - Freiwilliges Beenden mit Beutegutschrift ist über Pause möglich. Eine ausdrücklich
   angebotene Ausstiegsentscheidung nach jedem Endlos-Boss existiert noch nicht.
 
-Speichern: `localStorage` unter `orbitblade_konzept_save`, **SAVE_VERSION 12**.
+Speichern: `localStorage` unter `orbitblade_konzept_save`, **SAVE_VERSION 13**.
 Die Migration von v9 erstattet das entfernte Zweitmacht-Projekt mit 1.000 Fragmenten
 und entfernt `meta.slot2` sowie die zweite Startauswahl. Die Migration **v11 → v12**
 begleitet den neuen Mächte-Pool: Funkenkranz und die drei neuen Mächte sind reine
@@ -319,6 +331,12 @@ Kauf); ein etwaiger Funkenkranz-Rest in `unlocks` wird entfernt, damit keine
 entfernte Wirkung wiederkehrt. Andere Projekte, Freischaltungen und Bestmarken
 bleiben bestehen (Migration verlustfrei und idempotent geprüft). `konstrukt` bleibt
 als Speicher-ID der kosmetischen Leerenklinge erhalten. Kein Ersatzprojekt für Slot 2.
+Die Migration **v12 → v13** ist rein additiv: sie legt das neue Feld `kampagne`
+(`{planeten:{}, introGesehen:false, held:{klinge,leben,macht,fokus}, starterBonusGewaehrt:false, warpkerne:{}}`)
+an, falls es fehlt, und lässt einen vorhandenen Kampagnenstand — befreite Planeten,
+Heldenkern-Stufen und Warpkerne — unangetastet. Es gibt keinen bestehenden Bestand zu erstatten
+oder zu entwerten; die Migration ist verlustfrei, idempotent und defensiv gegen
+Teilobjekte (headless geprüft in `tools/pruefe_kampagne.js` und `tools/pruefe_maechte.js`).
 
 ### 3.8 Rückruf-Beta (gebaut am 06.09.2026)
 
@@ -345,6 +363,122 @@ Bodenwarnungen im Finale sind spielbar. Touch-Pad, ein Kontextknopf, WASD/Pfeile
 Leertaste, Pause, Tabwechsel-Stop, `pointercancel` und Key-up-Reset sind enthalten.
 Die Hauptfassung verlinkt die Beta im Startmenü; dieser Umfang ist ausdrücklich ein
 prüfbarer Beta-Ausschnitt und keine Umsetzung der vollständigen Meta.
+
+### 3.9 Galaxie-Kampagne — Vertical Slice EOS (Phase 1, gebaut am 07.09.2026)
+
+Erste umgesetzte Stufe des Galaxie-Umsetzungsplans. **Der Kampf ist unverändert**:
+Ein Planet-Run ist ein normaler Orbitblade-Lauf (Welle 30 als Siegpunkt). Neu ist
+nur ein leichtgewichtiger Kampagnen-Rahmen (nur DOM/CSS, keine Dauer-Partikel).
+
+Ablauf: Startmenü → **Spielen** öffnet die **Galaxiekarte** (`overlay-galaxie`).
+Tageslauf, Sammlung und Vorbereitung bleiben über das Startmenü erreichbar. Ein Tap
+auf einen erreichbaren Planeten öffnet den kompakten **Pre-Run-Screen**
+(`overlay-planet`: Name, Bedrohung I–V, eine Besonderheit, Fragmenthinweis,
+Hauptmacht, großer Knopf). „Befreien" startet über `starteKampagnenLauf(id)` den
+Lauf; `aktiverPlanet` hält den Planetkontext, ohne die Kampfparameter zu verändern.
+
+In der Phase-1-Fassung war nur **EOS** spielbar; der übrige Sektor I ist seit Phase 4
+vollständig spielbar (siehe 3.12). Die Planeten sind datengetrieben in
+`KAMPAGNE.sektoren` definiert; `planetById`, `planetStatus`, `planetErreichbar` und
+`markiereBefreit` sind die zugehörigen Helfer.
+
+Sieg auf EOS setzt den Planeten dauerhaft auf **befreit** (`save.kampagne.planeten`),
+zeigt „EOS befreit" und kehrt über „Zur Galaxie" zur Karte zurück; ein befreiter
+Planet bleibt wiederholbar. Niederlage lässt den Planeten **besetzt** (Rückzug statt
+hartes Aus), der Fragmentfortschritt bleibt erhalten. Die Endlos-Wahl nach dem Sieg
+bleibt unverändert erhalten. Fragmente laufen weiter über die **bestehende**
+Ökonomie (Drops + `bucheFragmente()`); eine eigene Kampagnen-Wirtschaft und der
+Heldenkern kommen erst in Phase 2/3. Kein Modifier-Leak: EOS hat in Phase 1 keine
+Kampf-Overrides; `hideAll()` schließt Galaxie/Planet bei jedem Laufstart mit.
+
+Regression: `node tools/pruefe_kampagne.js` prüft Kartenlogik, eine **echte**
+God-Siegrunde (EOS wird befreit), die Niederlage-Semantik (bleibt besetzt) und die
+Migrationsfestigkeit. Der Klickweg und die Darstellung sind headless nicht prüfbar
+und auf GitHub Pages zu sichten.
+
+### 3.10 Heldenkern — permanente Progression (Phase 2, gebaut am 07.09.2026)
+
+Erster echter permanenter Kampfkraft-Loop. **Vier Tracks à fünf Stufen** (Plan §16/§17),
+bezahlt mit der **bestehenden** Fragmentwährung (keine zweite Wirtschaft):
+
+| Track | Wirkung | Zentraler Hook | Startwert (Deckel Stufe 5) |
+|---|---|---|---|
+| Klingenreaktor (`klinge`) | Orbit-Grundschaden | `heldKlinge()` an beiden Orbit-Schadenszeilen | +4 %/Stufe → +20 % |
+| Vitalmatrix (`leben`) | maximales Leben | `heldLeben()` in `newPlayer()` | +6 %/Stufe → +30 % |
+| Machtkern (`macht`) | Hauptmacht-Schaden | `heldMacht()` in `machtFaktor()` (alle fünf Mächte) | +5 %/Stufe → +25 % |
+| Fokusleiter (`fokus`) | Fokus lädt schneller | `heldFokus()` in `fokusZiel()` | −2 %/Stufe → −10 % Ziel |
+
+**Alle Prozentwerte und die Kosten (`HELD_KOSTEN=[300,700,1400,2500,4000]`, Plan §24)
+sind Implementierungs-Startwerte, noch nicht balancegemessen.** Die Boni gelten in
+allen Läufen (wie Startimpuls/Begleiter) und docken zentral an bestehenden Werten an;
+bei Stufe 0 sind alle Faktoren exakt 1,0, der bestehende Balance-Stand bleibt also
+unverändert (God-Baseline weiter Sieg W30). Gemessen (6 Bot-Läufe je Seite,
+Erkundung, kein Balance-Beweis): Basis-Held Ø-Welle 6,3 → Voll-Held Ø-Welle 8,8 —
+spürbar, aber nicht trivialisierend (der Bot stirbt weiter um W9, weit vor dem Sieg;
+Plan §3.5/§43).
+
+Persistenz: `save.kampagne.held = {klinge,leben,macht,fokus}` (0..5), defensiv
+normalisiert und migrationsfest. Der **Heldenkern-Screen** (`overlay-held`) ist der
+„erste Upgrade-Moment" (Plan §13.5): erreichbar aus Galaxie (`◆ Held`), Sieg und
+Niederlage (`◆ Held verstärken`), mit Fragment-Guthaben, Stufen-Pips und „Dein Held
+ist stärker!". Ein **einmaliger Starterbonus** (`gewaehreStarterBonus()`, Flag
+`starterBonusGewaehrt`) füllt beim ersten beendeten Kampagnen-Lauf — Sieg oder
+Niederlage — auf mindestens Tier-I-Kosten auf, damit der Meta-Loop auch nach frühem
+Tod erlebbar ist (Plan §13.6); streng einmalig, kein Exploit, kein Geschenk an bereits
+reiche Spieler. Regression in `tools/pruefe_kampagne.js` (reale Wertänderung, maxHp im
+echten Lauf, Cap, Kostenprüfung, Migration, Starterbonus einmalig).
+
+### 3.11 Fragmentökonomie der Kampagne (Phase 3, gebaut am 07.09.2026)
+
+Die bestehende Kill-Drop-Ökonomie bleibt unverändert (die „kleinen Drops" aus Plan
+§23.2) und ist bereits stark an den Fortschritt gekoppelt (gemessen: ~4900 Fragmente
+bei vollem God-Sieg, ~64–260 bei frühem Tod). **Additiv obendrauf** kommt eine
+**campagne-only** Abschlussbelohnung (`kampagneAbschluss(gewonnen, erstBefreiung)`),
+die nur bei gesetztem `aktiverPlanet` und `!messlauf` zahlt:
+
+| Bestandteil | Startwert (unbalanciert) |
+|---|---|
+| Sichere Bergung (Runfortschritt) | `wave × 10` |
+| Bossbonus | `50` je im Lauf besiegtem Boss |
+| Siegbonus | `500` bei Sieg |
+| Erstbefreiung | `700`, nur beim ersten Befreien eines Planeten |
+
+Genau **einmal pro Lauf** über `kampagneBonusVergeben` (in `resetGame()` zurückgesetzt):
+Ein Sieg auf W30 vergibt den Bonus, ein anschließender Endlos-Tod zahlt **nicht** ein
+zweites Mal. Damit ist ein Sieg (≈1800 bei Erstbefreiung) klar lohnender als eine
+Wiederholung (≈1100) und deutlich lohnender als absichtliches Frühsterben (W5 ≈50),
+und es gibt keinen wiederholbaren Farm-Exploit. Der Starterbonus füllt zusätzlich den
+allerersten Lauf auf ≥ Tier I. Tageslauf/Endlos/normale Läufe sind ausgenommen
+(kein Leak). **Alle Zahlen sind Startwerte (Plan §24/§44), noch nicht balancegemessen.**
+Regression in `tools/pruefe_kampagne.js` (Sieg > Wiederholung > Niederlage, Einmal-pro-Lauf,
+kein Leak, Sieg schlägt fünf Frühtode).
+
+### 3.12 Sektor I vollständig — vier Missionen (Phase 4, gebaut am 07.09.2026)
+
+Sektor I ist als vollständiger Kampagnenbogen spielbar: **EOS → KRYOS → VEGA →
+Kommandowelt**. Die Route bildet sich von selbst aus `planetErreichbar` (jeder Planet
+öffnet den nächsten seines Sektors); die Vorschauwelten haben kein `gesperrt` mehr.
+
+Jeder Planet hat **eine** klare Identität über einen campagne-lokalen `mod`, den nur
+`planetMod()` aus `aktiverPlanet` liest (leer außerhalb der Kampagne → **kein Leak**
+in Tageslauf/Endlos/Normal, Plan §41). Der Kampf bleibt ein normaler W30-Lauf, `mod`
+verschiebt allein die Gegnermischung in `randomEnemyType()`:
+
+| Welt | Typ | Identität | `mod` | Gemessen W15 |
+|---|---|---|---|---|
+| EOS | Befreiung | Grundgegner | — | Basis |
+| KRYOS | Befreiung | Panzerwerft | `panzerAb:3, panzerChance:0.42` | Panzer 22 %→42 % |
+| VEGA | Befreiung | Jägerstützpunkt | `jaegerAb:4, jaegerMult:1.6` | Jäger 28 %→~45 % |
+| KOMMANDO | Boss | Sektor-Kommandant | `panzerAb:6, panzerChance:0.30, jaegerAb:6, jaegerMult:1.3` | harte Elite-Mischung |
+
+Die Kommandowelt ist der **Sektorabschluss** (`sektorAbschluss:true`): ihr Sieg verdient
+den **Warpkern** des Sektors (`save.kampagne.warpkerne.s1`, kostet keine Fragmente,
+Plan §20.1), zeigt „Sektor I befreit · Warpkern erhalten" und öffnet **Sektor II** als
+Teaser in der Karte. Sektor II (`braucht:'s1'`) erscheint erst nach dem Warpkern; seine
+Welten (IONOS, AURA) bleiben bis Phase 7 `gesperrt`. Alle Zahlen sind Startwerte
+(Plan §18/§44). Gemessen: God-Bot gewinnt alle vier Welten (W30), Neutralität außerhalb
+der Kampagne bleibt (God-Baseline W30). Regression in `tools/pruefe_kampagne.js` (Route,
+Identität/kein Leak, Gegnermischung, Warpkern-Vergabe, Migration).
 
 ## 4. Beschlossene Ziele und noch nicht gebaute Entwürfe
 
@@ -514,10 +648,20 @@ oder garantierten Laufzeiten werden.
 
 `node tools/pruefe_maechte.js` ergänzt die Grundprüfung um gezielte Regressionen
 für Treffer, Echo-Bildtakt, Boss-Griff, Jäger, beide Kartenränge, alle sechs
-Fusionsauswahlen, Pause/Reset und eine idempotente v11-Spielstandmigration.
+Fusionsauswahlen, Pause/Reset und die idempotente Spielstandmigration bis v13
+(v11→v13 additiv, v12→v13 erhält befreite Planeten). `node tools/pruefe_kampagne.js`
+prüft den Galaxie-Loop (Kartenlogik, echte EOS-Siegbefreiung, Niederlage-Semantik,
+Migrationsfestigkeit), den **Heldenkern** (reale Wertänderung, maxHp im echten Lauf,
+Cap/Kosten, Starterbonus einmalig), die **Fragmentökonomie** (Sieg > Wiederholung
+> Niederlage, Abschlussbonus einmal pro Lauf, kein Leak) und **Sektor I** (Route
+EOS→KRYOS→VEGA→Kommando, Planet-Identität ohne Leak, verschobene Gegnermischung,
+Warpkern-Vergabe) — jeweils mit Nicht-Perf-Start, damit `messlauf=false` und
+Belohnungen/Weltzustände tatsächlich greifen.
 
 ```powershell
 node --check konzept/game.js
+node tools/pruefe_maechte.js
+node tools/pruefe_kampagne.js
 node tools/sim.js --god --minutes=20
 ```
 
@@ -636,6 +780,12 @@ die tatsächliche Darstellung auf Zielhardware prüfen.
 | Bosswarnungen und Endlosrhythmus | Echte Spieltests; globale Bosswarnzeit ist weiterhin 1100 ms |
 | Zielhardware | Pixel 9: Touch und Performance; dichter später Kampf auf X1 Carbon und Mobilgerät statt nur Vorschaukachel |
 | Pausierbare Spielzeit | Viele Effektfenster hängen weiter an `Date.now()` und laufen bei Overlays weiter |
+| **Heldenkern-Balance (Phase 2 gebaut)** | Bonus-Prozentwerte und `HELD_KOSTEN` sind Startwerte; A/B/C-Messung (Basis/mittel/voll) je Track gegen Zeit-bis-W30, Überleben und Krone-Timing (Plan §45); Kostenkurve gegen echte Fragmentquellen prüfen |
+| **Fragmentökonomie-Balance (Phase 3 gebaut)** | Abschlussbonus-Startwerte gegen echte Fragmentquellen und Heldenkern-Kosten prüfen; mehrere Kampagnenpfade simulieren (Plan §38); Pacing „alle 1–2 Läufe ein Kauf" (§25) messen |
+| **Sektor-I-Balance/Feel (Phase 4 gebaut)** | `mod`-Werte je Welt sind Startwerte; menschlicher Spieltest, ob KRYOS/VEGA-Identität lesbar und fair ist (VEGA-Jägeranteil, Kommando-Elite-Mischung); ggf. `mod` feinjustieren |
+| **Kampagne Phase 5 — Schiff** | Scanner, Bergung, Drohnenhangar, Warpkern als Bossfortschritt; vorhandene Begleitermechanik migrieren; keine Feldwerkstatt-Gates; nicht gebaut |
+| Kampagne-Inszenierung (Phase 6) | Planeten-/Sektorsieg, Befreiungsanimation, Fragmentflug; erst nach funktionalem Meta-Loop, Performance auf Zielgerät prüfen |
+| Erst-Run-Fluss EOS (Human-Test) | Versteht ein neuer Spieler ohne Text: welcher Planet spielbar ist, Sieg = befreit, Niederlage = Fortschritt bleibt? Auf Zielgerät sichten |
 
 Zurückgestellt bleiben Rangmodus, kosmetisches Hangarprestige, Monetarisierung,
 die Zusammenführung mehrerer Bestmarkenanzeigen, die Entfernung des alten
