@@ -45,6 +45,51 @@ test('EOS-Sieg (God) befreit den Planeten dauerhaft', () => {
   assert.equal(s.G('planetStatus(planetById("eos"))'), 'befreit');
 });
 
+test('EOS-Anfängerbogen: 15 Wellen, drei Bosse und vollständiges Kartenbudget', () => {
+  const s = sim.start({});
+  s.G('save.hilfe="standard"; save.meta={}; save.kampagne={planeten:{},introGesehen:false}; aktiverPlanet="eos"; globalThis.__eosCards=0; globalThis.__eosBosses=0; globalThis.__eosTypes={}; globalThis.__eosPre=null; randomEnemyType=(function(f){return function(){const t=f(); globalThis.__eosTypes[t]=(globalThis.__eosTypes[t]||0)+1; return t;};})(randomEnemyType); oeffneAuslese=(function(f){return function(){__eosCards++;return f.apply(this,arguments);};})(oeffneAuslese); spawnBoss=(function(f){return function(){__eosBosses++;return f.apply(this,arguments);};})(spawnBoss); sieg=(function(f){return function(){globalThis.__eosPre={earned:regularPointsEarned,invested:regularInvested(),crown:treeRang("orbit_crown"),skill:skillPoints}; return f.apply(this,arguments);};})(sieg);');
+  assert.equal(s.G('wave=1; randomEnemyType()'), 'drohne');
+  assert.equal(s.G('wave=4; randomEnemyType()'), 'soldat');
+  assert.equal(s.G('wave=7; randomEnemyType()'), 'schwer');
+  const stat = sim.run(s, { god:true, minutes:20 });
+  assert.equal(stat.sieg, true, 'EOS muss im verkürzten Bogen gewinnbar sein');
+  assert.equal(stat.wellen, 15, 'EOS endet nach Welle 15');
+  assert.equal(s.G('__eosBosses'), 3, 'EOS hat Bosse auf 5/10/15');
+  assert.equal(s.G('__eosCards'), 4, 'EOS behält Kartenstopps bis zum Finale');
+  assert.equal(s.G('JSON.stringify(__eosPre)'), JSON.stringify({earned:15,invested:15,crown:1,skill:0}), 'EOS baut den vollständigen Pfad vor dem Sieg auf');
+  assert.equal(s.G('regularPointsEarned'), 15, 'EOS trägt das vollständige Kartenbudget');
+  assert.equal(s.G('Object.keys(__eosTypes).some(k=>["panzer","jaeger","exploder"].includes(k))'), false, 'EOS führt keine gefährliche Fern-/Exploder-Mischung ein');
+});
+
+test('EOS-Endlos: globale Gegnerkurve und Echo-Meilensteine bleiben aktiv', () => {
+  const s = sim.start({});
+  s.G('save.meta={}; save.kampagne={planeten:{},introGesehen:false}; aktiverPlanet="eos";');
+  const stat=sim.run(s,{god:true,endlos:true,minutes:18});
+  assert.equal(stat.sieg, true, 'EOS-Sieg muss in Endlos übergehen');
+  assert.equal(s.G('endlosLauf'), true, 'EOS-Endloslauf wird tatsächlich gestartet');
+  assert.equal(s.G('regularTreeFrozen'), true, 'regulärer Build wird für Endlos eingefroren');
+  assert.ok(s.G('wave')>=40, 'Endlos erreicht die beiden Echo-Bosse');
+  assert.equal(s.G('echoMilestones'), 3, 'Boss 35/40 geben Echo-Ränge');
+  assert.equal(s.G('save.kampagne.planeten.eos'), 'befreit', 'EOS bleibt einmalig befreit');
+  s.G('wave=31; setzeLaufSeed(123); laufEreignis=null;');
+  assert.equal(s.G('laufZielWelle()'), 30, 'Endlos nutzt die globale Siegschwelle');
+  assert.equal(s.G('(function(){let o={};for(let i=0;i<1000;i++){let t=randomEnemyType();o[t]=(o[t]||0)+1;}return !!(o.panzer&&o.jaeger&&o.exploder);})()'), true, 'Endlos verlässt den EOS-Anfängerfilter');
+  assert.equal(s.G('state'), 'playing', 'Endlos löst keine zweite Befreiung aus');
+});
+
+test('Modularer Held: Legacy-Save, Mischwahl und gemeinsame Vorschau', () => {
+  const s=sim.start({});
+  s.G('globalThis.__alt=JSON.parse(JSON.stringify(DEFAULT_SAVE)); delete __alt.avatar; __alt.v=13; __alt.figur="konstrukt"; __alt.skin="azur"; globalThis.__avatar=migrateSave(__alt);');
+  assert.equal(s.G('__avatar.v'),14);
+  assert.equal(s.G('__avatar.skin'),'azur');
+  assert.equal(s.G('JSON.stringify(__avatar.avatar)'), JSON.stringify({kopf:'sensor',brust:'hex',beine:'schwebe',griff:'ring'}));
+  assert.equal(s.G('Object.values(AVATAR_TEILE).every(x=>x.teile.filter(t=>t.start).length>=2)'), true, 'jedes Körperteil hat zwei geometrische Startvarianten');
+  s.G('save.avatar={kopf:"kamm",brust:"kern",beine:"knie",griff:"parier"}; renderHeld();');
+   assert.equal(s.G('document.getElementById("held-aussehen").children[2].children.length'),6, 'Aussehen zeigt sechs kompakte Kategorien');
+   assert.ok(s.G('document.getElementById("held-aussehen").children[3].children.length')>=2, 'aktive Kategorie zeigt Varianten');
+  assert.equal(s.G('JSON.stringify(avatarWahl())'), JSON.stringify({kopf:'kamm',brust:'kern',beine:'knie',griff:'parier'}));
+});
+
 test('EOS-Niederlage lässt den Planeten besetzt', () => {
   const s = sim.start({});
   s.G('save.kampagne={planeten:{},introGesehen:false}; aktiverPlanet="eos";');
@@ -93,6 +138,19 @@ test('Heldenkern-Stufen überstehen die Migration', () => {
   s.G('save.kampagne.held={klinge:3,leben:2,macht:1,fokus:4}; globalThis.__mh=migrateSave(JSON.parse(JSON.stringify(save)));');
   assert.equal(s.G('__mh.kampagne.held.klinge'), 3);
   assert.equal(s.G('__mh.kampagne.held.fokus'), 4);
+});
+
+test('Siegerlauf-Navigation hält die Hilfsstufe in allen drei Stufen fest', () => {
+  for(const id of ['entdecker','standard','meister']){
+    const s=sim.start({});
+    s.G(`save.hilfe=${JSON.stringify(id)}; save.kampagne={planeten:{},introGesehen:false}; aktiverPlanet="eos"; state="sieg"; endlosLauf=false; laufHilfeId=${JSON.stringify(id)}; siegHilfeId=${JSON.stringify(id)}; openHeld("sieg"); waehleHeldTab("ausruesten"); openStartMaechte("held"); zeigeVorbereitungTab("hilfe"); renderHilfeWahl();`);
+    assert.equal(s.G('Array.from(document.getElementById("hilfe-wahl").children).slice(1,4).every(x=>!!x.disabled)'), true, id+' muss gesperrt sein');
+    assert.match(s.G('document.getElementById("hilfe-wahl").children[0].textContent'), new RegExp(id==='entdecker'?'Entdecker':id==='standard'?'Standard':'Meister'));
+    s.G('document.getElementById("hilfe-wahl").children[2].onclick()');
+    assert.equal(s.G('save.hilfe'), id, id+' darf im Siegerlauf nicht wechseln');
+    s.G('zurGalaxie(); renderHilfeWahl(); document.getElementById("hilfe-wahl").children[document.getElementById("hilfe-wahl").children.length-1].onclick()');
+    assert.equal(s.G('save.hilfe'), 'meister', id+' darf nach Verlassen des Laufs wechseln');
+  }
 });
 
 test('Starterbonus: einmalig, sichert Tier I, kein Exploit', () => {

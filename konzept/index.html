@@ -9,7 +9,7 @@
      lieferte GitHub Pages zwar neue Dateien aus, die Browser luden aber die
      zwischengespeicherte alte Fassung unter derselben Adresse. Gepushte
      Aenderungen kamen auf dem Geraet schlicht nicht an. -->
-  <link rel="stylesheet" href="style.css?v=20260907-sektor1">
+  <link rel="stylesheet" href="style.css?v=20260909-avatar">
 </head>
 <body>
 <div id="game-wrap">
@@ -56,13 +56,14 @@
         <h1>Orbit<span class="logo-accent">blade</span></h1>
         <p class="subtitle build-label">Konzeptfassung zum Testen</p>
       </div>
-      <p class="subtitle start-claim">Deine Klinge kreist. Überlebe die Arena.</p>
-      <button id="start-btn" class="primary">Spielen</button>
-      <div class="start-actions" aria-label="Weitere Spielarten und Vorbereitung">
-        <button id="tages-btn" class="secondary tages-btn">⚡ Tageslauf</button>
-        <button id="startmaechte-btn" class="secondary">Hauptmacht</button>
-        <button id="hangar-btn" class="secondary">Sammlung</button>
+      <p class="subtitle start-claim">Deine Klinge kreist. Befreie die Galaxie.</p>
+      <button id="start-btn" class="primary">Weiterspielen</button>
+      <p id="start-mission" class="start-mission" aria-live="polite"></p>
+      <div class="start-actions start-haupt" aria-label="Welten und Mein Held">
+        <button id="galaxie-btn" class="secondary">🌌 Welten</button>
+        <button id="held-btn" class="secondary">◆ Mein Held</button>
       </div>
+      <button id="tages-btn" class="secondary tages-btn">⚡ Tageslauf</button>
       <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
       <section id="start-orbitauftrag" class="orbitauftrag-karte kompakt" aria-label="Orbitauftrag"></section>
       <div class="start-tools" aria-label="Hilfe und Einstellungen">
@@ -101,7 +102,7 @@
 
       <h3 class="sec-title">Hauptmacht — auf Knopfdruck</h3>
       <p class="sec-hinweis">Im Lauf festgelegt. Womit du startest, wählst du vor dem
-      Spiel im Hauptmenü unter <b>„Vorbereitung"</b>.</p>
+      Spiel im Hauptmenü unter <b>„Mein Held → Mächte"</b>.</p>
       <div id="codex-slots" class="slot-reihe"></div>
 
       <h3 class="sec-title">Partnerfähigkeit — wächst mit deinem Pfad</h3>
@@ -151,8 +152,7 @@
     <p id="gameover-stats"></p>
     <section id="gameover-orbitauftrag" class="orbitauftrag-karte kompakt" aria-label="Orbitauftrag"></section>
     <button id="wieder-btn" class="primary">Nochmal spielen</button>
-    <button id="gameover-held" class="secondary hidden">◆ Held verstärken</button>
-    <button id="metashop-btn" class="secondary">◆ Werkstatt</button>
+    <button id="gameover-held" class="secondary hidden">◆ Held verbessern</button>
     <button id="restart-btn" class="secondary">Hauptmenü</button>
   </div>
 
@@ -161,7 +161,8 @@
     <h2>Gewonnen</h2>
     <p id="sieg-text"></p>
     <section id="sieg-orbitauftrag" class="orbitauftrag-karte kompakt" aria-label="Orbitauftrag"></section>
-    <button id="sieg-held" class="primary hidden">◆ Held verstärken</button>
+    <button id="sieg-mission" class="primary hidden">Weiter</button>
+    <button id="sieg-held" class="secondary hidden">◆ Held verbessern</button>
     <button id="sieg-weiter" class="primary">Endlos weiterspielen</button>
     <button id="sieg-einfrieren" class="secondary hidden">Restpunkt verwerfen &amp; Endlos</button>
     <button id="sieg-menue" class="secondary">Hauptmenü</button>
@@ -169,7 +170,7 @@
 
   <!-- Werkstatt: dauerhafte Verbesserungen nach dem Lauf, bezahlt mit Fragmenten -->
   <div id="overlay-metashop" class="overlay compact-overlay hidden">
-    <header class="compact-head"><button id="metashop-back" class="icon-back" aria-label="Zurück">‹</button><h2>Hangar</h2><span></span></header>
+    <header class="compact-head"><button id="metashop-back" class="icon-back" aria-label="Zurück">‹</button><h2>Werkstatt</h2><span></span></header>
     <nav class="compact-tabs hangar-tabs"><button class="compact-tab active">Werkstatt</button><button id="workshop-collection-tab" class="compact-tab">Sammlung</button></nav>
     <div class="guthaben">
       <span class="guthaben-sym">◆</span>
@@ -181,9 +182,9 @@
     </div>
   </div>
 
-  <!-- Hangar bündelt alles zwischen den Läufen, damit der Start sofort beim Spielen bleibt. -->
+  <!-- Zwischenläufe bündelt alles zwischen den Läufen, damit der Start sofort beim Spielen bleibt. -->
   <div id="overlay-hangar" class="overlay hidden">
-    <h2>Hangar</h2>
+    <h2>Zwischenläufe</h2>
     <p class="subtitle">Langfristiger Fortschritt und Anpassungen</p>
     <button id="hangar-workshop" class="secondary">◆ Werkstatt</button>
     <button id="hangar-collection" class="secondary">Sammlung &amp; Bestmarken</button>
@@ -197,43 +198,47 @@
       <header class="galaxie-head">
         <button id="galaxie-back" class="icon-back" aria-label="Zurück">‹</button>
         <h2>Galaxie</h2>
-        <button id="galaxie-held" class="held-chip" aria-label="Heldenkern">◆ Held</button>
+        <button id="galaxie-held" class="held-chip" aria-label="Held">◆ Held</button>
       </header>
       <p class="galaxie-hinweis" id="galaxie-hinweis"></p>
       <div id="galaxie-karte" class="galaxie-karte"></div>
+      <!-- Missionsdetails direkt auf der Karte (unterer Bereich) statt separater Seite -->
+      <div id="galaxie-detail" class="galaxie-detail" aria-live="polite"></div>
     </div>
   </div>
 
-  <!-- Heldenkern: permanente Verbesserungen mit Fragmenten (Phase 2) -->
+  <!-- Held: gemeinsamer Einstieg für Aussehen, Mächte und Verbessern -->
   <div id="overlay-held" class="overlay hidden">
     <div class="held-panel">
       <header class="galaxie-head">
         <button id="held-back" class="icon-back" aria-label="Zurück">‹</button>
-        <h2>Heldenkern</h2>
+        <h2>Mein Held</h2>
         <span></span>
       </header>
-      <div class="guthaben">
-        <span class="guthaben-sym">◆</span>
-        <span class="guthaben-zahl" id="held-stars">0</span>
-        <span class="guthaben-label">Fragmente</span>
-      </div>
-      <p class="held-feedback" id="held-feedback" role="status" aria-live="polite"></p>
-      <div id="held-grid" class="held-grid"></div>
+      <nav class="compact-tabs held-tabs">
+        <button class="compact-tab active" data-held-tab="aussehen">Aussehen</button>
+        <button class="compact-tab" data-held-tab="maechte">Mächte</button>
+        <button class="compact-tab" data-held-tab="verbessern">Verbessern</button>
+      </nav>
+      <section class="held-tab-panel active" data-held-panel="aussehen">
+        <div id="held-aussehen"></div>
+      </section>
+      <section class="held-tab-panel" data-held-panel="maechte">
+        <div id="held-maechte"></div>
+      </section>
+      <section class="held-tab-panel" data-held-panel="verbessern">
+        <div class="guthaben">
+          <span class="guthaben-sym">◆</span>
+          <span class="guthaben-zahl" id="held-stars">0</span>
+          <span class="guthaben-label">Fragmente</span>
+        </div>
+         <p class="held-feedback" id="held-feedback" role="status" aria-live="polite"></p>
+         <div id="held-grid" class="held-grid"></div>
+         <div id="held-verbessern-links" class="held-verbessern-links"></div>
+      </section>
     </div>
   </div>
 
-  <!-- Pre-Run-Screen: eine Besonderheit, große Aktion, keine Statistikwand (Plan §12) -->
-  <div id="overlay-planet" class="overlay hidden">
-    <div class="planet-panel">
-      <header class="galaxie-head">
-        <button id="planet-back" class="icon-back" aria-label="Zurück">‹</button>
-        <h2 id="planet-name">Planet</h2>
-        <span id="planet-bedrohung"></span>
-      </header>
-      <div id="planet-info" class="planet-info"></div>
-      <button id="planet-start" class="primary">Befreien</button>
-    </div>
-  </div>
 
   <!-- Info: erklärt die Grundlagen, erreichbar aus Start- und Pausenmenü -->
   <div id="overlay-info" class="overlay hidden">
@@ -267,7 +272,7 @@
         <h3>Mächte</h3>
         <p>Du hast <b>genau einen Knopf</b>: deine Hauptmacht (die Seite stellst du in
         den Einstellungen ein). Welche es ist, wählst du vor dem Lauf im Hauptmenü
-        unter „Vorbereitung" — sie bleibt dann für den gesamten Lauf so.</p>
+        unter „Mein Held → Mächte" — sie bleibt dann für den gesamten Lauf so.</p>
         <p>Alles andere wirkt <b>passiv</b>, ohne dass du etwas drücken musst. Deine
         Hauptmacht entwickelt sich im Lauf zur Super-Macht.</p>
         <p><b>Volltreffer laden Fokus:</b> Der violette Ring um deine Hauptmacht
@@ -280,9 +285,9 @@
         <h3>Fragmente ◆ und die Werkstatt</h3>
         <p>Besiegte Gegner lassen <b>Fragmente</b> fallen. Sie bleiben dir über den Tod
         hinaus erhalten — nichts verfällt.</p>
-        <p>Im <b>Hangar</b> findest du Werkstatt und Sammlung. Die Werkstatt schaltet
-        Möglichkeiten frei — etwa neue Hauptmächte oder einen <b>Begleiter</b> —
-        statt den nächsten Lauf mit dauerhaften Prozentwerten zu entscheiden.</p>
+        <p>In <b>Werkstatt</b> und <b>Sammlung</b> findest du dauerhafte Verbesserungen
+        und neue Inhalte — etwa neue Hauptmächte oder einen <b>Begleiter</b>. Im Menü
+        <b>Held</b> verbesserst du mit Fragmenten dauerhaft Klinge, Leben, Macht und Fokus.</p>
       </div>
       <div class="info-block">
         <h3>Wellen und Bosse</h3>
@@ -309,7 +314,7 @@
 
   <!-- Fortschritt / Sammlung -->
   <div id="overlay-progress" class="overlay compact-overlay hidden">
-    <header class="compact-head"><button id="progress-back" class="icon-back" aria-label="Zurück">‹</button><h2>Hangar</h2><span></span></header>
+    <header class="compact-head"><button id="progress-back" class="icon-back" aria-label="Zurück">‹</button><h2>Sammlung</h2><span></span></header>
     <nav id="collection-tabs" class="compact-tabs">
       <button id="collection-workshop-tab" class="compact-tab">Werkstatt</button>
       <button class="compact-tab active" data-collection="rekorde">Rekorde</button>
@@ -325,6 +330,6 @@
     </div>
   </div>
 </div>
-  <script src="game.js?v=20260907-sektor1"></script>
+  <script src="game.js?v=20260909-avatar"></script>
 </body>
 </html>

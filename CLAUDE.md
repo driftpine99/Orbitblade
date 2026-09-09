@@ -107,9 +107,9 @@ Verbindliche Leitplanken:
 
 ### 3.1 Bedienung und Lauf
 
-Der Einstieg enthält weiterhin Vorbereitung und Hilfsstufenwahl; deren vollständige
-Vereinfachung ist noch ein Ziel. Die Vorbereitung hat die Tabs **Hauptmacht** und
-**Stufe**. Die Körperdarstellung wird in der Sammlung gewählt.
+Der Einstieg bietet **Weiterspielen**, **Welten** und **Mein Held**. Im Held-Hub liegen
+Aussehen, direkte Hauptmachtwahl und Verbessern; die Hilfsstufe bleibt bei der Mission
+zugänglich. Die Körperdarstellung wird dort modular gewählt und sofort vorgezeigt.
 
 Im Kampf bedient der Spieler Bewegung per Touch/Joystick oder WASD/Pfeiltasten und
 die Hauptmacht per Knopf beziehungsweise Taste 1. Die Auslese bietet normalerweise
@@ -322,7 +322,7 @@ im Spieltest zu beurteilen.
 - Freiwilliges Beenden mit Beutegutschrift ist über Pause möglich. Eine ausdrücklich
   angebotene Ausstiegsentscheidung nach jedem Endlos-Boss existiert noch nicht.
 
-Speichern: `localStorage` unter `orbitblade_konzept_save`, **SAVE_VERSION 13**.
+Speichern: `localStorage` unter `orbitblade_konzept_save`, **SAVE_VERSION 14**.
 Die Migration von v9 erstattet das entfernte Zweitmacht-Projekt mit 1.000 Fragmenten
 und entfernt `meta.slot2` sowie die zweite Startauswahl. Die Migration **v11 → v12**
 begleitet den neuen Mächte-Pool: Funkenkranz und die drei neuen Mächte sind reine
@@ -337,6 +337,8 @@ an, falls es fehlt, und lässt einen vorhandenen Kampagnenstand — befreite Pla
 Heldenkern-Stufen und Warpkerne — unangetastet. Es gibt keinen bestehenden Bestand zu erstatten
 oder zu entwerten; die Migration ist verlustfrei, idempotent und defensiv gegen
 Teilobjekte (headless geprüft in `tools/pruefe_kampagne.js` und `tools/pruefe_maechte.js`).
+Die Migration **v13 → v14** ergänzt additiv `avatar` mit Defaults aus der bisherigen
+Figur-, Farb- und Formwahl; vorhandene Freischaltungen und Käufe bleiben unangetastet.
 
 ### 3.8 Rückruf-Beta (gebaut am 06.09.2026)
 
@@ -366,34 +368,55 @@ prüfbarer Beta-Ausschnitt und keine Umsetzung der vollständigen Meta.
 
 ### 3.9 Galaxie-Kampagne — Vertical Slice EOS (Phase 1, gebaut am 07.09.2026)
 
-Erste umgesetzte Stufe des Galaxie-Umsetzungsplans. **Der Kampf ist unverändert**:
-Ein Planet-Run ist ein normaler Orbitblade-Lauf (Welle 30 als Siegpunkt). Neu ist
-nur ein leichtgewichtiger Kampagnen-Rahmen (nur DOM/CSS, keine Dauer-Partikel).
+Erste umgesetzte Stufe des Galaxie-Umsetzungsplans. Ein Planet-Run ist ein normaler
+Orbitblade-Lauf; der globale Siegpunkt bleibt Welle 30, EOS trägt als verkürzter
+Anfängerbogen Welle 15. Neu ist nur ein leichtgewichtiger Kampagnen-Rahmen (nur
+DOM/CSS, keine Dauer-Partikel).
 
-Ablauf: Startmenü → **Spielen** öffnet die **Galaxiekarte** (`overlay-galaxie`).
-Tageslauf, Sammlung und Vorbereitung bleiben über das Startmenü erreichbar. Ein Tap
-auf einen erreichbaren Planeten öffnet den kompakten **Pre-Run-Screen**
-(`overlay-planet`: Name, Bedrohung I–V, eine Besonderheit, Fragmenthinweis,
-Hauptmacht, großer Knopf). „Befreien" startet über `starteKampagnenLauf(id)` den
-Lauf; `aktiverPlanet` hält den Planetkontext, ohne die Kampfparameter zu verändern.
+Ablauf (überarbeitet durch [Menü-/Galaxie-Auftrag](docs/konzept/11-claude-menue-galaxie.md),
+Auftrag 1, 07.09.2026): Das Startmenü bietet eine **dominante Direktaktion**, die die
+empfohlene erreichbare Mission sofort startet (`renderStartMission()` beschriftet sie
+z. B. „EOS befreien", „KRYOS befreien" oder „… erneut befreien"; `empfohlenePlanet()`
+liefert die erste erreichbare, noch nicht befreite Welt bzw. eine ehrliche Wiederholung).
+Der Knopf ruft **dieselbe** `starteKampagnenLauf(id)`-Logik wie die Karte (keine zweite
+Run-Initialisierung). Darunter stehen **Welten** und **Mein Held** als Hauptzugänge, Tageslauf
+und Einstellungen darunter. **Hauptmacht und Sammlung sind unter „Held" zusammengeführt**
+(Auftrag 2 §42); das Startmenü führt sie nicht mehr separat.
+
+Die **Galaxiekarte** (`overlay-galaxie`) ist eine zusammenhängende **vertikale Route**
+(`renderGalaxie()`): jede Welt eine eigene Inline-SVG-Silhouette (`weltSVG()` — EOS
+bewohnt, KRYOS Werft, VEGA Sturm+Zielanlage, KOMMANDO Kommandostation), räumlich leicht
+versetzt angeordnet und durch Linien zwischen den Körpermittelpunkten verbunden
+(befreite Verbindung leuchtet). Status per Marke/Schloss plus Label
+(befreit/besetzt/gesperrt). Ein Tap füllt den **Detailbereich unten auf derselben Seite**
+(`waehlePlanetDetail()`, Name/Bedrohung/Besonderheit/Belohnung + „Befreien"; bei Sperre
+stattdessen die konkrete Voraussetzung). Die frühere separate Pre-Run-Vollbildseite
+(`overlay-planet`) ist **entfallen**. Sektor II erscheint nur als zurückhaltender
+Ausblick. `aktiverPlanet` hält den Planetkontext; die lokale EOS-Abkürzung verändert
+keine Werte anderer Welten, des Tageslaufs oder des Endlosmodus.
 
 In der Phase-1-Fassung war nur **EOS** spielbar; der übrige Sektor I ist seit Phase 4
 vollständig spielbar (siehe 3.12). Die Planeten sind datengetrieben in
 `KAMPAGNE.sektoren` definiert; `planetById`, `planetStatus`, `planetErreichbar` und
 `markiereBefreit` sind die zugehörigen Helfer.
 
-Sieg auf EOS setzt den Planeten dauerhaft auf **befreit** (`save.kampagne.planeten`),
+Sieg auf EOS nach Welle 15 setzt den Planeten dauerhaft auf **befreit** (`save.kampagne.planeten`),
 zeigt „EOS befreit" und kehrt über „Zur Galaxie" zur Karte zurück; ein befreiter
 Planet bleibt wiederholbar. Niederlage lässt den Planeten **besetzt** (Rückzug statt
 hartes Aus), der Fragmentfortschritt bleibt erhalten. Die Endlos-Wahl nach dem Sieg
 bleibt unverändert erhalten. Fragmente laufen weiter über die **bestehende**
 Ökonomie (Drops + `bucheFragmente()`); eine eigene Kampagnen-Wirtschaft und der
-Heldenkern kommen erst in Phase 2/3. Kein Modifier-Leak: EOS hat in Phase 1 keine
-Kampf-Overrides; `hideAll()` schließt Galaxie/Planet bei jedem Laufstart mit.
+Heldenkern kommen erst in Phase 2/3. Kein Modifier-Leak: EOS hat nur seine lokale
+Anfängerfolge; normale EOS-Gegner werden bis Welle 9 einzeln als Drohne, Soldat
+und Schwer eingeführt. Im EOS-Endloslauf gilt wieder die globale Siegschwelle und
+Gegnerkurve; die reguläre EOS-XP-Kurve ist bis zum Sieg lokal 4,5-fach, damit der
+verkürzte Lauf seinen vollständigen Build erreicht; Boss 35/40 geben weiterhin
+Echo-Rang 2/3. `hideAll()` schließt
+Galaxie/Planet bei jedem Laufstart mit.
 
 Regression: `node tools/pruefe_kampagne.js` prüft Kartenlogik, eine **echte**
-God-Siegrunde (EOS wird befreit), die Niederlage-Semantik (bleibt besetzt) und die
-Migrationsfestigkeit. Der Klickweg und die Darstellung sind headless nicht prüfbar
+God-Siegrunde (EOS wird befreit), den verkürzten EOS-Bogen samt Endlos-Fortsetzung,
+die Niederlage-Semantik (bleibt besetzt) und die Migrationsfestigkeit. Der Klickweg und die Darstellung sind headless nicht prüfbar
 und auf GitHub Pages zu sichten.
 
 ### 3.10 Heldenkern — permanente Progression (Phase 2, gebaut am 07.09.2026)
@@ -418,15 +441,29 @@ spürbar, aber nicht trivialisierend (der Bot stirbt weiter um W9, weit vor dem 
 Plan §3.5/§43).
 
 Persistenz: `save.kampagne.held = {klinge,leben,macht,fokus}` (0..5), defensiv
-normalisiert und migrationsfest. Der **Heldenkern-Screen** (`overlay-held`) ist der
-„erste Upgrade-Moment" (Plan §13.5): erreichbar aus Galaxie (`◆ Held`), Sieg und
-Niederlage (`◆ Held verstärken`), mit Fragment-Guthaben, Stufen-Pips und „Dein Held
-ist stärker!". Ein **einmaliger Starterbonus** (`gewaehreStarterBonus()`, Flag
+normalisiert und migrationsfest. Der **Held-Screen** (`overlay-held`) ist seit Auftrag 2
+  ein Hub mit drei Tabs (§42–44): **Aussehen** = modulare Kopf-, Brust-, Bein- und Griffteile
+  mit gemeinsamer Live-Vorschau, Klingenform und Klingenfarbe; **Mächte** = direkte Auswahl
+  der vorhandenen Hauptmacht. **Verbessern** = Heldenkern als kompakte Einträge (Wirkung,
+Rang-Pips, konkrete nächste Veränderung `HELD_TRACKS[].schritt`, Preis; Käufe ausdrücklich
+  ausgelöst) und Zugang zur **Werkstatt**. Auswahl und Käufe bleiben damit getrennt.
+  Erreichbar aus Startmenü (`◆ Mein Held`), Galaxie, Sieg und Niederlage (`◆ Held verbessern`). Ein **einmaliger Starterbonus** (`gewaehreStarterBonus()`, Flag
 `starterBonusGewaehrt`) füllt beim ersten beendeten Kampagnen-Lauf — Sieg oder
 Niederlage — auf mindestens Tier-I-Kosten auf, damit der Meta-Loop auch nach frühem
 Tod erlebbar ist (Plan §13.6); streng einmalig, kein Exploit, kein Geschenk an bereits
 reiche Spieler. Regression in `tools/pruefe_kampagne.js` (reale Wertänderung, maxHp im
-echten Lauf, Cap, Kostenprüfung, Migration, Starterbonus einmalig).
+echten Lauf, Cap, Kostenprüfung, Migration bis v14, Starterbonus einmalig).
+
+**Ergebnis-Screens (Auftrag 2 §45/§46, 08.09.2026):** Nach Kampagnensieg **eine**
+dominante Aktion `sieg-mission` „Weiter: <nächste Welt>" (bzw. „Zur Galaxie") — sie
+öffnet die Galaxie mit bereits fokussierter nächster Mission, damit vorher verbessert
+werden kann; „◆ Held verbessern" ist sichtbarer Nebenzugang, Endlos untergeordnet, kein
+zweiter gleichrangiger Primärknopf. Nach Niederlage ist „Erneut versuchen" hervorgehoben,
+daneben „◆ Held verbessern"; Fortschritt/Fragmente knapp gezeigt. Belohnungen werden in
+`sieg()`/`gameOver()` genau einmal gebucht — ein Menü-Öffnen vergibt nichts erneut. Der
+  Sektorabschluss-Text ist korrigiert: „Warpkern gesichert · Sektor II folgt später" statt
+einer Behauptung, Sektor II sei bereits spielbar (§47). `hideAll()` schließt alle
+Zwischen-Overlays (Held/Vorbereitung/Werkstatt/Sammlung) mit, damit keines Eingaben abfängt.
 
 ### 3.11 Fragmentökonomie der Kampagne (Phase 3, gebaut am 07.09.2026)
 
@@ -627,6 +664,10 @@ God-Läufe prüfen Spielfortschritt und Laufzeit, nicht Überlebensbalance.
   in 10,68 simulierten Minuten, Krone 1, 15 investiert, 0 Restpunkte, 9 Karten und
   3 Weichen. Endlos bis W43 in 18,08 Minuten, Klingen-Echo Rang 3. Dies prüft die
   reparierten Auswahl- und Fortsetzungswege, keine neue Balance oder Zielhardware.
+- 09.09.: EOS-Messlauf ohne Dauerboni auf Standard erreichte Welle 5 (33 Kills,
+  0,77 simulierte Minuten). Der technische God-Strukturcheck gewann EOS
+  auf Welle 15 mit 3 Bossen, 4 Kartenstopps und 15 regulären Budgetpunkten in 3,72
+  simulierten Minuten; diese neuen Startwerte sind kein menschlicher Balancebeleg.
 - Die ursprüngliche Wellenfluss-Messung vom 30.08. senkte Restejagd von 12,6 % auf
   6,3 % und fast leeres Feld von 19,4 % auf 10,6 %. Das sind damalige Vergleichswerte,
   keine neu gemessenen Kennzahlen des heutigen Gesamtbuilds.
@@ -648,9 +689,10 @@ oder garantierten Laufzeiten werden.
 
 `node tools/pruefe_maechte.js` ergänzt die Grundprüfung um gezielte Regressionen
 für Treffer, Echo-Bildtakt, Boss-Griff, Jäger, beide Kartenränge, alle sechs
-Fusionsauswahlen, Pause/Reset und die idempotente Spielstandmigration bis v13
-(v11→v13 additiv, v12→v13 erhält befreite Planeten). `node tools/pruefe_kampagne.js`
-prüft den Galaxie-Loop (Kartenlogik, echte EOS-Siegbefreiung, Niederlage-Semantik,
+Fusionsauswahlen, Pause/Reset und die idempotente Spielstandmigration bis v14
+(v11→v14 additiv, v12→v14 erhält befreite Planeten). `node tools/pruefe_kampagne.js`
+prüft den Galaxie-Loop (Kartenlogik, echte EOS-Siegbefreiung, verkürzten EOS-Bogen,
+Endlos-Gegnerkurve und Echo-Meilensteine, Niederlage-Semantik,
 Migrationsfestigkeit), den **Heldenkern** (reale Wertänderung, maxHp im echten Lauf,
 Cap/Kosten, Starterbonus einmalig), die **Fragmentökonomie** (Sieg > Wiederholung
 > Niederlage, Abschlussbonus einmal pro Lauf, kein Leak) und **Sektor I** (Route
@@ -662,8 +704,15 @@ Belohnungen/Weltzustände tatsächlich greifen.
 node --check konzept/game.js
 node tools/pruefe_maechte.js
 node tools/pruefe_kampagne.js
+node tools/pruefe.js
 node tools/sim.js --god --minutes=20
 ```
+
+`tools/pruefe.js` prüft vier maschinelle Regeln; seine Save-Vertrag-Erwartung (Regel 4)
+ist an `SAVE_VERSION` gebunden statt an eine feste Zahl (Auftrag 2 §48), Migration und
+Schutz vor Zukunftsversionen bleiben geprüft. Die **Auslieferungsprobe (Regel 3)** ist
+rot, solange die Änderung nicht committet ist — das ist der bewusst offene „veröffentlichter
+Stand"-Prüfpunkt und getrennt von echten Spielfehlern zu berichten.
 
 `tools/sim.js` stellt `start`, `run` und `makeOrbitBot` bereit. `run()` beantwortet
 normale Auslesen, Weichen und Endlos-Echos über die echte Auswahl und beendet
@@ -766,7 +815,7 @@ die tatsächliche Darstellung auf Zielhardware prüfen.
 
 | Offen | Nächste belastbare Prüfung oder Entscheidung |
 |---|---|
-| Schlanker Einstieg, kürzerer Tageslauf, Endlos-Etappen | Nach den Zielen in Abschnitt 4 entwerfen; noch nicht vorhanden |
+| Kürzerer Tageslauf, weitere Endlos-Etappen | Nach den Zielen in Abschnitt 4 entwerfen; noch nicht vorhanden |
 | Machtinszenierung und Fokusfrequenz | Aktuelles Verhalten neu messen und im Spiel bewerten |
 | **Balance des neuen Mächte-Pools** | Schadensprüfstand + Überlebensläufe je Rang für alle neun Angriffsmächte; die Timer/Zahlen sind Startwerte und noch nicht gemessen |
 | **Jäger-Korrektur im Spiel** | Aim-Lock, Erholungsfenster und Konterbarkeit mit echten Läufen prüfen; `recoverMs=420` ist ein Startwert |
@@ -786,6 +835,7 @@ die tatsächliche Darstellung auf Zielhardware prüfen.
 | **Kampagne Phase 5 — Schiff** | Scanner, Bergung, Drohnenhangar, Warpkern als Bossfortschritt; vorhandene Begleitermechanik migrieren; keine Feldwerkstatt-Gates; nicht gebaut |
 | Kampagne-Inszenierung (Phase 6) | Planeten-/Sektorsieg, Befreiungsanimation, Fragmentflug; erst nach funktionalem Meta-Loop, Performance auf Zielgerät prüfen |
 | Erst-Run-Fluss EOS (Human-Test) | Versteht ein neuer Spieler ohne Text: welcher Planet spielbar ist, Sieg = befreit, Niederlage = Fortschritt bleibt? Auf Zielgerät sichten |
+| **Eigener Kommandantenkampf (Auftrag §58)** | KOMMANDO nutzt bisher die normale Bossfolge; nächste Inhaltspriorität ist ein klar angekündigter Kommandantenkampf (unterscheidbares Angriffsmuster + Positionierungs-Antwort, keine neue Taste, kein bloßer HP-Aufschlag). Braucht einen eigenen Nutzerauftrag |
 
 Zurückgestellt bleiben Rangmodus, kosmetisches Hangarprestige, Monetarisierung,
 die Zusammenführung mehrerer Bestmarkenanzeigen, die Entfernung des alten

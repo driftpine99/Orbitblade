@@ -15,13 +15,14 @@ Vor jeder Prüfung `CLAUDE.md` lesen (maßgebliche fachliche Quelle). Prüfobjek
 ## Prüfkatalog, in dieser Reihenfolge
 
 1. **Syntax**: `node --check konzept/game.js` muss fehlerfrei sein.
-2. **Referenzintegrität**: Alle im HTML referenzierten Element-Ids existieren im JS-Zugriff und umgekehrt (Greps über `getElementById`/`querySelector` gegen `id=`); SVG-Icon-Schlüssel (`ICON`) existieren für alle Nutzer (Vorbereitung, Sammlung, Werkstatt, Auslese, Baum).
-3. **Leitplanken**: Keine dritte aktive Taste; keine zufällige Kartenwahl bei Level-up; keine neue Währung; Hilfsstufen sperren keine Inhalte; Fortschritt liegt unter `orbitblade_konzept_save`; Texte deutsch und kinderlesbar (`short` ≤ 14 Zeichen); keine Monetarisierung.
+2. **Referenzintegrität**: Alle im HTML referenzierten Element-Ids existieren im JS-Zugriff und umgekehrt (Greps über `getElementById`/`querySelector` gegen `id=`); SVG-Icon-Schlüssel (`ICON`) existieren für alle Nutzer (Vorbereitung, Sammlung, Werkstatt, Auslese). Keine Referenzen auf eine entfernte Baum-Oberfläche; die verbleibende `tree`-Mechanik ist kein toter Code.
+3. **Leitplanken**: Genau ein aktiver Knopf für die Hauptmacht; automatische Freischaltungen und ausdrücklich gewählte Weichen, keine zufällige Kartenwahl bei Level-up; keine Baum-Oberfläche; Körperwahl nur kosmetisch, Leerenhunger über Haltung; keine neue Währung; Hilfsstufen sperren keine Inhalte; Fortschritt liegt unter `orbitblade_konzept_save`; Texte deutsch und kinderlesbar (`short` ≤ 14 Zeichen); keine Monetarisierung.
 4. **Speicherverträglichkeit**: Neue Felder haben Defaults; alte Spielstände (ohne die Felder) laden ohne Fehler; `SAVE_VERSION` nur bei Bedeutungswechsel erhöht; `persist()` im Messlauf gesperrt.
 5. **Laufinhalt-Zufall**: Gegnerarten-, Boss- und Auslesewürfe laufen über die Lauf-RNG, nicht `Math.random()` (sonst bricht der Tageslauf-Determinismus).
 6. **Performancebudget**: Kein neuer pro-Bild Verlaufs-/Schattenaufbau; Partikel >340 und Floats >36 bleiben gedeckelt; Sparmodus-Schwellen unangetastet.
-7. **Klickwege**: Für jedes berührte Feature die Klickfolge als Checkliste abgehen (Menü → Lauf → Overlay → Rückkehr), inklusive Wiedereinstiegscountdown nach Baumkauf und Auslese.
-8. **Dokumentstand**: CLAUDE.md behauptet nichts mehr, das der Code inzwischen anders macht — Abweichungen auflisten.
+7. **Klickwege**: Für jedes berührte Feature die Klickfolge als Checkliste abgehen (Menü → Lauf → Overlay → Rückkehr), inklusive normaler Auslese, Weichen und Wiedereinstiegscountdown. Sichtbarkeit im Browser prüfen, nicht nur das Vorhandensein der `hidden`-Klasse; sichtbare Texte müssen zur aktuellen Mechanik passen.
+8. **Dokumentstand**: `CLAUDE.md` trennt Ist-Stand, Ziele und Messungen. Behauptungen über den Ist-Stand passen zum Code; historische Zahlen werden nicht als frisch gemessen ausgegeben. Abweichungen auflisten und die Aktualisierung des passenden bestehenden Abschnitts verlangen, keine neuen chronologischen Anhänge.
+9. **Messqualität**: Bei betroffenen Balancefragen echte Knoten- und Kartenwahl statt direkter Bonuszuweisung prüfen. Karten auf Schaden und Überleben sowie sichtbare Wirkung bewerten; Überlebensvergleiche mit mindestens 40 Läufen je Zustand, Streuung und Standardfehler. Die vollständigen Kriterien stehen in „Prüfverfahren“ in `CLAUDE.md`.
 
 ## Bericht
 

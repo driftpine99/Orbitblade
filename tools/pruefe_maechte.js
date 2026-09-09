@@ -123,23 +123,23 @@ test('Alle sechs Fusionen: echte Auswahl und erhaltene Zutatenwirkung', () => {
     for(const z of e.zutaten) assert.equal(s.G(`AUSLESE_MODULE['${z}'] ? modulRang('${z}') : abilityLevel('${z}')`),s.G(`AUSLESE_MODULE['${z}'] ? 2 : SPRUNG_STUFE`),z);
   }
 });
-test('Save v11: Werte erhalten, Migration idempotent', () => {
+test('Save v11: Werte erhalten, Migration bis v14 idempotent', () => {
   const s=start();
   s.G(`globalThis.alt=JSON.parse(JSON.stringify(DEFAULT_SAVE)); alt.v=11; alt.stars=4321; alt.best={normal:30}; alt.unlocks={'ability:nova':true,'module:funkenkranz':true}; alt.meta={helfer:2}; delete alt.kampagne; globalThis.neu=migrateSave(JSON.parse(JSON.stringify(alt)));`);
-  assert.equal(s.G('neu.v'),13); assert.equal(s.G('neu.stars'),4321);
+  assert.equal(s.G('neu.v'),s.G('SAVE_VERSION')); assert.equal(s.G('neu.stars'),4321);
   assert.equal(s.G('JSON.stringify(neu.best)'),s.G('JSON.stringify(alt.best)'));
   assert.equal(s.G('JSON.stringify(neu.meta)'),s.G('JSON.stringify(alt.meta)'));
   assert.ok(s.G('neu.unlocks["ability:nova"]'));
-  // v12→v13 additiv: Kampagnenfeld entsteht, Funkenkranz-Rest verschwindet.
+  // v12→v14 additiv: Kampagnen- und Avatarfeld entstehen, Funkenkranz-Rest verschwindet.
   assert.ok(s.G('neu.kampagne && typeof neu.kampagne.planeten==="object"'));
   assert.equal(s.G('neu.kampagne.introGesehen'),false);
   assert.ok(!s.G('neu.unlocks["module:funkenkranz"]'));
   assert.equal(s.G('JSON.stringify(migrateSave(JSON.parse(JSON.stringify(neu))))'),s.G('JSON.stringify(neu)'));
 });
-test('Save v12→v13: befreite Planeten bleiben erhalten', () => {
+test('Save v12→v14: befreite Planeten bleiben erhalten', () => {
   const s=start();
   s.G(`globalThis.alt12=JSON.parse(JSON.stringify(DEFAULT_SAVE)); alt12.v=12; alt12.stars=999; alt12.kampagne={planeten:{eos:'befreit'},introGesehen:true}; globalThis.neu12=migrateSave(JSON.parse(JSON.stringify(alt12)));`);
-  assert.equal(s.G('neu12.v'),13);
+  assert.equal(s.G('neu12.v'),s.G('SAVE_VERSION'));
   assert.equal(s.G('neu12.stars'),999);
   assert.equal(s.G('neu12.kampagne.planeten.eos'),'befreit');
   assert.equal(s.G('neu12.kampagne.introGesehen'),true);

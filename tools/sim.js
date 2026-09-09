@@ -56,6 +56,7 @@ function makeEl(tag) {
     setAttribute(k, v) { el.attributes[k] = String(v); el[k] = v; },
     getAttribute(k) { return k in el.attributes ? el.attributes[k] : null; },
     appendChild(c) { el.children.push(c); return c; },
+    prepend(c) { el.children.unshift(c); return c; },
     removeChild(c) { el.children = el.children.filter(x => x !== c); return c; },
     insertBefore(c) { el.children.push(c); return c; },
     remove() {},

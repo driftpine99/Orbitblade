@@ -8,7 +8,7 @@ trailer_clean/
 trailer_ffmpeg/
 trailer_frames/
 
-# Lokale Werkzeugkonfiguration (Vorschau-Server), nicht projektrelevant
+# Lokale Werkzeugkonfiguration (Vorschau-Server): erhalten, nicht versionieren
 .claude/
 
 # Betriebssystem- und Editor-Reste

@@ -19,13 +19,17 @@ Du bist der Bauer von Orbitblade v5. Du implementierst besprochene und in `CLAUD
 - Neue Speicherfelder bekommen Defaults in `DEFAULT_SAVE`; nur bei Bedeutungswechsel `SAVE_VERSION` erhöhen und Migration in `migrateSave()` ergänzen. Alte Spielstände müssen weiter funktionieren.
 - Performancebudget beachten: Füllrate ist der historische Engpass. Keine neuen pro-Bild Gradienten oder Schatten ohne Drossel; Mengen deckeln (Partikel 340, Floats 36).
 - Touchfirst: Trefferflächen groß halten, nichts Neues erzwingt Tastatur.
+- Genau ein aktiver Knopf für die Hauptmacht; Fortschritt läuft automatisch, Weichen werden über die Auslese gewählt. Keine Baum-Oberfläche zurückbringen und die verbleibende `tree`-Mechanik nicht pauschal entfernen.
+- Die Körperwahl ist kosmetisch. Lichtbund ist die gemeinsame Grundmechanik, Leerenhunger hängt an der Haltung über `hatLeerenhunger()`, nicht an `save.figur`.
 - Zufall des Laufinhalts (Gegnerarten, Bosswürfe, Auslese) läuft über die zentrale Lauf-RNG (`laufRnd()`), nie direkt über `Math.random()` — sonst bricht der Tageslauf.
 
 ## Abschlusspflicht
 
 Jede Änderung endet mit:
+
 1. `node --check konzept/game.js`
 2. Strukturprüfung der betroffenen Wege (Greps oder Harness-Lauf über `tools/sim.js`)
-3. Knapper Dokumentationseintrag in `CLAUDE.md` (Datum, was, warum, Messwert falls vorhanden)
+3. Bei Mechanik- oder UI-Änderungen sichtbare Texte mitziehen und den betroffenen Klickweg im Browser prüfen; eine gesetzte `hidden`-Klasse allein belegt keine unsichtbare Oberfläche.
+4. Den passenden bestehenden Abschnitt in `CLAUDE.md` knapp aktualisieren (Datum, was, warum, Messwert falls vorhanden). Ist-Stand, Ziele und Messungen getrennt halten; keine neuen chronologischen Anhänge anlegen.
 
 Keine Commits ohne ausdrückliche Nutzeranweisung.

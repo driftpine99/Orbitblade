@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#081225">
+  <title>Orbitblade: Rückruf-Beta</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app" aria-label="Orbitblade Rückruf Beta">
+    <canvas id="arena" width="960" height="600"></canvas>
+    <header id="hud" class="hud hidden">
+      <div class="hud-health"><span class="health-track"><i id="health-fill"></i></span><span id="health-label">100</span></div>
+      <div class="hud-center"><strong id="encounter-label">Ankunft</strong><span id="hint-label">Bewege dich, dann wirf die Klinge.</span></div>
+      <button id="pause" class="pause" aria-label="Pause">Ⅱ</button>
+    </header>
+    <div id="status-row" class="status-row hidden">
+      <span id="blade-state">Klinge zu Hause</span><span id="shield-state">Schutz bereit</span><span id="power-state">Macht: Sog</span>
+    </div>
+
+    <section id="start" class="screen">
+      <div class="brand"><span class="brand-mark">✦</span><div><p>ORBITBLADE</p><h1>Rückruf</h1></div></div>
+      <p class="eyebrow">spielbare Konzept-Beta</p>
+      <p class="lead">Wirf deine Lichtklinge aus. Laufe in eine gute Stellung. Hole sie zurück, wenn die gerade Linie trifft.</p>
+      <div class="starter-row" aria-label="Startmacht wählen">
+        <button class="starter selected" data-start-power="sog"><b>◌ Sog</b><small>zieht Gegner zum Parkpunkt</small></button>
+        <button class="starter" data-start-power="glutspur"><b>♨ Glutspur</b><small>dein Weg brennt nach</small></button>
+      </div>
+      <button id="start-btn" class="primary">Beta starten</button>
+      <p class="controls-note">Bewegen: Finger ziehen · PC: WASD / Pfeile<br>Knopf: werfen und zurückrufen · Leertaste</p>
+      <p class="small-note">Kurzer Vertical Slice: drei Begegnungen, vier Mächte, eine Fusion.</p>
+    </section>
+
+    <section id="choice" class="screen hidden" aria-live="polite">
+      <p class="eyebrow" id="choice-kicker">Begegnung geschafft</p>
+      <h2 id="choice-title">Was nimmst du mit?</h2>
+      <p id="choice-copy" class="lead compact">Wähle eine Macht, ersetze einen Slot oder heile dich.</p>
+      <div id="cards" class="cards"></div>
+      <p class="choice-hint">Deine Wahl gilt sofort in der nächsten Arena.</p>
+    </section>
+
+    <section id="pause-screen" class="screen hidden">
+      <p class="eyebrow">Pause</p><h2>Alles steht still.</h2>
+      <p class="lead compact">Auch Warnungen und Geschosse warten auf dich.</p>
+      <button id="resume-btn" class="primary">Weiter</button>
+      <button id="restart-pause" class="ghost">Run neu starten</button>
+    </section>
+
+    <section id="end-screen" class="screen hidden">
+      <p class="eyebrow" id="end-kicker">Run beendet</p><h2 id="end-title">Licht erreicht.</h2>
+      <p id="end-copy" class="lead compact"></p>
+      <div id="end-build" class="build-summary"></div>
+      <button id="restart-btn" class="primary">Nochmal</button>
+      <a href="../index.html" class="ghost link-button">Zur Orbitblade-Konzeptfassung</a>
+    </section>
+
+    <div id="touch-pad" class="touch-pad hidden" aria-label="Bewegungsfläche"><span></span></div>
+    <button id="power-btn" class="power-btn hidden" aria-label="Lichtklinge werfen oder zurückrufen"><span>↗</span><b>Werfen</b></button>
+    <div id="touch-help" class="touch-help hidden">Zieh links zum Laufen · tippe rechts zum Werfen</div>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>

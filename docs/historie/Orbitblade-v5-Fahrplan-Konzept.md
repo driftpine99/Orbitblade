@@ -1,3 +1,6 @@
+> Historischer Fahrplan vom 12.–14.08.2026; keine aktuelle Bauspezifikation.
+> Verbindlich ist [CLAUDE.md](../../CLAUDE.md). Präsentation und Bilder liegen hier als Quellen daneben.
+
 # Orbitblade v5 - Fahrplan-Konzept
 
 Quelle: extrahierter Folientext und Sprecher-Notizen aus

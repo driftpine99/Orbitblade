@@ -425,6 +425,9 @@ function wirdVersteckt(id, el, regeln) {
 function pruefeEinKnopfVertrag() {
   const fehler = [];
   const api = sim.start({ search: '?perf=1&god=1' });
+  // Erwartung dynamisch aus dem Code lesen, damit eine alte Version nicht als Soll
+  // festgeschrieben bleibt (Auftrag 11-Doku §48). Der Migrationspfad selbst bleibt geprueft.
+  const SV = api.G('SAVE_VERSION');
   api.G('resetGame()');
   const ist = api.G(`(function(){
     var start=startMaechte(), signal=tagesSignal('2042-01-02'), o=opts();
@@ -456,9 +459,9 @@ function pruefeEinKnopfVertrag() {
       presetSlot2:Object.prototype.hasOwnProperty.call(zweimal.presets[0],'slot2'),
       anordnung:Object.prototype.hasOwnProperty.call(o,'anordnung')};
   })()`);
-  if (mig.v !== 12 || mig.sterneEinmal !== 1023 || mig.sterneZweimal !== 1023
+  if (mig.v !== SV || mig.sterneEinmal !== 1023 || mig.sterneZweimal !== 1023
       || mig.startSlot2 || mig.presetSlot2 || mig.anordnung) {
-    fehler.push('Migration v9→v12 ist nicht verlustfrei/idempotent: ' + JSON.stringify(mig));
+    fehler.push('Migration v9→v' + SV + ' ist nicht verlustfrei/idempotent: ' + JSON.stringify(mig));
   }
 
   const html = lies('konzept/index.html');
@@ -511,6 +514,7 @@ function pruefePauseVertrag() {
 function pruefeSaveRettung() {
   const fehler = [];
   const api = sim.start({});
+  const SV = api.G('SAVE_VERSION');   // aktueller Speichervertrag statt festgeschriebener Zahl
   const kaputt = '{nicht-json';
   api.ctx.localStorage.setItem('orbitblade_konzept_save', kaputt);
   api.ctx.localStorage.setItem('orbitblade_konzept_save_backup', JSON.stringify({ v: 11, stars: 321 }));
@@ -530,7 +534,7 @@ function pruefeSaveRettung() {
   leer.G('loadSave()');
   const fallback = leer.G(`({v:save.v,stars:save.stars,hinweis:saveRecoveryNotice,
     defekt:localStorage.getItem(SAVE_CORRUPT_KEY)})`);
-  if (fallback.v !== 12 || fallback.stars !== 0 || fallback.defekt !== kaputt2
+  if (fallback.v !== SV || fallback.stars !== 0 || fallback.defekt !== kaputt2
       || !/beschädigt/i.test(fallback.hinweis)) {
     fehler.push('doppelte Korruption bleibt nicht recoverbar/sichtbar: ' + JSON.stringify(fallback));
   }
@@ -540,7 +544,9 @@ function pruefeSaveRettung() {
   zukunft.ctx.localStorage.setItem('orbitblade_konzept_save', neu);
   zukunft.G('loadSave()');
   const future = zukunft.G('({v:save.v,stars:save.stars,defekt:localStorage.getItem(SAVE_CORRUPT_KEY)})');
-  if (future.v !== 12 || future.stars !== 0 || future.defekt !== neu) {
+  // Eine Version NEUER als der Code muss abgelehnt und als beschaedigt gesichert werden
+  // (nicht still uebernommen). Erwartung: Rueckfall auf Default-Version, Original als Defekt.
+  if (future.v !== SV || future.stars !== 0 || future.defekt !== neu) {
     fehler.push('zukuenftige Save-Version wird still heruntergestuft: ' + JSON.stringify(future));
   }
   return fehler;

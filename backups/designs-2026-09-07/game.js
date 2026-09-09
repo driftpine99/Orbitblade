@@ -406,13 +406,7 @@ function hilfeId(){
 function bestFuer(id){ return (save.best && save.best[id||hilfeId()]) || 0; }
 // Hilfen verändern die Gegnerzahl, aber nicht den Build-Fortschritt. Ohne diesen
 // Ausgleich hätte Entdecker deutlich weniger Tree-Punkte und Meister deutlich mehr.
-function laufXp(wert){
-  // Der verkürzte EOS-Bogen braucht dieselbe reguläre Buildtiefe wie der lange
-  // Lauf. Der Faktor gilt nur bis zum EOS-Sieg; Endlos und alle anderen Modi
-  // bleiben bei der bestehenden XP-Kurve.
-  const eosBogen = aktiverPlanet==='eos' && !endlosLauf ? 4.5 : 1;
-  return Math.max(1, Math.round(wert*1.10*eosBogen / hilfe().gegner));
-}
+function laufXp(wert){ return Math.max(1, Math.round(wert*1.10 / hilfe().gegner)); }
 
 /* KLINGENFORMEN — zweite Kosmetik-Achse, unabhängig von der Farbe. Sechs Farben mal
    drei Formen ergeben 18 Kombinationen aus sehr wenig Code. Die Klinge ist das Ding,
@@ -440,47 +434,6 @@ const FIGUREN = {
                staerke:'Leerenhunger · fehlendes Leben verstärkt Volltreffer und Orbit',
                fuer:'Hohes Risiko, aggressives Kreisen und starke Klingen-Kombos' },
 };
-/* MODULARER HELD — die Auswahl ist rein optisch und ergänzt die alten Figur-,
-   Farb- und Formfelder. Startvarianten sind sofort kombinierbar; spätere Teile
-   hängen ausschließlich an bereits vorhandenen Freischaltungen. */
-const AVATAR_DEFAULT={kopf:'visier',brust:'schild',beine:'stiefel',griff:'ring'};
-const AVATAR_TEILE={
-  kopf:{name:'Kopf',teile:[
-    {id:'visier',name:'Visierhelm',desc:'Geschlossener Ritterhelm',start:true},
-    {id:'kamm',name:'Stirnkamm',desc:'Heller Kamm für klare Silhouette',start:true},
-    {id:'sensor',name:'Leeren-Sensor',desc:'Freigeschaltet mit der Leerenklinge',requires:'figur:konstrukt'}]},
-  brust:{name:'Brust',teile:[
-    {id:'schild',name:'Schildpanzer',desc:'Breite helle Brustschalen',start:true},
-    {id:'kern',name:'Kernplatte',desc:'Kompakte Platte mit Leuchtkern',start:true},
-    {id:'hex',name:'Hexpanzer',desc:'Freigeschaltet mit der Leerenklinge',requires:'figur:konstrukt'}]},
-  beine:{name:'Beine',teile:[
-    {id:'stiefel',name:'Sabatons',desc:'Schwere Ritterstiefel',start:true},
-    {id:'knie',name:'Knieplatten',desc:'Abgesetzte Knieplatten',start:true},
-    {id:'schwebe',name:'Schwebesohlen',desc:'Freigeschaltet mit der Leerenklinge',requires:'figur:konstrukt'}]},
-  griff:{name:'Griff',teile:[
-    {id:'ring',name:'Ringgriff',desc:'Runder Klingenansatz',start:true},
-    {id:'parier',name:'Parierstange',desc:'Breite Parierstange',start:true},
-    {id:'kristall',name:'Kristallschaft',desc:'Freigeschaltet mit Klingenform Wucht',requires:'form:wucht'}]}
-};
-function avatarTeilVerfuegbar(teil){
-  if(teil.start) return true;
-  const [kind,id]=(teil.requires||'').split(':');
-  return !!(kind&&id&&isAvailable(kind,id));
-}
-function avatarWahl(){
-  const a=Object.assign({},AVATAR_DEFAULT,save&&save.avatar||{});
-  for(const [part,def] of Object.entries(AVATAR_TEILE)){
-    if(!def.teile.some(t=>t.id===a[part]&&avatarTeilVerfuegbar(t))) a[part]=AVATAR_DEFAULT[part];
-  }
-  return a;
-}
-function waehleLegacyFigur(id){
-  save.figur=id;
-  // Der alte Körper bleibt sichtbar, wird aber in die neuen Teilfelder übersetzt.
-  if(id==='konstrukt') save.avatar=Object.assign({},avatarWahl(),{kopf:'sensor',brust:'hex',beine:'schwebe'});
-  else if(id==='held') save.avatar=Object.assign({},avatarWahl(),AVATAR_DEFAULT);
-  persist();
-}
 /* EIN KÖRPER.
    Die Figurwahl fiel vor dem ersten Bild, also mit null Information — die
    schlechteste Art von Entscheidung — und verdoppelte die Balancearbeit. Es gibt
@@ -509,8 +462,6 @@ function hatLeerenhunger(){ return !!(treeFlags.leerenHeilung || treeFlags.leere
    - Hitstop und Killketten: kurze Zeitlupe in den größten Momenten, Serienzähler
      mit kleinem Fokuslohn. Alles über die vorhandenen Effektwege (Floats, Shake). */
 var laufVorgabe=null;          // gesetzt, während ein Tageslauf läuft
-var aktiverPlanet=null;        // gesetzt, während ein Kampagnen-Lauf läuft (Planet-ID)
-var kampagneBonusVergeben=false; // Abschlussbonus je Lauf nur einmal (Sieg ODER Niederlage, nicht beides über Endlos)
 var tagesFaktoren={};          // zusammengeführte Faktoren aus Twist+Regel
 var laufEreignis=null, letztesEreignisId='';
 var hitstopMs=0, kettenZahl=0, kettenBis=0;
@@ -983,7 +934,7 @@ function checkMilestones(){
 /* TESTFASSUNG des Konzepts vom 11.8.2026 — läuft neben der stabilen Version.
    Eigener Speicherschlüssel, damit ein Testlauf den echten Spielstand nicht anfasst. */
 const SAVE_KEY='orbitblade_konzept_save', SAVE_BACKUP_KEY=SAVE_KEY+'_backup',
-      SAVE_CORRUPT_KEY=SAVE_KEY+'_beschaedigt', SAVE_VERSION=14;
+      SAVE_CORRUPT_KEY=SAVE_KEY+'_beschaedigt', SAVE_VERSION=12;
 // opts: Bedien-Einstellung für die Seite des einzigen Machtknopfs
 // best ist jetzt je Hilfsstufe getrennt — sonst wäre die Bestmarke nicht vergleichbar
 const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin', muted:false, bossKills:0, stars:0, meta:{}, tutorialDone:false, tutorialVersion:0, focusTutorialSeen:false,
@@ -992,11 +943,7 @@ const DEFAULT_SAVE={ v:SAVE_VERSION, best:{}, badges:{}, unlocks:{}, skin:'rubin
   // Mit welcher Hauptmacht jeder Lauf beginnt. Später freigeschaltete Mächte
   // dürfen gewählt werden; einen zweiten Werkzeugslot gibt es nicht.
   startMaechte:{ slot1:'wirbel' },
-  klingenform:'strahl', figur:'held', avatar:clone(AVATAR_DEFAULT), orbitauftrag:null, orbitauftragTauschTag:'', orbitauftragLetzterId:'',
-  // Galaxie-Kampagne: befreite Planeten, Heldenkern-Stufen und Intro-/Bonus-Flags.
-  // Rein additiv — der Kampf bleibt unverändert; ein Planet-Run ist ein normaler Lauf.
-  // held: permanente Heldenkern-Stufen (0..5 je Track), gelten in ALLEN Läufen.
-  kampagne:{ planeten:{}, introGesehen:false, held:{ klinge:0, leben:0, macht:0, fokus:0 }, starterBonusGewaehrt:false, warpkerne:{} },
+  klingenform:'strahl', figur:'held', orbitauftrag:null, orbitauftragTauschTag:'', orbitauftragLetzterId:'',
   tage:{}, tagesLohnTag:'' };
 let save = clone(DEFAULT_SAVE);
 let saveRecoveryNotice='';
@@ -1047,12 +994,6 @@ function loadSave(){
   if(!istGueltigerOrbitauftrag(save.orbitauftrag)) save.orbitauftrag=null;
   if(typeof save.orbitauftragTauschTag!=='string') save.orbitauftragTauschTag='';
   if(typeof save.orbitauftragLetzterId!=='string' || !Object.prototype.hasOwnProperty.call(ORBIT_AUFTRAEGE,save.orbitauftragLetzterId)) save.orbitauftragLetzterId='';
-  // Kampagnen-Zustand defensiv normalisieren (alte Saves, Teilobjekte, Fremdformate)
-  if(!save.kampagne || typeof save.kampagne!=='object') save.kampagne=clone(DEFAULT_SAVE.kampagne);
-  if(!save.kampagne.planeten || typeof save.kampagne.planeten!=='object') save.kampagne.planeten={};
-  if(!save.kampagne.held || typeof save.kampagne.held!=='object') save.kampagne.held=clone(DEFAULT_SAVE.kampagne.held);
-  for(const k of ['klinge','leben','macht','fokus']) save.kampagne.held[k]=Math.max(0,Math.min(5,save.kampagne.held[k]|0));
-  if(!save.kampagne.warpkerne || typeof save.kampagne.warpkerne!=='object') save.kampagne.warpkerne={};
   if(wiederhergestellt){
     try{ if(speicher) speicher.setItem(SAVE_KEY,JSON.stringify(save)); }catch(e){}
   }
@@ -1155,28 +1096,6 @@ function migrateSave(data){
   // Eintrags werden vorsorglich entfernt, damit keine entfernte Wirkung wiederkehrt.
   if(data.v<12){
     if(data.unlocks){ delete data.unlocks['ability:funkenkranz']; delete data.unlocks['module:funkenkranz']; }
-  }
-  // v12 → v13: Galaxie-Kampagne. Rein additiv — es gibt keinen bestehenden Bestand
-  // zu erstatten oder zu entwerten. Nur das neue Feld anlegen, falls es fehlt; ein
-  // bereits vorhandenes bleibt unangetastet (idempotent, verlustfrei, defensiv).
-  if(data.v<13){
-    if(!data.kampagne || typeof data.kampagne!=='object') data.kampagne={ planeten:{}, introGesehen:false };
-    if(!data.kampagne.planeten || typeof data.kampagne.planeten!=='object') data.kampagne.planeten={};
-    if(!data.kampagne.held || typeof data.kampagne.held!=='object') data.kampagne.held={ klinge:0, leben:0, macht:0, fokus:0 };
-    if(typeof data.kampagne.starterBonusGewaehrt!=='boolean') data.kampagne.starterBonusGewaehrt=false;
-    if(!data.kampagne.warpkerne || typeof data.kampagne.warpkerne!=='object') data.kampagne.warpkerne={};
-  }
-  // v13 → v14: modulare Heldenoptik. Alte Figur-/Farb-/Formwahlen bleiben erhalten;
-  // der Körper wird nur um sofort nutzbare Teilvarianten ergänzt.
-  if(data.v<14 || !data.avatar || typeof data.avatar!=='object'){
-    const alt= data.avatar&&typeof data.avatar==='object' ? data.avatar : {};
-    data.avatar=Object.assign(clone(AVATAR_DEFAULT),alt);
-    if(!alt.kopf && data.figur==='konstrukt') data.avatar.kopf='sensor';
-    if(!alt.brust && data.figur==='konstrukt') data.avatar.brust='hex';
-    if(!alt.beine && data.figur==='konstrukt') data.avatar.beine='schwebe';
-  }
-  for(const [part,def] of Object.entries(AVATAR_TEILE)){
-    if(!def.teile.some(t=>t.id===data.avatar[part])) data.avatar[part]=AVATAR_DEFAULT[part];
   }
   data.v = SAVE_VERSION;
   return data;
@@ -1287,9 +1206,9 @@ function renderSaveStatus(){
 function refreshMenuVisibility(){
   const fortschritt=!!(save.tutorialDone||save.gewonnen||save.niederlagen||save.stars||
     hasAny(save.meta)||hasAny(save.unlocks)||hasAny(save.badges));
-  // Hauptmacht und Sammlung sind unter „Held" zusammengeführt (Auftrag 2 §42) und
-  // stehen dort immer bereit; das Startmenü führt sie nicht mehr separat.
   showEl(document.getElementById('tages-btn'), fortschritt);
+  showEl(document.getElementById('hangar-btn'), fortschritt);
+  showEl(document.getElementById('startmaechte-btn'), fortschritt);
   showEl(document.getElementById('start-orbitauftrag'), fortschritt);
   showEl(document.getElementById('codex-btn'), fortschritt||codexRelevant());
   const hilfeSichtbar=(save.niederlagen||0)>=2||save.gewonnen||(save.pruefFrei||0)>0;
@@ -1298,7 +1217,6 @@ function refreshMenuVisibility(){
     const panel=document.querySelector('[data-prepare-panel="hilfe"]');
     if(panel&&panel.classList.contains('active')) zeigeVorbereitungTab('maechte');
   }
-  renderStartMission();   // dominante Startaktion an den aktuellen Kampagnenfortschritt anpassen
   renderSaveStatus();
 }
 
@@ -1942,7 +1860,7 @@ let fokus=0, fokusBereit=false, fokusAktiv=false;
 // Der Bonus gilt genau für den einen Einsatz und wird dabei aufgebraucht
 function fokusFaktor(){ return fokusAktiv? CONFIG.fokusBonus : 1; }
 // Wie viele Sweet-Spot-Treffer die Leiste braucht — der Charakter verschiebt das
-function fokusZiel(){ return Math.max(4, Math.round(CONFIG.fokusZiel*figur().fokusZiel*heldFokus())); }
+function fokusZiel(){ return Math.max(4, Math.round(CONFIG.fokusZiel*figur().fokusZiel)); }
 function fokusVoll(quelle){
   if(fokusBereit) return false;
   fokus=fokusZiel(); fokusBereit=true;
@@ -2137,89 +2055,11 @@ function zeichneLeerenklingeNeu(g, lean, farbe, kern, blur){
   g.translate(0,-bob);
 }
 
-/* Die bestehende Ritterzeichnung ist in echte Körpergruppen geteilt. So bleibt der
-   detailreiche Standard vollständig erhalten, während jede Wahl genau einen Teil
-   ersetzt und Vorschau/Lauf denselben Pfad verwenden. */
-function zeichneRitterMantel(g,lean){
-  g.fillStyle='#1b2b43'; g.strokeStyle='rgba(17,26,40,.9)'; g.beginPath();
-  g.moveTo(-8,-7);g.lineTo(-14+lean*.25,13);g.lineTo(-4+lean,9);g.lineTo(0,15);g.lineTo(4+lean,9);g.lineTo(14+lean*.25,13);g.lineTo(8,-7);g.closePath();g.fill();g.stroke();
-  g.fillStyle='rgba(124,180,255,.11)';g.beginPath();g.moveTo(-7,-5);g.lineTo(-10+lean*.4,10);g.lineTo(-3+lean*.7,7);g.lineTo(-1,13);g.lineTo(0,-4);g.closePath();g.fill();
-}
-function zeichneRitterBeine(g,moving,bobPhase){
-  const stride=moving?Math.sin(bobPhase)*3:0;g.fillStyle='#33465d';g.strokeStyle='#111a28';
-  for(const [x,s] of [[-7,stride*.45],[1.5,-stride*.45]]){g.beginPath();g.roundRect(x+s,5,5.5,11,2);g.fill();g.stroke();}
-  g.fillStyle='#7690a6';g.fillRect(-6.5+stride*.45,8,4.5,2.5);g.fillRect(2-stride*.45,8,4.5,2.5);
-  g.fillStyle='#172235';g.beginPath();g.roundRect(-8+stride*.45,13,7,4.5,2);g.fill();g.stroke();g.beginPath();g.roundRect(1-stride*.45,13,7,4.5,2);g.fill();g.stroke();
-  g.fillStyle='#aec4d6';g.fillRect(-7+stride*.45,13,5.5,1.5);g.fillRect(1.5-stride*.45,13,5.5,1.5);
-}
-function zeichneRitterBrust(g,farbe,blur){
-  const bl=blur||(v=>{g.shadowBlur=v;});g.fillStyle='#26384f';g.strokeStyle='#111a28';g.beginPath();g.moveTo(-9,-8);g.lineTo(9,-8);g.lineTo(10,4);g.lineTo(5,9);g.lineTo(-5,9);g.lineTo(-10,4);g.closePath();g.fill();g.stroke();
-  g.fillStyle='#e6eef4';g.beginPath();g.moveTo(-7,-6);g.lineTo(-1,-7);g.lineTo(-1,5);g.lineTo(-5,7);g.lineTo(-8,3);g.closePath();g.fill();g.stroke();g.fillStyle='#c0d1df';g.beginPath();g.moveTo(1,-7);g.lineTo(7,-6);g.lineTo(8,3);g.lineTo(5,7);g.lineTo(1,5);g.closePath();g.fill();g.stroke();
-  g.fillStyle='#8ba4b8';g.beginPath();g.moveTo(-6,1);g.lineTo(6,1);g.lineTo(4,5);g.lineTo(-4,5);g.closePath();g.fill();g.fillStyle='#d9b45c';g.beginPath();g.moveTo(-1,-7);g.lineTo(1,-7);g.lineTo(1,5);g.lineTo(0,8);g.lineTo(-1,5);g.closePath();g.fill();
-  g.fillStyle='#f1f5f7';g.beginPath();g.moveTo(-8,-8);g.lineTo(-15,-6);g.lineTo(-14,-1);g.lineTo(-9,1);g.lineTo(-7,-4);g.closePath();g.fill();g.stroke();g.beginPath();g.moveTo(8,-8);g.lineTo(15,-6);g.lineTo(14,-1);g.lineTo(9,1);g.lineTo(7,-4);g.closePath();g.fill();g.stroke();
-  g.fillStyle='#d9b45c';g.beginPath();g.moveTo(-14,-5);g.lineTo(-16,5);g.lineTo(-12,7);g.lineTo(-9,0);g.closePath();g.fill();g.stroke();g.beginPath();g.moveTo(14,-5);g.lineTo(16,5);g.lineTo(12,7);g.lineTo(9,0);g.closePath();g.fill();g.stroke();
-  g.fillStyle='#d9e4ec';g.beginPath();g.arc(-14,7,2.4,0,Math.PI*2);g.fill();g.stroke();g.beginPath();g.arc(14,7,2.4,0,Math.PI*2);g.fill();g.stroke();
-  const pul=.55+.45*Math.sin(Date.now()/380);g.save();g.shadowColor=farbe;bl(10*pul);g.fillStyle=farbe;g.globalAlpha=.85;g.beginPath();g.arc(0,-3.5,2.4,0,Math.PI*2);g.fill();g.restore();bl(0);
-}
-function zeichneRitterKopf(g,farbe,blur){
-  const bl=blur||(v=>{g.shadowBlur=v;});g.fillStyle='#eef4f7';g.strokeStyle='#111a28';g.beginPath();g.moveTo(-8,-20);g.lineTo(-4,-24);g.lineTo(5,-23);g.lineTo(9,-18);g.lineTo(7,-11);g.lineTo(3,-8);g.lineTo(-5,-9);g.lineTo(-8,-13);g.closePath();g.fill();g.stroke();
-  g.fillStyle='#b7c9d7';g.beginPath();g.moveTo(-7,-19);g.lineTo(-2,-22);g.lineTo(-2,-10);g.lineTo(-6,-12);g.closePath();g.fill();g.fillStyle='#263852';g.beginPath();g.moveTo(-7,-18);g.lineTo(7,-17);g.lineTo(6,-13);g.lineTo(-6,-13);g.closePath();g.fill();g.stroke();
-  g.save();g.shadowColor=farbe;bl(5);g.fillStyle=farbe;g.beginPath();g.roundRect(-5.5,-16.5,11,2,1);g.fill();g.restore();bl(0);g.fillStyle='#d9b45c';g.beginPath();g.moveTo(-2,-24);g.lineTo(0,-27);g.lineTo(2,-23);g.lineTo(1,-19);g.lineTo(-1,-19);g.closePath();g.fill();g.stroke();
-}
-function zeichneAvatar(g,moving,lean,bobPhase,farbe,kern,blur){
-  const a=avatarWahl(), bl=blur||(v=>{g.shadowBlur=v;});
-  g.save(); g.lineJoin='round'; g.lineCap='round'; g.lineWidth=1.25;
-  zeichneRitterMantel(g,lean);
-  // Jeder Teil wird genau einmal gezeichnet und kann seine komplette Silhouette
-  // austauschen; es bleibt kein alter Helm, Panzer oder Beinsatz darunter liegen.
-  if(a.beine==='knie'){
-    g.fillStyle='#344b63'; g.strokeStyle='#111a28';
-    const stride=moving?Math.sin(bobPhase)*2.3:0;
-    for(const [x,s] of [[-5,stride],[4,-stride]]){ g.beginPath(); g.moveTo(x+s,4); g.lineTo(x+5+s,5); g.lineTo(x+4+s,14); g.lineTo(x-1+s,17); g.lineTo(x-4+s,13); g.closePath(); g.fill(); g.stroke(); }
-    g.fillStyle='#d9e4ec'; for(const x of [-4.5,4.5]){g.beginPath();g.arc(x,9,2.2,0,Math.PI*2);g.fill();g.stroke();}
-  } else if(a.beine==='schwebe'){
-    g.fillStyle='#21172f'; g.strokeStyle='#a855f7';
-    for(const x of [-8,8]){g.beginPath();g.moveTo(x-5,4);g.lineTo(x+4,4);g.lineTo(x+6,12);g.lineTo(x,15);g.lineTo(x-6,11);g.closePath();g.fill();g.stroke();}
-    g.strokeStyle=farbe; bl(7); g.beginPath(); g.ellipse(0,17,13,2.5,0,0,Math.PI*2); g.stroke(); bl(0);
-  } else { zeichneRitterBeine(g,moving,bobPhase); }
-  if(a.brust==='kern'){
-    g.fillStyle='#21334d'; g.strokeStyle='#6ec8ff';
-    g.beginPath();g.moveTo(-8,-9);g.lineTo(8,-9);g.lineTo(10,3);g.lineTo(0,10);g.lineTo(-10,3);g.closePath();g.fill();g.stroke();
-    g.fillStyle='#d7e0ee';g.beginPath();g.moveTo(-6,-6);g.lineTo(0,-8);g.lineTo(6,-6);g.lineTo(5,2);g.lineTo(0,6);g.lineTo(-5,2);g.closePath();g.fill();g.stroke();
-    g.fillStyle=farbe;bl(7);g.beginPath();g.arc(0,-1,2.5,0,Math.PI*2);g.fill();bl(0);
-  } else if(a.brust==='hex'){
-    g.fillStyle='#211729'; g.strokeStyle='#a855f7';
-    g.beginPath();g.moveTo(-9,-8);g.lineTo(-4,-12);g.lineTo(6,-10);g.lineTo(10,-3);g.lineTo(6,8);g.lineTo(-5,9);g.lineTo(-10,3);g.closePath();g.fill();g.stroke();
-    g.fillStyle='#59456b';g.beginPath();g.moveTo(-6,-7);g.lineTo(1,-8);g.lineTo(2,4);g.lineTo(-5,6);g.closePath();g.fill();g.stroke();
-  } else { zeichneRitterBrust(g,farbe,blur); }
-  if(a.kopf==='kamm'){
-    g.fillStyle='#eef4f7';g.strokeStyle='#111a28';g.beginPath();g.moveTo(-8,-19);g.lineTo(-4,-25);g.lineTo(4,-24);g.lineTo(9,-18);g.lineTo(6,-10);g.lineTo(-6,-10);g.closePath();g.fill();g.stroke();
-    g.fillStyle='#d9b45c';g.beginPath();g.moveTo(-3,-24);g.lineTo(0,-32);g.lineTo(3,-24);g.lineTo(1,-20);g.lineTo(-1,-20);g.closePath();g.fill();g.stroke();
-    g.fillStyle=farbe;g.fillRect(-5,-16,10,2);
-  } else if(a.kopf==='sensor'){
-    g.fillStyle='#171026';g.strokeStyle='#a855f7';bl(6);g.beginPath();g.arc(0,-17,7,0,Math.PI*2);g.fill();g.stroke();bl(0);
-    g.fillStyle=kern;g.beginPath();g.arc(0,-17,2.2,0,Math.PI*2);g.fill();g.stroke();g.strokeStyle='#aab7cc';g.beginPath();g.moveTo(0,-24);g.lineTo(0,-30);g.stroke();
-  } else { zeichneRitterKopf(g,farbe,blur); }
-  g.restore();
-}
-
 /* Die Klinge zeichnet sich selbst — auf das Spielfeld oder auf eine Vorschau-Leinwand.
    `blur` ist der Setzer für das Leuchten: im Spiel sb(), das die Sparmodi kennt,
    in der Vorschau ein einfaches Setzen. Ursprung ist der Griff, +x zeigt zur Spitze. */
 function zeichneKlinge(g, x0, laenge, form, farbe, kern, blur){
   const bl = blur || (v=>{ g.shadowBlur=v; });
-  const griff=avatarWahl().griff;
-  g.save(); g.fillStyle='#263447'; g.strokeStyle='#111a28'; g.lineWidth=1.1;
-  if(griff==='parier'){
-    g.beginPath(); g.roundRect(x0-4,-7,5,14,2); g.fill(); g.stroke();
-    g.beginPath(); g.roundRect(x0-8,-2,13,4,2); g.fill(); g.stroke();
-  } else if(griff==='kristall'){
-    g.fillStyle=farbe; bl(7); g.beginPath(); g.moveTo(x0-4,0); g.lineTo(x0-1,-5); g.lineTo(x0+3,0); g.lineTo(x0-1,5); g.closePath(); g.fill(); g.stroke(); bl(0);
-  } else {
-    g.fillStyle='#b7c9d7'; g.beginPath(); g.arc(x0-1,0,4,0,Math.PI*2); g.fill(); g.stroke();
-    g.fillStyle=farbe; g.beginPath(); g.arc(x0-1,0,1.5,0,Math.PI*2); g.fill();
-  }
-  g.restore();
   const strahlen = form.zwei ? [-3.7, 3.7] : [0];
   // Glasklinge (Auslese-Modul): der Lebens-Handel bleibt sonst unsichtbar. Heller,
   // schmalerer Kern statt der Skin-Kernfarbe plus ein wandernder kalter Lichtpunkt —
@@ -2295,7 +2135,7 @@ function abilityLevel(id){
   return passivStufe(id) || 1;
 }
 function abilScale(level){ return 1 + CONFIG.abilLevelScale*(level-1); }
-function machtFaktor(id){ return (treeFlags['powerDmg_'+id]||1) * heldMacht(); }
+function machtFaktor(id){ return treeFlags['powerDmg_'+id]||1; }
 function abilUnlocked(id){ return isAvailable('ability', id); }
 function activeCdMax(id){
   if(!id) return 0;
@@ -2657,7 +2497,7 @@ function renderAuslese(){
 // Wellenstart prüft, ob diese Welle eine Auslese vorsieht — höchstens einmal je Welle,
 // deshalb über die gemerkte Wellennummer statt eines Zählers abgesichert.
 function pruefeAuslese(){
-  if(wave%3!==0 || wave>=laufZielWelle() || letzteAusleseWelle===wave) return;
+  if(wave%3!==0 || wave>=CONFIG.siegWelle || letzteAusleseWelle===wave) return;
   letzteAusleseWelle=wave;
   oeffneAuslese();
 }
@@ -2812,187 +2652,21 @@ const META_UPGRADES=[
   {gruppe:'Kosmetik',id:'hangarprojektion',name:'Hangarprojektion',desc:'Projiziert einen feinen kosmetischen Orbit um deinen Träger.',icon:'kette',base:5000},
 ];
 
-/* ---- Galaxie-Kampagne ----
-   Datengetrieben (CLAUDE-Plan §40): ein Planet ist ein Datenobjekt, der Kampf nutzt
-   die vorhandenen Systeme mit einem OPTIONALEN, campagne-lokalen Modifikator (`mod`).
-   Der Kampf selbst bleibt ein normaler Orbitblade-Lauf; `mod` verschiebt nur die
-   Gegnermischung (eine klare Identität je Planet, keine Modifikatorflut, Plan §9).
-   `mod` wird ausschließlich über `aktiverPlanet` gelesen und nach dem Lauf mit dem
-   Zurücksetzen von `aktiverPlanet` unwirksam — kein Leak in andere Modi (Plan §41).
-   Sektor I ist vollständig spielbar (Phase 4). Sektor II ist ein Teaser, der erst
-   nach dem Sektor-I-Warpkern erscheint; seine Welten bleiben bis Phase 7 gesperrt. */
-const KAMPAGNE={
-  sektoren:[
-    { id:'s1', name:'Sektor I · Randwelten', planeten:[
-       { id:'eos',    name:'EOS',      typ:'befreiung', stufe:1, order:0,
-         besonderheit:'Leichte Drohnen und Soldaten', kurz:'Dein erster Einsatz. Ein ruhiger Anfang.',
-         motiv:'var(--good)', zielWelle:15 },
-      { id:'kryos',  name:'KRYOS',    typ:'befreiung', stufe:2, order:1,
-        besonderheit:'Viele gepanzerte Gegner', kurz:'Eine Panzerwerft. Ziele deine Volltreffer.',
-        motiv:'var(--accent)', mod:{ panzerAb:3, panzerChance:0.42 } },
-      { id:'vega',   name:'VEGA',     typ:'befreiung', stufe:2, order:2,
-        besonderheit:'Jäger treten häufig auf', kurz:'Ein Jägerstützpunkt. Weiche den Zielstrahlen aus.',
-        motiv:'#c77dff', mod:{ jaegerAb:4, jaegerMult:1.6 } },
-      { id:'nexus1', name:'KOMMANDO', typ:'boss',      stufe:3, order:3, sektorAbschluss:true,
-        besonderheit:'Sektor-Kommandant', kurz:'Der Besatzungskern des Sektors. Bezwinge den Kommandanten.',
-        motiv:'var(--danger)', mod:{ panzerAb:6, panzerChance:0.30, jaegerAb:6, jaegerMult:1.3 } },
-    ]},
-    { id:'s2', name:'Sektor II · Ionennebel', braucht:'s1', planeten:[
-      { id:'ionos', name:'IONOS', typ:'befreiung', stufe:3, order:0, gesperrt:true,
-        besonderheit:'Instabile Systeme', kurz:'Bald verfügbar.', motiv:'var(--accent)' },
-      { id:'aura',  name:'AURA',  typ:'befreiung', stufe:4, order:1, gesperrt:true,
-        besonderheit:'Elektrische Stürme', kurz:'Bald verfügbar.', motiv:'#c77dff' },
-    ]},
-  ]
-};
-function planetById(id){
-  for(const s of KAMPAGNE.sektoren) for(const p of s.planeten) if(p.id===id) return p;
-  return null;
-}
-// Kampagnenwelten dürfen einen kürzeren Einstiegsbogen tragen; normale Läufe,
-// andere Welten und Endlos behalten den globalen Siegpunkt.
-function laufZielWelle(){
-  if(endlosLauf) return CONFIG.siegWelle;
-  const p=aktiverPlanet&&planetById(aktiverPlanet);
-  return p&&Number.isFinite(p.zielWelle) ? p.zielWelle : CONFIG.siegWelle;
-}
-function planetBefreit(id){
-  return !!(save.kampagne && save.kampagne.planeten && save.kampagne.planeten[id]==='befreit');
-}
-function sektorVonPlanet(id){
-  for(const s of KAMPAGNE.sektoren) if(s.planeten.some(p=>p.id===id)) return s;
-  return null;
-}
-/* Erreichbar = spielbar. Ein befreiter Planet bleibt wiederholbar (Plan §26). Sonst
-   ist ein Planet erreichbar, wenn alle nicht gesperrten Vorgänger seines Sektors mit
-   kleinerer `order` befreit sind. So bildet die Route sich von selbst: EOS (order 0)
-   ist offen, KRYOS nach EOS, VEGA nach KRYOS, die Kommandowelt nach VEGA. */
-function planetErreichbar(p){
-  if(!p || p.gesperrt) return false;
-  if(planetBefreit(p.id)) return true;
-  const s=sektorVonPlanet(p.id); if(!s) return false;
-  return s.planeten.every(o=> o.gesperrt || o.order>=p.order || planetBefreit(o.id));
-}
-function planetStatus(p){
-  if(!p) return 'gesperrt';
-  if(p.gesperrt) return 'gesperrt';
-  if(planetBefreit(p.id)) return 'befreit';
-  return planetErreichbar(p) ? 'erreichbar' : 'gesperrt';
-}
-// Einen Planeten als befreit vermerken. Gibt true zurück, wenn es die Erstbefreiung war.
-function markiereBefreit(id){
-  save.kampagne=save.kampagne||{planeten:{},introGesehen:false};
-  save.kampagne.planeten=save.kampagne.planeten||{};
-  const erst = save.kampagne.planeten[id]!=='befreit';
-  save.kampagne.planeten[id]='befreit';
-  persist();
-  return erst;
-}
-// Campagne-lokaler Gegner-Modifikator des aktiven Planeten (leer außerhalb der Kampagne).
-function planetMod(){
-  if(!aktiverPlanet) return {};
-  const p=planetById(aktiverPlanet);
-  return (p && p.mod) || {};
-}
-// Ist der Warpkern eines Sektors verdient? (Sektorabschluss durch dessen Kommandowelt.)
-function warpkernErreicht(sektorId){
-  return !!(save.kampagne && save.kampagne.warpkerne && save.kampagne.warpkerne[sektorId]);
-}
-
-/* ---- Heldenkern (Phase 2): permanente Kampfkraft über Fragmente ----
-   Vier Tracks à 5 Stufen. Die Boni docken ZENTRAL an bestehenden Werten an
-   (Plan §16): Klinge → Orbit-Grundschaden, Leben → maxHp, Macht → machtFaktor()
-   der gewählten Hauptmacht, Fokus → fokusZiel() (lädt schneller). Sie gelten in
-   allen Läufen, wie die vorhandene Meta (Startimpuls, Begleiter).
-
-   ACHTUNG: Alle Prozentwerte sind IMPLEMENTIERUNGS-STARTWERTE, noch nicht
-   balancegemessen (Plan §18/§44). Gesamtwirkung bewusst klein gedeckelt, damit
-   Volltreffer, Positionierung und der Run-Build der stärkste Multiplikator bleiben
-   (Plan §3.5/§43). Kosten sind Startwerte (Plan §24), gegen die Fragmentquellen
-   noch zu prüfen. */
-const HELD_MAX=5;
-const HELD_KOSTEN=[300,700,1400,2500,4000];   // Fragmentkosten je Stufe (Startwerte)
-// `schritt` beschreibt die KONKRETE nächste Veränderung je Kauf (Plan §43) — reiner
-// Anzeigetext der bestehenden Werte, keine Änderung der Wirkung.
-const HELD_TRACKS=[
-  {id:'klinge', name:'Klingenreaktor', kurz:'Mehr Grundschaden der Orbitklinge.', icon:'schaden', schritt:'+4 % Klingenschaden'},
-  {id:'leben',  name:'Vitalmatrix',    kurz:'Mehr maximales Leben.',              icon:'leben',   schritt:'+6 % Leben'},
-  {id:'macht',  name:'Machtkern',      kurz:'Stärkere Hauptmacht.',               icon:'boost',   schritt:'+5 % Hauptmacht'},
-  {id:'fokus',  name:'Fokusleiter',    kurz:'Jede Stufe senkt die nötige Fokusladung um 2 %.', icon:'tempo', schritt:'Fokusziel −2 %'},
-];
-function heldLevel(id){ return (save.kampagne&&save.kampagne.held&&(save.kampagne.held[id]|0))||0; }
-function heldKosten(id){ const lv=heldLevel(id); return lv>=HELD_MAX?null:HELD_KOSTEN[lv]; }
-// Bonus-Faktoren (Startwerte). Deckel bei Stufe 5: Klinge +20%, Leben +30%,
-// Macht +25%, Fokusziel −10% (füllt entsprechend schneller).
-function heldKlinge(){ return 1 + heldLevel('klinge')*0.04; }
-function heldLeben(){  return 1 + heldLevel('leben')*0.06; }
-function heldMacht(){  return 1 + heldLevel('macht')*0.05; }
-function heldFokus(){  return 1 - heldLevel('fokus')*0.02; }
-// Einen Heldenkern-Track kaufen. Gibt true bei Erfolg (genug Fragmente, nicht am Cap).
-function kaufeHeld(id){
-  const lv=heldLevel(id); if(lv>=HELD_MAX) return false;
-  const preis=HELD_KOSTEN[lv]; if(save.stars<preis) return false;
-  save.stars-=preis;
-  save.kampagne.held=save.kampagne.held||{klinge:0,leben:0,macht:0,fokus:0};
-  save.kampagne.held[id]=lv+1;
-  persist();
-  return true;
-}
-/* Einmaliger Starterbonus (Plan §13.6): Der erste beendete Kampagnen-Lauf — Sieg
-   ODER Niederlage — sichert genug Fragmente für mindestens ein Heldenkern-Upgrade,
-   auch wenn der Spieler früh stirbt. Streng einmalig über ein Save-Flag, also kein
-   wiederholbarer Exploit. Ein Messlauf löst ihn nicht aus. */
-function gewaehreStarterBonus(){
-  if(messlauf) return 0;
-  save.kampagne=save.kampagne||{planeten:{},introGesehen:false};
-  if(save.kampagne.starterBonusGewaehrt) return 0;
-  save.kampagne.starterBonusGewaehrt=true;
-  const bonus=Math.max(0, HELD_KOSTEN[0]-save.stars);   // auf mindestens Tier-I-Kosten auffüllen
-  if(bonus>0) save.stars+=bonus;
-  persist();
-  return bonus;
-}
-/* Kampagnen-Abschlussbelohnung (Plan §23): NUR für Kampagnen-Läufe, additiv zu den
-   Kill-Drops. Die sichere Bergung koppelt an den Runfortschritt, dazu Boss-, Sieg-
-   und einmaliger Erstbefreiungsbonus. Genau EINMAL pro Lauf (kampagneBonusVergeben),
-   damit ein Endlos-Weiterspielen nach dem Sieg nicht ein zweites Mal zahlt. So bleibt
-   ein Sieg klar lohnender als absichtliches Frühsterben, und es gibt keinen
-   wiederholbaren Farm-Exploit. Alle Zahlen sind Startwerte (Plan §24/§44), noch
-   nicht balancegemessen. */
-function kampagneAbschluss(gewonnen, erstBefreiung){
-  const leer={bergung:0,boss:0,sieg:0,erst:0,summe:0};
-  if(messlauf || !aktiverPlanet || kampagneBonusVergeben) return leer;
-  kampagneBonusVergeben=true;
-  const bosse=Math.max(0, Math.floor((wave-1)/5) + (gewonnen?1:0));
-  const r={
-    bergung: Math.round(wave*10),            // sichere Bergung, an den Fortschritt gekoppelt
-    boss: bosse*50,                          // je im Lauf besiegtem Boss
-    sieg: gewonnen?500:0,                     // Abschlussbonus bei Sieg
-    erst: (gewonnen&&erstBefreiung)?700:0,    // einmalige Erstbefreiung
-    summe:0
-  };
-  r.summe=r.bergung+r.boss+r.sieg+r.erst;
-  if(r.summe>0){ save.stars+=r.summe; persist(); }
-  return r;
-}
-
 function newPlayer(){
   const w = canvas.clientWidth || window.innerWidth;
   const h = canvas.clientHeight || window.innerHeight;
   // Ein Startwert für alle — die Schwierigkeit wächst über die Wellen.
   // Charakter-Werteschnitt fließt hier ein, damit er den ganzen Lauf über gilt.
-  const hp = Math.round(CONFIG.playerHp * figur().hp * heldLeben());
+  const hp = Math.round(CONFIG.playerHp * figur().hp);
   return { x: w/2, y: h/2, vx:0, vy:0, face:0, radius: CONFIG.playerRadius,
     hp, maxHp:hp, level:1, xp:0, xpNeed:CONFIG.xpBase, stars:0, hits:0, bobPhase:0, trailT:0 };
 }
 player = newPlayer();
 window.playerRef = player;
-window.addEventListener('load',()=>{ player = newPlayer(); window.playerRef = player; if(state==='menu'){ sorgeOrbitauftrag(); updateHUD(); renderOrbitauftrag(); renderTagessignal(); refreshMenuVisibility(); } });
+window.addEventListener('load',()=>{ player = newPlayer(); window.playerRef = player; if(state==='menu'){ sorgeOrbitauftrag(); updateHUD(); renderOrbitauftrag(); renderTagessignal(); } });
 function resetGame(){
   // Erst jetzt, vor dem nächsten Lauf, folgt auf einen erledigten Auftrag ein neuer.
   sorgeOrbitauftrag();
-  laufHilfeId=hilfeId();
-  siegHilfeId='';
   spielZeitMs=0;
   player=newPlayer(); window.playerRef = player; enemies=[]; stars=[]; particles=[]; floats=[]; shots=[]; orbs=[]; killCount=0; hpKillCount=0;
   wave=1; waveEnemiesToSpawn=0; waveSpawned=0; spawnTimer=0;
@@ -3022,7 +2696,6 @@ function resetGame(){
   toasts=[]; banner=null;
   tutStep=0; tutT=0; tutorialCircleUntil=0; tutorialBladeUntil=0; unlockFx=0; combatResumeRest=0; combatResumeStep='';
   pauseReturnState='playing'; setzeHelfer();
-  kampagneBonusVergeben=false;   // neuer Lauf: Abschlussbonus wieder freigeben
   if(metaLevel('startimpuls')>0) skillPoints=1;
   // Tages-Twist „Fliegender Start": zwei zusätzliche Punkte, wie beim Startimpuls
   // außerhalb der regulären Ökonomie — ein guter Tag darf mächtig beginnen.
@@ -3042,11 +2715,7 @@ function resetGame(){
 function hideAll(){
   overlayStart.classList.add('hidden'); overlayPause.classList.add('hidden');
   overlayOver.classList.add('hidden');
-  // Alle Zwischen-Overlays defensiv schließen, damit kein Menü über dem Kampf/Ergebnis
-  // liegen bleibt und Eingaben abfängt (§54).
-  for(const id of ['overlay-hangar','overlay-galaxie','overlay-held','overlay-startmaechte','overlay-metashop','overlay-progress']){
-    const el=document.getElementById(id); if(el) el.classList.add('hidden');
-  }
+  document.getElementById('overlay-hangar').classList.add('hidden');
   overlayAuslese.classList.add('hidden');
   if(combatResume) combatResume.classList.add('hidden');
   syncUiAccessibility();
@@ -3075,7 +2744,7 @@ function startWave(){
   if(state==='playing' && skillPoints>0) oeffneWeichenAuslese();
 }
 // Ist dies der Kampf, der den Lauf gewinnt?
-function istFinale(){ return wave>=laufZielWelle() && !endlosLauf; }
+function istFinale(){ return wave>=CONFIG.siegWelle && !endlosLauf; }
 function spawnBoss(){
   const finale=istFinale();
   const k=bossKindFor(wave);
@@ -3250,7 +2919,7 @@ function onBossDefeated(){
 }
 function recordBest(){
   if(messlauf) return;                           // ein gesprungener Lauf ist keine Leistung
-  const id=(siegHilfeId || laufHilfeId || hilfeId());
+  const id=hilfeId();
   if(!save.best || typeof save.best!=='object') save.best={};
   if(wave>(save.best[id]||0)){ save.best[id]=wave; persist(); }
 }
@@ -3287,28 +2956,15 @@ function makeEnemy(type){
 }
 function randomEnemyType(){
   const d=curDiff();
-  // EOS führt die Gegnertypen einzeln ein. Gefährliche Fern- und Panzergegner
-  // gehören in spätere Welten; der kurze Anfängerbogen bleibt ohne Pflichtkauf
-  // verständlich und nutzt nur die drei bekannten Grundtypen.
-  if(aktiverPlanet==='eos'&&!endlosLauf){
-    if(wave<=3) return 'drohne';
-    if(wave<=6) return 'soldat';
-    if(wave<=9) return 'schwer';
-    const eosR=laufRnd();
-    return eosR<0.45?'drohne':eosR<0.78?'soldat':'schwer';
-  }
   // Distanz-/Exploder-Gegner: erst ab späteren Wellen, in frühen Wellen seltener,
   // in späten häufiger — die Schwierigkeitskurve steuert das über enemyCount.
   const exotic = d.enemyCount>=1.2 ? 0.28 : (d.enemyCount<=0.8 ? 0.10 : 0.18);
   // Panzer erscheinen ab der eingestellten Welle — auf „Meister" deutlich früher.
   // Sie sind der Grund, warum Positionieren spät im Lauf wieder zählt.
   // Tages-Regel und Bleiregen-Ereignis verschieben Welle und Häufigkeit nach oben.
-  // Planet-Identität (Phase 4): campagne-lokaler Modifikator vor allen anderen Quellen.
-  // Leer außerhalb der Kampagne, daher für Tageslauf/Endlos/Normal unverändert.
-  const pm=planetMod();
-  const panzerAb = pm.panzerAb || (laufVorgabe&&laufVorgabe.regel&&laufVorgabe.regel.panzer&&laufVorgabe.regel.panzer.ab)
+  const panzerAb = (laufVorgabe&&laufVorgabe.regel&&laufVorgabe.regel.panzer&&laufVorgabe.regel.panzer.ab)
     || (laufEreignis&&laufEreignis.panzerAb) || hilfe().panzerAb || CONFIG.panzerAbWelle;
-  const panzerChance = pm.panzerChance || (laufEreignis&&laufEreignis.panzerChance)
+  const panzerChance = (laufEreignis&&laufEreignis.panzerChance)
     || (laufVorgabe&&laufVorgabe.regel&&laufVorgabe.regel.panzer&&laufVorgabe.regel.panzer.chance) || 0.22;
   // Die Gewichte werden nacheinander vom selben Zufallsraum abgezogen. Vorher
   // blockierte „Panzer" alle kleineren Schwellen: Exploder erschienen ab Welle 12
@@ -3317,8 +2973,7 @@ function randomEnemyType(){
   if(wave>=panzerAb){ if(r<panzerChance) return 'panzer'; r-=panzerChance; }
   const exploderChance=wave>=8 ? exotic*0.45 : 0;
   if(r<exploderChance) return 'exploder'; r-=exploderChance;
-  const jaegerAb = pm.jaegerAb || 6;
-  const jaegerChance = wave>=jaegerAb ? exotic*(pm.jaegerMult||1) : 0;
+  const jaegerChance=wave>=6 ? exotic : 0;
   if(r<jaegerChance) return 'jaeger';
   r=laufRnd();
   if(wave<3) return r<0.75? 'drohne':'soldat';   // frühe Wellen: nur leichte Gegner
@@ -3481,16 +3136,15 @@ document.getElementById('resume-btn').addEventListener('click',resumeGame);
    Die Rückfrage kommt nur, wenn wirklich etwas auf dem Spiel steht. */
 function laufBeenden(){
   tagesAbschluss();        // auch ein freiwilliges Ende zählt für den Tageslauf
+  beendeTageslaufVorgabe();
   bucheFragmente();
-  const warKampagne=!!aktiverPlanet;
   state='menu'; setMusicLevel();
   updateTreeButton();
   hideAll();
   document.getElementById('overlay-abbruch').classList.add('hidden');
   sorgeOrbitauftrag(); renderOrbitauftrag();
-  // Kampagne: zurück zur Galaxie (Planet bleibt besetzt). Sonst ins Startmenü.
-  if(warKampagne){ zurGalaxie(); }
-  else { beendeTageslaufVorgabe(); refreshMenuVisibility(); overlayStart.classList.remove('hidden'); }
+  refreshMenuVisibility();
+  overlayStart.classList.remove('hidden');
 }
 function frageAbbruch(){
   if(wave<3 && player.stars<=0){ laufBeenden(); return; }   // nichts zu verlieren
@@ -3630,11 +3284,12 @@ function renderCharakterWahl(){
     const portrait=vorschauLeinwand(76,64,g=>{
       g.translate(0,5); g.scale(1.12,1.12);
       const c1=frei?farbe.blade:'#63708a', c2=frei?farbe.core:'#9aa6bb';
-      const alt=save.figur; save.figur=id; zeichneAvatar(g,false,0,0,c1,c2); save.figur=alt;
+      if(id==='konstrukt') zeichneLeerenklingeNeu(g,0,c1,c2);
+      else zeichneLichthueterNeu(g,false,0,0,c1);
     });
     portrait.className='wahl-portrait';
     b.prepend(portrait);
-    if(frei) b.onclick=()=>{ waehleLegacyFigur(id); passeOrbitauftragAnFigurwahl(); renderOrbitauftrag(); if(sfx) sfx('pick'); renderCharakterWahl(); };
+    if(frei) b.onclick=()=>{ save.figur=id; passeOrbitauftragAnFigurwahl(); persist(); renderOrbitauftrag(); if(sfx) sfx('pick'); renderCharakterWahl(); };
     box.appendChild(b);
   }
   const d=document.getElementById('charakter-detail'), f=figur();
@@ -3646,18 +3301,10 @@ function renderHilfeWahl(){
   const box=document.getElementById('hilfe-wahl');
   if(!box) return;
   box.innerHTML='';
-  const stufeGesperrt=state==='sieg' && !endlosLauf;
-  if(stufeGesperrt){
-    const info=document.createElement('p'); info.className='stufe-sperre';
-    info.textContent='Dieser Siegerlauf läuft auf '+hilfe().name+'. Die Stufe bleibt bis zum Verlassen des Laufs fest.';
-    box.appendChild(info);
-  }
   for(const id of HILF_IDS){
     const h=HILFEN[id];
     const b=document.createElement('button');
-    b.className='wahl-karte'+(hilfeId()===id?' an':'')+(stufeGesperrt?' locked':'');
-    b.disabled=stufeGesperrt;
-    if(stufeGesperrt) b.setAttribute('aria-disabled','true');
+    b.className='wahl-karte'+(hilfeId()===id?' an':'');
     const best=bestFuer(id);
     b.innerHTML=`<div class="wahl-kopf"><h3>${h.name}</h3>
         ${hilfeId()===id?'<span class="wahl-marke">gewählt</span>':''}</div>
@@ -3668,7 +3315,7 @@ function renderHilfeWahl(){
         ${h.wiederauf? '<span>Einmal wieder aufstehen</span>':''}
       </div>
       <div class="wahl-best">Bestmarke: ${best? 'Welle '+best : 'noch keine'}</div>`;
-    b.onclick=()=>{ if(stufeGesperrt || (state==='sieg'&&!endlosLauf)) return; save.hilfe=id; persist(); if(sfx) sfx('pick'); renderHilfeWahl(); };
+    b.onclick=()=>{ save.hilfe=id; persist(); if(sfx) sfx('pick'); renderHilfeWahl(); };
     box.appendChild(b);
   }
   // Freigeschaltete Prüfstufen: gleiches Kartenformat, aber mit den GESTAPELTEN
@@ -3679,14 +3326,12 @@ function renderHilfeWahl(){
     const p=PRUEFSTUFEN[n-1], id=p.id, best=bestFuer(id);
     const bedingungen=PRUEFSTUFEN.slice(0,n).map(x=>x.desc).join('<br>');
     const b=document.createElement('button');
-    b.className='wahl-karte pruef'+(hilfeId()===id?' an':'')+(stufeGesperrt?' locked':'');
-    b.disabled=stufeGesperrt;
-    if(stufeGesperrt) b.setAttribute('aria-disabled','true');
+    b.className='wahl-karte pruef'+(hilfeId()===id?' an':'');
     b.innerHTML=`<div class="wahl-kopf"><h3>${p.name} · ${p.kurz}</h3>
         ${hilfeId()===id?'<span class="wahl-marke">gewählt</span>':''}</div>
       <p class="wahl-fuer">${bedingungen}</p>
       <div class="wahl-best">Bestmarke: ${best? 'Welle '+best : 'noch keine'}</div>`;
-    b.onclick=()=>{ if(stufeGesperrt || (state==='sieg'&&!endlosLauf)) return; save.hilfe=id; persist(); if(sfx) sfx('pick'); renderHilfeWahl(); };
+    b.onclick=()=>{ save.hilfe=id; persist(); if(sfx) sfx('pick'); renderHilfeWahl(); };
     box.appendChild(b);
   }
   // Ausblick auf die nächste gesperrte Stufe: gedämpft, nicht antippbar. Ohne diesen
@@ -3754,18 +3399,15 @@ function renderOrbitPresets(){
 let startMaechteReturn='start';
 function openStartMaechte(from){
   startMaechteReturn=from||'start';
-  const opener=startMaechteReturn==='held'?document.getElementById('overlay-held'):
-    startMaechteReturn==='galaxie'?document.getElementById('overlay-galaxie'):overlayStart;
-  opener.classList.add('hidden');
+  overlayStart.classList.add('hidden');
   renderStartMaechte();
   document.getElementById('overlay-startmaechte').classList.remove('hidden');
 }
 function closeStartMaechte(){
   document.getElementById('overlay-startmaechte').classList.add('hidden');
-  if(startMaechteReturn==='held') zeigeHeldAusruesten();
-  else if(startMaechteReturn==='galaxie'){renderGalaxie();document.getElementById('overlay-galaxie').classList.remove('hidden');}
-  else overlayStart.classList.remove('hidden');
+  overlayStart.classList.remove('hidden');
 }
+document.getElementById('startmaechte-btn').addEventListener('click',()=>openStartMaechte('start'));
 document.getElementById('startmaechte-back').addEventListener('click',closeStartMaechte);
 function zeigeVorbereitungTab(id){
   document.querySelectorAll('[data-prepare-panel]').forEach(p=>p.classList.toggle('active',p.dataset.preparePanel===id));
@@ -3846,349 +3488,23 @@ wendeBedienungAn();
    wollte, fand ihn hinter der falschen Beschriftung nicht. Seit die Hauptmacht dort
    festgelegt werden, muss der Weg dorthin außerdem offensichtlich sein. */
 function zumHauptmenue(){
-  aktiverPlanet=null;
   overlayOver.classList.add('hidden');
-  document.getElementById('overlay-galaxie').classList.add('hidden');
   beendeTageslaufVorgabe();
   refreshMenuVisibility();
   document.getElementById('overlay-start').classList.remove('hidden');
   state='menu'; setMusicLevel();
   updateTreeButton(); sorgeOrbitauftrag(); renderOrbitauftrag();
 }
-
-/* ---- Galaxiekarte: der Kampagnen-Rahmen (Plan §11/§13/§36) ----
-   Die Karte ist der primäre Weg in einen Lauf. Tageslauf, Sammlung und Vorbereitung
-   bleiben über das Startmenü erreichbar; die Karte selbst ist bewusst leichtgewichtig
-   (nur DOM/CSS, keine Dauer-Partikel — Plan §56). */
-function planetTypLabel(p){
-  return p.typ==='boss' ? 'Kommandowelt' : 'Befreiungswelt';
-}
-function bedrohungsMarke(stufe){
-  // Einfache Skala I–V (Plan §10): Orientierung, kein Zugangsschutz.
-  const roem=['I','II','III','IV','V'][Math.max(0,Math.min(4,(stufe|0)-1))]||'I';
-  let pips='';
-  for(let i=1;i<=5;i++) pips+=`<i class="bedroh-pip${i<=stufe?' an':''}"></i>`;
-  return `<span class="bedrohung" title="Bedrohung ${roem}"><span class="bedroh-pips">${pips}</span><b>${roem}</b></span>`;
-}
-/* Empfohlene Mission für den direkten Start: erste erreichbare, noch nicht befreite
-   Welt in der bestehenden Reihenfolge. Ist alles befreit, eine ehrliche Wiederholung
-   der letzten erreichbaren Welt (klar gekennzeichnet). Nie eine gesperrte Welt. */
-function empfohlenePlanet(){
-  for(const s of KAMPAGNE.sektoren) for(const p of s.planeten)
-    if(planetErreichbar(p) && !planetBefreit(p.id)) return {p, wiederholung:false};
-  let last=null;
-  for(const s of KAMPAGNE.sektoren) for(const p of s.planeten)
-    if(planetErreichbar(p) && planetBefreit(p.id)) last=p;
-  return last ? {p:last, wiederholung:true} : null;
-}
-function statusLabel(st){ return st==='befreit'?'Befreit':st==='erreichbar'?'Besetzt':'Gesperrt'; }
-// Konkrete Voraussetzung einer gesperrten Welt (welcher Vorgänger fehlt / noch nicht dran).
-function planetVoraussetzungText(p){
-  const s=sektorVonPlanet(p.id);
-  if(s){
-    if(s.braucht && !warpkernErreicht(s.braucht)) return 'Sichere zuerst den Warpkern von Sektor I.';
-    for(const o of s.planeten) if(o.order<p.order && !o.gesperrt && !planetBefreit(o.id)) return 'Zuerst '+o.name+' befreien.';
-  }
-  return 'Diese Welt ist noch nicht verfügbar.';
-}
-/* Eigene Formensprache je Welt (Plan §26/§11): Silhouette und Materialkontrast statt
-   nur gefärbter Kugeln. Reines Inline-SVG in der vorhandenen Palette, keine Assets. */
-function weltSVG(id){
-  if(id==='eos') return `<svg viewBox="0 0 64 64" class="welt-svg" aria-hidden="true"><circle cx="32" cy="32" r="23" fill="none" stroke="#6ec8ff" stroke-width="1" opacity=".35"/><clipPath id="ce"><circle cx="32" cy="32" r="20"/></clipPath><g clip-path="url(#ce)"><circle cx="32" cy="32" r="20" fill="#1e6f5b"/><path d="M14 24q8-5 15-1t18-3v10q-9 4-16 1t-17 3z" fill="#3fae7f"/><path d="M18 44q7 3 14 1t16-1" fill="none" stroke="#57c98f" stroke-width="4" opacity=".7"/></g><circle cx="32" cy="32" r="20" fill="none" stroke="#8fe8c8" stroke-width="1.4" opacity=".5"/></svg>`;
-  if(id==='kryos') return `<svg viewBox="0 0 64 64" class="welt-svg" aria-hidden="true"><clipPath id="ck"><circle cx="30" cy="32" r="19"/></clipPath><g clip-path="url(#ck)"><circle cx="30" cy="32" r="19" fill="#5b6b82"/><path d="M11 26h38M11 32h38M11 38h38" stroke="#37455b" stroke-width="2"/><rect x="22" y="15" width="7" height="34" fill="#7d90ab" opacity=".55"/><rect x="34" y="15" width="4" height="34" fill="#37455b" opacity=".5"/></g><circle cx="30" cy="32" r="19" fill="none" stroke="#9fb3d0" stroke-width="1.3" opacity=".5"/><path d="M50 16a24 24 0 0 1 0 32" fill="none" stroke="#9fb3d0" stroke-width="2.4"/><path d="M50 25l-7 3M50 39l-7-3" stroke="#9fb3d0" stroke-width="2"/></svg>`;
-  if(id==='vega') return `<svg viewBox="0 0 64 64" class="welt-svg" aria-hidden="true"><clipPath id="cv"><circle cx="28" cy="34" r="18"/></clipPath><g clip-path="url(#cv)"><circle cx="28" cy="34" r="18" fill="#6a3aa0"/><path d="M10 28h40M10 34h40M12 40h36" stroke="#c77dff" stroke-width="2.6" opacity=".8"/></g><circle cx="28" cy="34" r="18" fill="none" stroke="#d9b3ff" stroke-width="1.2" opacity=".45"/><g stroke="#ffd257" stroke-width="1.6" fill="none"><circle cx="47" cy="18" r="7"/><path d="M47 8v5M47 23v5M37 18h5M52 18h5"/></g></svg>`;
-  if(id==='nexus1') return `<svg viewBox="0 0 64 64" class="welt-svg" aria-hidden="true"><path d="M32 10L48 19V37L32 46L16 37V19Z" fill="#7f2b2b" stroke="#ff6b6b" stroke-width="1.6" stroke-linejoin="round"/><path d="M32 10V3M15 20l-7-4M49 20l7-4M15 36l-7 4M49 36l7 4M32 46v8" stroke="#ff6b6b" stroke-width="2"/><circle cx="32" cy="28" r="6.5" fill="#ffb0b0"/><circle cx="32" cy="28" r="2.6" fill="#3a0a0a"/><circle cx="32" cy="3" r="2" fill="#ff8f8f"/><circle cx="32" cy="54" r="2" fill="#ff8f8f"/></svg>`;
-  return `<svg viewBox="0 0 64 64" class="welt-svg" aria-hidden="true"><circle cx="32" cy="32" r="18" fill="#3a4557"/></svg>`;
-}
-let galaxieAuswahl=null;
-function renderGalaxie(){
-  const wrap=document.getElementById('galaxie-karte'); if(!wrap) return;
-  wrap.innerHTML='';
-  const s1=KAMPAGNE.sektoren[0];
-  const route=document.createElement('div'); route.className='galaxie-route-v'; route.id='galaxie-route';
-  const xs=[28,70,34,67], ys=[12,36,60,84];
-  const layer=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  layer.setAttribute('class','route-line-layer');
-  layer.setAttribute('viewBox','0 0 100 100');
-  layer.setAttribute('preserveAspectRatio','none');
-  layer.setAttribute('aria-hidden','true');
-  for(let i=1;i<s1.planeten.length;i++){
-    const frei=planetBefreit(s1.planeten[i-1].id);
-    layer.innerHTML+=`<path class="route-segment${frei?' frei':''}" d="M ${xs[i-1]} ${ys[i-1]} L ${xs[i]} ${ys[i]}"/>`;
-  }
-  route.appendChild(layer);
-  const empf=empfohlenePlanet();
-  s1.planeten.forEach((p,i)=>{
-    const st=planetStatus(p);
-    const stop=document.createElement('div'); stop.className='route-stop';
-    const node=document.createElement('button');
-    node.className='route-node '+st+(empf&&empf.p.id===p.id?' empfohlen':'');
-    node.dataset.planet=p.id;
-    node.setAttribute('aria-label', p.name+' — '+statusLabel(st));
-    node.innerHTML=
-      `<span class="route-icon">${weltSVG(p.id)}`+
-        `${st!=='befreit'?'<span class="besetzt-marke" aria-hidden="true"></span>':'<span class="befreit-marke" aria-hidden="true">✓</span>'}`+
-        `${st==='gesperrt'?'<span class="sperr-marke" aria-hidden="true">🔒</span>':''}</span>`+
-      `<span class="route-text"><span class="route-name">${p.name}</span>`+
-      `<span class="route-status ${st}">${statusLabel(st)} · ${planetTypLabel(p)}</span></span>`;
-    node.addEventListener('click',()=>waehlePlanetDetail(p.id,true));
-    stop.appendChild(node); route.appendChild(stop);
-  });
-  wrap.appendChild(route);
-  // Sektor II: zurückhaltender Ausblick (kein dominanter Kasten, keine Spielbarkeitsbehauptung, §31).
-  const s2=KAMPAGNE.sektoren[1];
-  if(s2){
-    const teil=s2.name.split(' · ');
-    const out=document.createElement('p'); out.className='galaxie-ausblick';
-    out.textContent = warpkernErreicht(s2.braucht)
-      ? `↑ ${teil[0]}${teil[1]?' · '+teil[1]:''} — Vorbereitung läuft`
-      : `↑ ${teil[0]} — jenseits des Warpkerns`;
-    wrap.appendChild(out);
-  }
-  const hint=document.getElementById('galaxie-hinweis');
-  if(hint) hint.textContent = empf ? (empf.wiederholung? 'Sektor I gesichert. '+empf.p.name+' erneut befreibar.' : empf.p.name+' braucht deine Hilfe.') : 'Alle Welten befreit.';
-  const ziel = (galaxieAuswahl && planetById(galaxieAuswahl)) ? galaxieAuswahl : (empf? empf.p.id : s1.planeten[0].id);
-  waehlePlanetDetail(ziel);
-}
-// Missionsdetails direkt auf der Karte (unterer Bereich) — keine separate Vollbildseite (§29).
-function waehlePlanetDetail(id,explizit=false){
-  const p=planetById(id); if(!p) return;
-  galaxieAuswahl=id;
-  document.querySelectorAll('#galaxie-route .route-node').forEach(n=>n.classList.toggle('aktiv', n.dataset.planet===id));
-  const det=document.getElementById('galaxie-detail'); if(!det) return;
-  const st=planetStatus(p), macht=ABILITIES[startMaechte().slot1]?.name||'Wirbel';
-  let html=`<div class="detail-kopf"><h3>${p.name}</h3>${bedrohungsMarke(p.stufe)}</div>`+
-    `<p class="detail-typ">${planetTypLabel(p)} · ${p.besonderheit}</p>`+
-    `<p class="detail-kurz">${p.kurz}</p>`;
-  if(st==='gesperrt'){
-    html+=`<p class="detail-sperre">🔒 ${planetVoraussetzungText(p)}</p>`;
-    det.innerHTML=html;
-  } else {
-    const befreit=planetBefreit(id);
-    html+=`<p class="detail-lohn">${befreit?'Befreit · Wiederholung':'Besetzt · Erstbefreiung'} · Stufe: <b>${hilfe().name}</b> · Hauptmacht: <b>${macht}</b></p>`+
-      `<button class="secondary detail-hilfe">Stufe ändern</button>`+
-      `<button class="primary detail-start">${befreit?'Erneut befreien':'Befreien'}</button>`;
-    det.innerHTML=html;
-    const b=det.querySelector('.detail-start'); if(b) b.onclick=()=>starteKampagnenLauf(id);
-    const h=det.querySelector('.detail-hilfe'); if(h) h.onclick=()=>{openStartMaechte('galaxie');zeigeVorbereitungTab('hilfe');};
-  }
-  if(explizit && typeof det.scrollIntoView==='function'){
-    const reduziert=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    det.scrollIntoView({behavior:reduziert?'auto':'smooth',block:'nearest'});
-  }
-}
-// Dominante Startaktion und kompakte Missionszeile auf der Startseite.
-function renderStartMission(){
-  const btn=document.getElementById('start-btn'), line=document.getElementById('start-mission');
-  const e=empfohlenePlanet(), macht=ABILITIES[startMaechte().slot1]?.name||'Wirbel';
-  if(!e){ if(btn){ btn.textContent='Weiterspielen'; delete btn.dataset.planet; } if(line) line.textContent=''; return; }
-  if(btn){ btn.textContent='Weiterspielen'; btn.dataset.planet=e.p.id; }
-  if(line) line.innerHTML = `Mission: <b>${e.p.name}</b> · Stufe: <b>${hilfe().name}</b> · ${e.p.besonderheit} · Hauptmacht: <b>${macht}</b>`+(e.wiederholung?' · Wiederholung':'');
-}
-function oeffneGalaxie(){
-  overlayStart.classList.add('hidden');
-  galaxieAuswahl=null;
-  renderGalaxie();
-  document.getElementById('overlay-galaxie').classList.remove('hidden');
-}
-function schliesseGalaxie(){
-  document.getElementById('overlay-galaxie').classList.add('hidden');
-  refreshMenuVisibility();
-  overlayStart.classList.remove('hidden');
-}
-// Einen Kampagnen-Lauf starten. EOS ist eine Befreiungswelt = normaler Lauf, daher
-// nur Planetkontext setzen und den bestehenden Laufstart nutzen (minimal-invasiv).
-function starteKampagnenLauf(id){
-  const p=planetById(id); if(!p || !planetErreichbar(p)) return;
-  laufVorgabe=null;             // kein Tageslauf
-  aktiverPlanet=id;
-  resetGame();                  // hideAll() schließt Galaxie/Planet mit
-}
-// Rückkehr zur Galaxiekarte nach einem Kampagnen-Lauf (Plan §32).
-function zurGalaxie(){
-  aktiverPlanet=null;
-  galaxieAuswahl=null;   // nach einem Lauf die neue empfohlene Welt fokussieren (§30)
-  beendeTageslaufVorgabe();
-  overlayOver.classList.add('hidden');
-  document.getElementById('overlay-sieg').classList.add('hidden');
-  overlayStart.classList.add('hidden');
-  refreshMenuVisibility();
-  renderGalaxie();
-  document.getElementById('overlay-galaxie').classList.remove('hidden');
-  state='menu'; setMusicLevel();
-  updateTreeButton(); sorgeOrbitauftrag(); renderOrbitauftrag();
-}
-// Ein beendeter Lauf kehrt in seinen Hub zurück: Galaxie bei Kampagne, sonst Startmenü.
-function verlasseLaufZuHub(){
-  if(aktiverPlanet) zurGalaxie();
-  else zumHauptmenue();
-}
-
-document.getElementById('restart-btn').addEventListener('click', verlasseLaufZuHub);
-// Dominante Kampagnen-Aktion nach Sieg: zur Galaxie, dort ist die nächste Mission
-// bereits fokussiert (deren Auswahl/Details), damit vorher noch verbessert werden kann.
-document.getElementById('sieg-mission').addEventListener('click', verlasseLaufZuHub);
+document.getElementById('restart-btn').addEventListener('click', zumHauptmenue);
 document.getElementById('sieg-weiter').addEventListener('click', endlosWeiter);
 document.getElementById('sieg-einfrieren').addEventListener('click',()=>startEndlosmodus(true));
 document.getElementById('sieg-menue').addEventListener('click',()=>{
   document.getElementById('overlay-sieg').classList.add('hidden');
-  verlasseLaufZuHub();
+  zumHauptmenue();
 });
 document.getElementById('wieder-btn').addEventListener('click',()=>resetGame());
-// Dominante Startaktion: startet die empfohlene Mission direkt über DIESELBE Startlogik
-// wie die Auswahl auf der Karte (keine zweite Run-Initialisierung, §21).
-document.getElementById('start-btn').addEventListener('click',function(){
-  const id=this.dataset.planet;
-  if(id && planetById(id) && planetErreichbar(planetById(id))) starteKampagnenLauf(id);
-  else oeffneGalaxie();
-});
-document.getElementById('galaxie-btn').addEventListener('click',oeffneGalaxie);
-document.getElementById('held-btn').addEventListener('click',()=>openHeld('start'));
-document.getElementById('galaxie-back').addEventListener('click',schliesseGalaxie);
-document.getElementById('tages-btn').addEventListener('click',()=>{ aktiverPlanet=null; startTageslauf(); });
-
-/* ---- Heldenkern-Screen (Phase 2): permanente Verbesserungen mit Fragmenten ----
-   Erreichbar aus Galaxie, Sieg und Niederlage (der „erste Upgrade-Moment", Plan §13.5).
-   Zahlt mit der bestehenden Fragmentwährung; keine zweite Wirtschaft. */
-let heldReturn='galaxie';
-function heldOpener(){
-  return heldReturn==='sieg' ? document.getElementById('overlay-sieg')
-       : heldReturn==='gameover' ? overlayOver
-       : heldReturn==='start' ? overlayStart
-       : document.getElementById('overlay-galaxie');
-}
-function openHeld(from){
-  heldReturn=from||'galaxie';
-  const op=heldOpener(); if(op) op.classList.add('hidden');
-  const fb=document.getElementById('held-feedback'); if(fb) fb.textContent='';
-  waehleHeldTab('aussehen');
-  renderHeld();
-  document.getElementById('overlay-held').classList.remove('hidden');
-}
-function closeHeld(){
-  document.getElementById('overlay-held').classList.add('hidden');
-  if(heldReturn==='sieg') document.getElementById('overlay-sieg').classList.remove('hidden');
-  else if(heldReturn==='gameover') overlayOver.classList.remove('hidden');
-  else if(heldReturn==='start'){ refreshMenuVisibility(); overlayStart.classList.remove('hidden'); }
-  else { renderGalaxie(); document.getElementById('overlay-galaxie').classList.remove('hidden'); }
-}
-// Zurück zum Held-Screen auf dem Mächte-Tab (nach älteren Einstiegswegen).
-function zeigeHeldAusruesten(){
-  renderHeld(); waehleHeldTab('maechte');
-  document.getElementById('overlay-held').classList.remove('hidden');
-}
-function zeigeHeldAussehen(){
-  renderHeld(); waehleHeldTab('aussehen');
-  document.getElementById('overlay-held').classList.remove('hidden');
-}
-function waehleHeldTab(id){
-  if(id==='ausruesten') id='maechte'; // Save-/Test-Kompatibilität ohne sichtbares Doppelmenü.
-  document.querySelectorAll('[data-held-panel]').forEach(p=>p.classList.toggle('active',p.dataset.heldPanel===id));
-  document.querySelectorAll('[data-held-tab]').forEach(b=>b.classList.toggle('active',b.dataset.heldTab===id));
-  if(id==='aussehen') renderHeldAussehen();
-  if(id==='maechte') renderHeldMaechte();
-}
-// Verbessern-Tab: kompakte, unterscheidbare Einträge — Wirkung, Rang, konkrete nächste
-// Veränderung, Preis (Plan §43). Käufe bleiben ausdrücklich ausgelöst.
-function renderHeld(){
-  const stars=document.getElementById('held-stars'); if(stars) stars.textContent=save.stars;
-  renderHeldAussehen();
-  renderHeldMaechte();
-  const grid=document.getElementById('held-grid'); if(!grid) return;
-  grid.innerHTML='';
-  for(const t of HELD_TRACKS){
-    const lv=heldLevel(t.id), full=lv>=HELD_MAX, preis=heldKosten(t.id);
-    const naechste=full?'Voll ausgebaut':'Nächste Stufe: '+t.schritt;
-    const c=document.createElement('div'); c.className='held-eintrag'+(full?' voll':'');
-    c.innerHTML=`<div class="he-icon">${svg(ICON[t.icon]||'')}</div>`+
-      `<div class="he-body"><div class="he-top"><b>${t.name}</b>${pipsHTML(lv,HELD_MAX)}</div>`+
-      `<div class="he-wirkung">${t.kurz}</div>`+
-      `<div class="he-naechste">${naechste}</div></div>`+
-      `<button class="he-kauf" ${(full||preis>save.stars)?'disabled':''}>${full?'✓ Max':preis+' ◆'}</button>`;
-    c.querySelector('.he-kauf').onclick=()=>{
-      if(!kaufeHeld(t.id)) return;
-      if(sfx) sfx('buy');
-      renderHeld();
-      const fb=document.getElementById('held-feedback'); if(fb) fb.textContent=t.name+' verbessert: '+t.schritt;
-      const gh=document.querySelector('#overlay-held .guthaben');
-      if(gh){ gh.classList.remove('abgebucht'); void gh.offsetWidth; gh.classList.add('abgebucht'); }
-    };
-    grid.appendChild(c);
-  }
-  const links=document.getElementById('held-verbessern-links');
-  if(!links) return;
-  links.innerHTML='<details class="held-werkstatt"><summary>◆ Werkstatt · Baupläne</summary><div class="guthaben werkstatt-guthaben"><span class="guthaben-sym">◆</span><span class="guthaben-zahl" id="held-werkstatt-stars">0</span><span class="guthaben-label">Fragmente</span></div><div id="held-werkstatt-grid" class="shop-grid"></div></details>';
-  renderMetaShop('held-werkstatt-grid','held-werkstatt-stars');
-}
-function avatarPreviewCanvas(){
-  const skin=currentSkin(), c=vorschauLeinwand(300,220,g=>{
-    g.scale(2.2,2.2);
-    zeichneAvatar(g,false,0,0,skin.blade,skin.core);
-    g.save(); g.rotate(-.16); zeichneKlinge(g,18,42,currentForm(),skin.blade,skin.core); g.restore();
-  });
-  c.className='held-vorschau'; c.setAttribute('aria-label','Aktuelle Heldenansicht');
-  return c;
-}
-let avatarKategorie='kopf';
-function renderHeldAussehen(){
-  const box=document.getElementById('held-aussehen'); if(!box) return;
-  const w=avatarWahl(); box.innerHTML='';
-  const intro=document.createElement('p'); intro.className='held-aussehen-hinweis';
-  intro.textContent='Kombiniere Körperteile, Klingenform und Farbe frei. Alles ist kosmetisch.'; box.appendChild(intro);
-  box.appendChild(avatarPreviewCanvas());
-  const kategorien=[...Object.entries(AVATAR_TEILE).map(([id,def])=>({id,name:def.name})),{id:'farbe',name:'Farbe'},{id:'form',name:'Form'}];
-  const nav=document.createElement('div'); nav.className='avatar-kategorien';
-  for(const k of kategorien){
-    const b=document.createElement('button'); b.className='avatar-kategorie'+(avatarKategorie===k.id?' active':''); b.textContent=k.name; b.setAttribute('aria-pressed',avatarKategorie===k.id?'true':'false');
-    b.onclick=()=>{avatarKategorie=k.id;renderHeldAussehen();}; nav.appendChild(b);
-  }
-  box.appendChild(nav);
-  const options=document.createElement('div'); options.className='avatar-optionen avatar-aktive-optionen';
-  if(AVATAR_TEILE[avatarKategorie]){
-    const part=avatarKategorie;
-    for(const teil of AVATAR_TEILE[part].teile){
-      const frei=avatarTeilVerfuegbar(teil), b=document.createElement('button'); b.className='avatar-option'+(w[part]===teil.id?' active':'')+(frei?'':' locked'); b.disabled=!frei;
-      b.innerHTML='<span class="avatar-swatch avatar-'+part+'-'+teil.id+'"></span><span>'+teil.name+'</span><small>'+teil.desc+'</small>';
-      if(frei) b.onclick=()=>{save.avatar=Object.assign({},avatarWahl(),{[part]:teil.id});persist();renderHeldAussehen();}; options.appendChild(b);
-    }
-  } else if(avatarKategorie==='farbe'){
-    for(const [id,s] of Object.entries(SKINS)){
-      const frei=isAvailable('skin',id), b=document.createElement('button'); b.className='avatar-option'+(save.skin===id?' active':'')+(frei?'':' locked'); b.disabled=!frei;
-      b.innerHTML='<span class="avatar-swatch" style="background:'+s.blade+';box-shadow:0 0 10px '+s.blade+'"></span><span>'+s.name+'</span><small>Nur optisch</small>';
-      if(frei) b.onclick=()=>{save.skin=id;persist();renderHeldAussehen();}; options.appendChild(b);
-    }
-  } else {
-    for(const [id,f] of Object.entries(FORMEN)){
-      const frei=isAvailable('form',id), b=document.createElement('button'); b.className='avatar-option'+(save.klingenform===id?' active':'')+(frei?'':' locked'); b.disabled=!frei;
-      b.innerHTML='<span class="avatar-swatch avatar-form-swatch '+(f.zwei?'zwei':f.spitz?'spitz':'')+'"></span><span>'+f.name+'</span><small>'+f.desc+'</small>';
-      if(frei) b.onclick=()=>{save.klingenform=id;persist();renderHeldAussehen();}; options.appendChild(b);
-    }
-  }
-  box.appendChild(options);
-  const links=document.createElement('div'); links.className='avatar-links';
-  links.innerHTML='<button class="secondary">Sammlung · Rekorde &amp; Abzeichen</button>';
-  links.querySelector('button').onclick=()=>openProgress('held'); box.appendChild(links);
-}
-function renderHeldMaechte(){
-  const box=document.getElementById('held-maechte'); if(!box) return;
-  const aktuell=startMaechte().slot1; box.innerHTML='<p class="held-aussehen-hinweis">Wähle eine vorhandene Hauptmacht. Sie bleibt im Lauf fest.</p>';
-  const list=document.createElement('div'); list.className='macht-optionen';
-  for(const id of ACTIVE_IDS.filter(x=>isAvailable('ability',x))){
-    const a=ABILITIES[id], b=document.createElement('button');
-    b.className='macht-option'+(id===aktuell?' active':'');
-    b.innerHTML=svg(abilIcon(id))+'<span><b>'+a.name+'</b><small>'+a.desc+'</small></span>';
-    b.onclick=()=>{ save.startMaechte={slot1:id}; startMaechte(); persist(); renderStartMission(); renderHeldMaechte(); if(sfx)sfx('pick'); };
-    list.appendChild(b);
-  }
-  box.appendChild(list);
-}
-// Legacy-Aufruf aus älteren Rückwegen: der sichtbare Hub hat keinen Ausrüsten-Tab mehr.
-function renderHeldAusruesten(){ renderHeldMaechte(); }
-document.querySelectorAll('[data-held-tab]').forEach(b=>b.addEventListener('click',()=>waehleHeldTab(b.dataset.heldTab)));
-document.getElementById('held-back').addEventListener('click',closeHeld);
-document.getElementById('sieg-held').addEventListener('click',()=>openHeld('sieg'));
-document.getElementById('gameover-held').addEventListener('click',()=>openHeld('gameover'));
-document.getElementById('galaxie-held').addEventListener('click',()=>openHeld('galaxie'));
+document.getElementById('start-btn').addEventListener('click',resetGame);
+document.getElementById('tages-btn').addEventListener('click',startTageslauf);
 renderTagessignal();
 function openHangar(){
   openMetaShop('start');
@@ -4197,6 +3513,7 @@ function closeHangar(){
   document.getElementById('overlay-hangar').classList.add('hidden');
   overlayStart.classList.remove('hidden');
 }
+document.getElementById('hangar-btn').addEventListener('click',()=>openProgress('start'));
 document.getElementById('hangar-back').addEventListener('click',closeHangar);
 // Fortschritts-Screen (Bestmarken, Skins, Abzeichen)
 function skinReqWave(id, kind){
@@ -4277,7 +3594,8 @@ function renderProgress(){
       const bild=vorschauLeinwand(72, 58, g=>{
         g.translate(0, 4);
         const c1=avail? farbe.blade : '#63708a', c2=avail? farbe.core : '#9aa6bb';
-        const alt=save.figur; save.figur=id; zeichneAvatar(g,false,0,0,c1,c2); save.figur=alt;
+        if(id==='konstrukt') zeichneLeerenklingeNeu(g, 0, c1, c2);
+        else zeichneLichthueterNeu(g, false, 0, 0, c1);
       });
       cell.appendChild(bild);
       const txt=document.createElement('div');
@@ -4285,7 +3603,7 @@ function renderProgress(){
       txt.innerHTML=`<span class="kosm-name">${f.name}</span>`+
         `<span class="kosm-desc">${avail? f.desc : (isEarned('figur',id)?'◆ Projekt in der Werkstatt':'🔒 '+(w? 'Blaupause ab Welle '+w : 'gesperrt'))}</span>`;
       cell.appendChild(txt);
-      if(avail) cell.onclick=()=>{ waehleLegacyFigur(id); passeOrbitauftragAnFigurwahl(); renderOrbitauftrag(); if(sfx) sfx('pick'); renderProgress(); };
+      if(avail) cell.onclick=()=>{ save.figur=id; passeOrbitauftragAnFigurwahl(); persist(); renderOrbitauftrag(); if(sfx) sfx('pick'); renderProgress(); };
       fig.appendChild(cell);
     }
   }
@@ -4301,13 +3619,12 @@ function renderProgress(){
 let progressReturn='start';
 function openProgress(from){
   progressReturn=from||'start'; renderProgress();
-  (progressReturn==='hangar'?document.getElementById('overlay-hangar') : progressReturn==='held'?document.getElementById('overlay-held') : overlayStart).classList.add('hidden');
+  (progressReturn==='hangar'?document.getElementById('overlay-hangar'):overlayStart).classList.add('hidden');
   document.getElementById('overlay-progress').classList.remove('hidden');
 }
 function closeProgress(){
   document.getElementById('overlay-progress').classList.add('hidden');
-  if(progressReturn==='held') zeigeHeldAussehen();
-  else overlayStart.classList.remove('hidden');
+  overlayStart.classList.remove('hidden');
 }
 document.getElementById('progress-back').addEventListener('click',closeProgress);
 function zeigeSammlungTab(id){
@@ -4316,7 +3633,7 @@ function zeigeSammlungTab(id){
 }
 document.querySelectorAll('[data-collection]').forEach(b=>b.addEventListener('click',()=>zeigeSammlungTab(b.dataset.collection)));
 document.getElementById('collection-workshop-tab').addEventListener('click',()=>{
-  const zurueck=progressReturn; document.getElementById('overlay-progress').classList.add('hidden'); openMetaShop(zurueck);
+  document.getElementById('overlay-progress').classList.add('hidden'); openMetaShop('start');
 });
 const muteBtn=document.getElementById('mute-btn'); if(muteBtn) muteBtn.addEventListener('click',toggleMute);
 updateMuteBtn();
@@ -5624,18 +4941,17 @@ function metaPrice(id){
 let metaShopReturn='start';
 function openMetaShop(from){
   metaShopReturn=from||'start';
-  (metaShopReturn==='gameover'? overlayOver : metaShopReturn==='hangar'?document.getElementById('overlay-hangar') : metaShopReturn==='held'?document.getElementById('overlay-held') : overlayStart).classList.add('hidden');
+  (metaShopReturn==='gameover'? overlayOver : metaShopReturn==='hangar'?document.getElementById('overlay-hangar'):overlayStart).classList.add('hidden');
   renderMetaShop();
   document.getElementById('overlay-metashop').classList.remove('hidden');
 }
 function closeMetaShop(){
   document.getElementById('overlay-metashop').classList.add('hidden');
-  if(metaShopReturn==='held') zeigeHeldAusruesten();
-  else (metaShopReturn==='gameover'? overlayOver : overlayStart).classList.remove('hidden');
+  (metaShopReturn==='gameover'? overlayOver : overlayStart).classList.remove('hidden');
 }
-function renderMetaShop(targetId='metashop-grid',starsId='metashop-stars'){
-  const starsEl=document.getElementById(starsId); if(starsEl) starsEl.textContent=save.stars;
-  const grid=document.getElementById(targetId); if(!grid) return; grid.innerHTML='';
+function renderMetaShop(){
+  document.getElementById('metashop-stars').textContent=save.stars;
+  const grid=document.getElementById('metashop-grid'); grid.innerHTML='';
   let gruppe='';
   for(const u of META_UPGRADES){
     if(u.gruppe!==gruppe){
@@ -5651,19 +4967,20 @@ function renderMetaShop(targetId='metashop-grid',starsId='metashop-stars'){
     c.querySelector('button').onclick=()=>{
       if(full || !voraussetzung || price>save.stars) return;
       save.meta[u.id]=1; save.stars-=price; persist();
-      if(sfx) sfx('buy'); renderMetaShop(targetId,starsId);
+      if(sfx) sfx('buy'); renderMetaShop();
       // Guthaben kurz aufblitzen lassen, damit der Abzug sichtbar wird
-      const gh=grid.parentElement&&grid.parentElement.querySelector('.guthaben');
+      const gh=document.querySelector('#overlay-metashop .guthaben');
       if(gh){ gh.classList.remove('abgebucht'); void gh.offsetWidth; gh.classList.add('abgebucht'); }
     };
     grid.appendChild(c);
   }
 }
 document.getElementById('metashop-back').addEventListener('click',closeMetaShop);
+document.getElementById('metashop-btn').addEventListener('click',()=>openMetaShop('gameover'));
 document.getElementById('hangar-workshop').addEventListener('click',()=>openMetaShop('hangar'));
 document.getElementById('hangar-collection').addEventListener('click',()=>openProgress('hangar'));
 document.getElementById('workshop-collection-tab').addEventListener('click',()=>{
-  const zurueck=metaShopReturn; document.getElementById('overlay-metashop').classList.add('hidden'); openProgress(zurueck);
+  document.getElementById('overlay-metashop').classList.add('hidden'); openProgress('start');
 });
 
 // Auto attack
@@ -5708,7 +5025,7 @@ function updateHUD(force=false){
   }
   healthText.textContent=Math.ceil(player.hp)+' / '+player.maxHp+(barriere>0.5? '  +'+Math.round(barriere) : '');
   xpBar.style.width=(player.xp/player.xpNeed*100)+'%';
-  xpText.textContent='Level '+player.level+' · '+Math.round(player.xp)+' / '+Math.round(player.xpNeed)+' XP';
+  xpText.textContent='Level '+player.level+' · '+player.xp+' / '+player.xpNeed+' XP';
   coinText.textContent='◆ '+player.stars;
   // Fokus sitzt an der Hauptmacht statt als vierter Balken im linken HUD.
   if(btnWirbel){
@@ -5735,10 +5052,6 @@ function bucheFragmente(){
 /* SIEG — der Moment, den das Spiel bisher nicht hatte. Danach steht der Endlosmodus
    offen, aber als Entscheidung des Spielers, nicht als Zustand ohne Ausweg. */
 let endlosLauf=false;
-// Die Hilfsstufe gehört zum begonnenen Lauf. Im Sieger-Hub bleibt sie für eine
-// mögliche Endlosfortsetzung fest, bis der Lauf tatsächlich verlassen wird.
-let laufHilfeId='';
-let siegHilfeId='';
 function ensureFinalRegularBudget(){
   if(regularTreeFrozen || regularPointsEarned>=REGULAR_POINT_CAP) return 0;
   const fehlend=REGULAR_POINT_CAP-regularPointsEarned;
@@ -5753,7 +5066,6 @@ function updateSiegEndlosButton(){
 }
 function sieg(){
   const finalePunkte=ensureFinalRegularBudget();
-  siegHilfeId=laufHilfeId||hilfeId();
   state='sieg'; setMusicLevel();
   updateTreeButton();
   recordBest();
@@ -5765,70 +5077,24 @@ function sieg(){
   // nichts frei.
   let neuFrei=null;
   if(!messlauf){
-    const id=siegHilfeId||hilfeId();
+    const id=hilfeId();
     let n=0;
     if(id==='standard'||id==='meister') n=1;
     else { const idx=pruefstufeIndex(id); if(idx>=0) n=Math.min(PRUEFSTUFEN.length, idx+2); }
     if(n>(save.pruefFrei||0)){ save.pruefFrei=n; neuFrei=PRUEFSTUFEN[n-1]; }
   }
-  // Kampagne: der befreite Planet wechselt dauerhaft auf „befreit". Der Kampf selbst
-  // war ein normaler Lauf; hier wird nur der Weltzustand gesetzt (Plan §13.4/§32).
-  const kampagnePlanet=(!messlauf && aktiverPlanet) ? planetById(aktiverPlanet) : null;
-  let erstBefreiung=false;
-  if(kampagnePlanet){ erstBefreiung=markiereBefreit(aktiverPlanet); }
-  // Sektorabschluss: die Kommandowelt verdient den Warpkern ihres Sektors und öffnet
-  // den nächsten Bereich (Plan §33). Der Warpkern kostet keine Fragmente (Plan §20.1).
-  let sektorLabel='';
-  if(kampagnePlanet && kampagnePlanet.sektorAbschluss){
-    const sek=sektorVonPlanet(kampagnePlanet.id);
-    if(sek){
-      save.kampagne.warpkerne=save.kampagne.warpkerne||{};
-      save.kampagne.warpkerne[sek.id]=true; persist();
-      sektorLabel=(sek.name.split(' · ')[0])||'Sektor';
-    }
-  }
   const verdient=bucheFragmente();
-  const abschluss=kampagnePlanet ? kampagneAbschluss(true, erstBefreiung) : {summe:0};
-  const starterBonus=kampagnePlanet ? gewaehreStarterBonus() : 0;
   const tagesLohn=tagesAbschluss();
   const ersterSieg=!save.gewonnen;
   save.gewonnen=true; save.endlosFrei=true; persist();
   document.getElementById('sieg-text').innerHTML=
-    (kampagnePlanet? `<b class="sieg-befreit">${kampagnePlanet.name} befreit</b>`+(erstBefreiung?' · Erstbefreiung':'')+'<br>' : '')+
-    (sektorLabel? `<b class="sieg-sektor">${sektorLabel} befreit</b> · Warpkern gesichert · Sektor II folgt später<br>` : '')+
     (ersterSieg? '<b>Zum ersten Mal!</b><br>' : '')+
-    (kampagnePlanet? `Der Besatzungskern ist zerstört — auf <b>${hilfe().name}</b>.<br>`
-                   : `Du hast den Zerbrochenen Mond bezwungen — auf <b>${hilfe().name}</b>.<br>`)+
+    `Du hast den Zerbrochenen Mond bezwungen — auf <b>${hilfe().name}</b>.<br>`+
     `Level ${player.level} · Orbitpfad abgeschlossen`+
     (finalePunkte? `<br><b style="color:var(--gold)">+${finalePunkte} Finale-${finalePunkte===1?'Punkt':'Punkte'}</b> · Orbit jetzt abschließen` : '')+
     (neuFrei? `<br><b style="color:var(--gold)">${neuFrei.name} freigeschaltet</b> · ${neuFrei.kurz}` : '')+
-    (verdient>0? `<br><b style="color:var(--gold)">+${verdient} ◆</b> im Kampf gesammelt` : '')+
-    (abschluss.summe>0? `<br><b style="color:var(--gold)">+${abschluss.summe} ◆</b> Bergung`+
-      (abschluss.erst? ` · <b style="color:var(--gold)">Erstbefreiung +${abschluss.erst}</b>` : '') : '')+
-    (starterBonus>0? `<br><b style="color:var(--gold)">+${starterBonus} ◆</b> Startbonus` : '')+
-    (kampagnePlanet? `<br><b style="color:var(--accent)">Held verfügbar</b> · Mach deinen Helden stärker` : '')+
+    (verdient>0? `<br><b style="color:var(--gold)">+${verdient} ◆</b> Fragmente` : '')+
     (tagesLohn? `<br><b style="color:var(--accent)">Tageslauf geschafft${tagesLohn}</b>` : '');
-  /* Ergebnis-Aktionen (Plan §45): Kampagne bekommt EINE dominante Aktion zur nächsten
-     Mission (öffnet deren Auswahl/Details, damit vorher noch verbessert werden kann),
-     „Held verbessern" als sichtbaren Nebenzugang und Endlos untergeordnet. Kein zweiter
-     gleichrangiger Primärknopf. Nicht-Kampagne behält Endlos-primär + Hauptmenü. */
-  const siegMission=document.getElementById('sieg-mission');
-  const siegHeld=document.getElementById('sieg-held');
-  const siegWeiter=document.getElementById('sieg-weiter');
-  const siegMenue=document.getElementById('sieg-menue');
-  if(aktiverPlanet){
-    const e=empfohlenePlanet();
-    const weiterLabel=(e && !e.wiederholung && e.p.id!==aktiverPlanet) ? ('Weiter: '+e.p.name) : 'Zur Galaxie';
-    if(siegMission){ siegMission.textContent=weiterLabel; siegMission.classList.remove('hidden'); }
-    if(siegHeld){ siegHeld.classList.remove('hidden'); }
-    if(siegWeiter) siegWeiter.className='secondary';   // Endlos untergeordnet
-    if(siegMenue) siegMenue.classList.add('hidden');
-  } else {
-    if(siegMission) siegMission.classList.add('hidden');
-    if(siegHeld) siegHeld.classList.add('hidden');
-    if(siegWeiter) siegWeiter.className='primary';
-    if(siegMenue){ siegMenue.textContent='Hauptmenü'; siegMenue.classList.remove('hidden'); }
-  }
   hideAll();
   document.getElementById('overlay-sieg').classList.remove('hidden');
   renderOrbitauftrag();
@@ -5873,28 +5139,11 @@ function gameOver(){
   const tagesLohn=tagesAbschluss();
   const earned=bucheFragmente();
   const best=bestFuer();
-  // Kampagne: Rückzug statt hartes Aus. Der Planet bleibt besetzt, der Fortschritt
-  // (Fragmente) bleibt erhalten (Plan §13.6). Der Kampf-Ausgang bleibt unverändert.
-  const kampagnePlanet=(!messlauf && aktiverPlanet) ? planetById(aktiverPlanet) : null;
-  const abschluss=kampagnePlanet ? kampagneAbschluss(false, false) : {summe:0};
-  const starterBonus=kampagnePlanet ? gewaehreStarterBonus() : 0;
   document.getElementById('gameover-stats').innerHTML=
-    (kampagnePlanet? `<b class="gameover-rueckzug">${kampagnePlanet.name} bleibt besetzt</b> · Dein Fortschritt bleibt.<br>` : '')+
     `Erreicht: <b>Welle ${wave}</b> · Level ${player.level}<br>`+
-    (earned>0? `<b style="color:var(--gold)">+${earned} ◆</b> im Kampf gesammelt<br>`:'')+
-    (abschluss.summe>0? `<b style="color:var(--gold)">+${abschluss.summe} ◆</b> Bergung<br>`:'')+
-    (starterBonus>0? `<b style="color:var(--gold)">+${starterBonus} ◆</b> Startbonus · genug für ein Heldenkern-Upgrade<br>`:'')+
-    `<span style="color:var(--muted)">${save.stars} ◆ insgesamt</span><br>`+
+    (earned>0? `<b style="color:var(--gold)">+${earned} ◆</b> Fragmente · ${save.stars} ◆ insgesamt<br>`:'')+
     (tagesLohn? `<b style="color:var(--accent)">Tageslauf geschafft${tagesLohn}</b><br>`:'')+
     `<span style="color:var(--muted)">Bestmarke: Welle ${best}</span>`;
-  // §46: „Erneut versuchen" hervorheben, daneben Zugang zu bezahlbaren Verbesserungen
-  // (Held). Belohnungen wurden oben genau einmal gebucht; ein Menü-Öffnen vergibt nichts.
-  const overWieder=document.getElementById('wieder-btn');
-  if(overWieder) overWieder.textContent = aktiverPlanet ? 'Erneut versuchen' : 'Nochmal spielen';
-  const overMenue=document.getElementById('restart-btn');
-  if(overMenue) overMenue.textContent = aktiverPlanet ? 'Zur Galaxie' : 'Hauptmenü';
-  const overHeld=document.getElementById('gameover-held');
-  if(overHeld) overHeld.classList.toggle('hidden', !kampagnePlanet);
   renderOrbitauftrag();
   overlayOver.classList.remove('hidden');
 }
@@ -5979,7 +5228,7 @@ function update(dt){
     }
     const boost = dmgBoostUntil>spielJetzt()?2:1;
     const resonanz=treeFlags.resonanzUntil>spielJetzt()?1.25:1;
-    const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz * tagesFaktor('klinge') * heldKlinge());
+    const dmgBase = Math.round(CONFIG.spinDamage * (1+bonuses.dmg) * boost * resonanz * tagesFaktor('klinge'));
     const leerenBonus=hatLeerenhunger() ? fehlendesLeben*(0.78+(treeFlags.leerenRisikoBonus||0)) : 0;
     const anglesNow=bladeAngles();
     const bandLoch=bandInnen();   // 0 ohne Band, dann faellt die Pruefung weg
@@ -5997,7 +5246,7 @@ function update(dt){
     // waere kein "naechster" Volltreffer mehr, sondern derselbe.
     const durchschlagVorTick = treeFlags.kronenform==='praez' && !!treeFlags.durchschlagBereit;
     if(tickSweet && !orbitRoundSweet) orbitSweetPulse();
-    const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+leerenBonus) * sweetKlingenFaktor() * (lightTick?1.35:1) * tagesFaktor('klinge') * heldKlinge());
+    const dmgArc  = Math.round((CONFIG.spinDamage+CONFIG.spinArcBonus) * (1+bonuses.dmg) * boost * resonanz * (1+leerenBonus) * sweetKlingenFaktor() * (lightTick?1.35:1) * tagesFaktor('klinge'));
     if(lightTick){ orbitRoundDistance=0; orbitRoundLight=false; if(PERF_DEBUG)treeFlags.debugLichtbund=(treeFlags.debugLichtbund||0)+1; pushFloat(player.x,player.y-38,'LICHTBUND ×1.35','#ffd257',1.05); }
     let faecherBereit=!!runKartenEvos.splitterfaecher && nachfassenBereit;
     for(const en of enemies){
@@ -6646,7 +5895,7 @@ function update(dt){
         }
       } else {
         const amount=laufXp(o.big? Math.round(CONFIG.xpOrb.xp*2.5) : CONFIG.xpOrb.xp);
-        player.xp+=amount; pushFloat(o.x,o.y-10,'+'+Math.round(amount)+' XP','#6ec8ff'); if(sfx) sfx('xp');
+        player.xp+=amount; pushFloat(o.x,o.y-10,'+'+amount+' XP','#6ec8ff'); if(sfx) sfx('xp');
       }
       orbs.splice(i,1); continue;
     }
@@ -7927,7 +7176,8 @@ function draw(){
   }
   const lean = moving ? moveVec.x*7 : 0;
   // Figur — welche gezeichnet wird, kommt aus der Sammlung
-  zeichneAvatar(ctx, moving, lean, player.bobPhase||0, KLINGE, KLINGE_KERN, sb);
+  if(schwebt) zeichneLeerenklingeNeu(ctx, lean, KLINGE, KLINGE_KERN, sb);
+  else zeichneLichthueterNeu(ctx, moving, lean, player.bobPhase||0, KLINGE, sb);
   // Plasmaklinge(n) – rotieren permanent, Form kommt aus der Sammlung
   for(let bi=0;bi<angles.length;bi++){
     const a=angles[bi];
